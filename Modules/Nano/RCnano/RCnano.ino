@@ -1,7 +1,3 @@
-#include <Adafruit_MCP23008.h>
-#include <Adafruit_MCP23X08.h>
-#include <Adafruit_MCP23X17.h>
-#include <Adafruit_MCP23XXX.h>
 #include <Wire.h>
 #include <EEPROM.h>
 
@@ -13,8 +9,8 @@
 #include <SPI.h>
 #include <EtherCard.h>
 
-# define InoDescription "RCnano  :  29-Mar-2023"
-const int16_t InoID = 2903;	// change to send defaults to eeprom
+# define InoDescription "RCnano  :  21-Jul-2023"
+const int16_t InoID = 2001;	// change to send defaults to eeprom
 int16_t StoredID;			// Defaults ID stored in eeprom	
 
 #define MaxProductCount 2
@@ -26,7 +22,7 @@ struct ModuleConfig
 	uint8_t	IPpart3 = 1;			// IP address, 3rd octet
 	uint8_t RelayOnSignal = 0;	    // value that turns on relays
 	uint8_t FlowOnDirection = 0;	// sets on value for flow valve or sets motor direction
-	uint8_t UseMCP23017 = 1;        // 0 use Nano pins for relays, 1 use MCP23017 for relays
+  uint8_t UseMCP23017 = 1;         // 0 use Nano pins for relays, 1 use PCA9685 for relays via motors
 	uint8_t Relays[16];
 	uint8_t Debounce = 3;			// minimum ms pin change, base debounce
 };
@@ -80,30 +76,9 @@ byte Ethernet::buffer[300]; // udp send and receive buffer
 bool ENCfound;
 static byte selectPin = 10;
 
-Adafruit_MCP23X17 mcp;
-
 // Pin number is an integer in the range 0-15,
 // where pins numbered from 0 to 7 are on Port A, GPA0 = 0,
 // and pins numbered from 8 to 15 are on Port B, GPB0 = 8.
-
-// MCP23017 pins RC5, RC8
-#define Relay1 8
-#define Relay2 9
-#define Relay3 10
-#define Relay4 11
-#define Relay5 12
-#define Relay6 13
-#define Relay7 14
-#define Relay8 15
-
-#define Relay9 7
-#define Relay10 6
-#define Relay11 5
-#define Relay12 4
-#define Relay13 3
-#define Relay14 2
-#define Relay15 1
-#define Relay16 0
 
 const uint16_t LOOP_TIME = 50;      //in msec = 20hz
 uint32_t LoopLast = LOOP_TIME;
@@ -133,6 +108,7 @@ byte SectionSwitchID[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 
 void(*resetFunc) (void) = 0;
 
 bool IOexpanderFound;
+bool PCAFound;
 uint8_t ErrorCount;
 byte PGNlength;
 
@@ -199,14 +175,18 @@ void setup()
 	Serial.println("");
 	Serial.print("Module ID: ");
 	Serial.println(MDL.ID);
-	Serial.println();
+	Serial.println("");
 
 	if (MDL.SensorCount < 1) MDL.SensorCount = 1;
 	if (MDL.SensorCount > 2) MDL.SensorCount = 2;
 
-	if (MDL.UseMCP23017)
+  Serial.print(" UsePCA9685 value is ");
+  Serial.print(MDL.UseMCP23017);
+  Serial.println("");
+
+	if (MDL.UseMCP23017 )
 	{
-		Serial.println("Using MCP23017 for relays.");
+		Serial.println("Using PCA9685 for relays.");
 	}
 	else
 	{
@@ -214,53 +194,10 @@ void setup()
 	}
 
 	Wire.begin();
-	if (MDL.UseMCP23017)
-	{
-		// I/O expander on default address 0x20
-		Serial.println("");
-		Serial.println("Starting I/O Expander ...");
-		ErrorCount = 0;
-		while (!IOexpanderFound)
-		{
-			Serial.print(".");
-			Wire.beginTransmission(0x20);
-			IOexpanderFound = (Wire.endTransmission() == 0);
-			ErrorCount++;
-			delay(500);
-			if (ErrorCount > 5) break;
-		}
-
-		Serial.println("");
-		if (IOexpanderFound)
-		{
-			Serial.println("I/O Expander found.");
-			mcp.begin_I2C();
-
-			// MCP20317 pins
-			mcp.pinMode(Relay1, OUTPUT);
-			mcp.pinMode(Relay2, OUTPUT);
-			mcp.pinMode(Relay3, OUTPUT);
-			mcp.pinMode(Relay4, OUTPUT);
-			mcp.pinMode(Relay5, OUTPUT);
-			mcp.pinMode(Relay6, OUTPUT);
-			mcp.pinMode(Relay7, OUTPUT);
-			mcp.pinMode(Relay8, OUTPUT);
-
-			mcp.pinMode(Relay9, OUTPUT);
-			mcp.pinMode(Relay10, OUTPUT);
-			mcp.pinMode(Relay11, OUTPUT);
-			mcp.pinMode(Relay12, OUTPUT);
-			mcp.pinMode(Relay13, OUTPUT);
-			mcp.pinMode(Relay14, OUTPUT);
-			mcp.pinMode(Relay15, OUTPUT);
-			mcp.pinMode(Relay16, OUTPUT);
-
-		}
-		else
-		{
-			Serial.println("I/O Expander not found.");
-		}
-	}
+  if (MDL.UseMCP23017)
+  {
+    pcasectionsSetup();
+  }
 	else
 	{
 		// Nano pins
@@ -275,8 +212,11 @@ void setup()
 	{
 		pinMode(Sensor[i].FlowPin, INPUT_PULLUP);
 		//pinMode(Sensor[i].FlowPin, INPUT);	// for direct connection to inductive sensor
-		pinMode(Sensor[i].DirPin, OUTPUT);
-		pinMode(Sensor[i].PWMPin, OUTPUT);
+    if(!MDL.UseMCP23017)  //section 7/8 will be valve
+    {
+		  pinMode(Sensor[i].DirPin, OUTPUT);
+		  pinMode(Sensor[i].PWMPin, OUTPUT);
+    }
 	}
 
 	attachInterrupt(digitalPinToInterrupt(Sensor[0].FlowPin), ISR0, FALLING);
@@ -400,11 +340,13 @@ void AutoControl()
 		case 4:
 			// motor control
 			Sensor[i].pwmSetting = PIDmotor(i);
+      setPwmForSection(i, Sensor[i].pwmSetting);
 			break;
 
 		default:
 			// valve control
 			Sensor[i].pwmSetting = PIDvalve(i);
+      setPwmForSection(i, Sensor[i].pwmSetting);
 			break;
 		}
 	}
@@ -415,6 +357,7 @@ void ManualControl()
 	for (int i = 0; i < MDL.SensorCount; i++)
 	{
 		Sensor[i].pwmSetting = Sensor[i].ManualAdjust;
+    setPwmForSection(i, Sensor[i].pwmSetting);
 	}
 }
 

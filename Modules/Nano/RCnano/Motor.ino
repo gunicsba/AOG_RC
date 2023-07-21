@@ -12,24 +12,43 @@ void AdjustFlow()
                 {
                     //increase
                     if (Sensor[i].pwmSetting > 250)	Sensor[i].pwmSetting = 255;
-
-                    digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
-                    analogWrite(Sensor[i].PWMPin, Sensor[i].pwmSetting);
+                    if (MDL.UseMCP23017)
+                    {
+                      setPwmForSection(i, Sensor[i].pwmSetting);
+                    } 
+                    else 
+                    {
+                      digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
+                      analogWrite(Sensor[i].PWMPin, Sensor[i].pwmSetting);
+                    }                    
                 }
                 else
                 {
                     //decrease
                     if (Sensor[i].pwmSetting < -250) Sensor[i].pwmSetting = -255;
-
-                    digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
-                    analogWrite(Sensor[i].PWMPin, -Sensor[i].pwmSetting);	// offsets the negative pwm value
+                    if (MDL.UseMCP23017)
+                    {
+                      setPwmForSection(i, Sensor[i].pwmSetting);
+                    } 
+                    else 
+                    {
+                      digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
+                      analogWrite(Sensor[i].PWMPin, -Sensor[i].pwmSetting);	// offsets the negative pwm value
+                    }
                 }
             }
             else
             {
                 // stop flow
-                analogWrite(Sensor[i].PWMPin, 255);
-                digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
+                    if (MDL.UseMCP23017)
+                    {
+                      setPwmForSection(i, -255);
+                    } 
+                    else 
+                    {                
+                      analogWrite(Sensor[i].PWMPin, 255);
+                      digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
+                    }
             }
             break;
         case 2:
@@ -41,20 +60,41 @@ void AdjustFlow()
                 if (Sensor[i].pwmSetting >= 0)
                 {
                     //increase
-                    digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
-                    analogWrite(Sensor[i].PWMPin, Sensor[i].pwmSetting);
+                    if (MDL.UseMCP23017)
+                    {
+                      setPwmForSection(i, Sensor[i].pwmSetting);
+                    } 
+                    else 
+                    {
+                      digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
+                      analogWrite(Sensor[i].PWMPin, Sensor[i].pwmSetting);
+                    }
                 }
                 else
                 {
                     //decrease
-                    digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
-                    analogWrite(Sensor[i].PWMPin, -Sensor[i].pwmSetting);	// offsets the negative pwm value
+                    if (MDL.UseMCP23017)
+                    {
+                      setPwmForSection(i, Sensor[i].pwmSetting);
+                    } 
+                    else 
+                    {                    
+                      digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
+                      analogWrite(Sensor[i].PWMPin, -Sensor[i].pwmSetting);	// offsets the negative pwm value
+                    }
                 }
             }
             else
             {
                 // stop motor
-                analogWrite(Sensor[i].PWMPin, 0);
+                if (MDL.UseMCP23017)
+                {
+                  setPwmForSection(i, 0);
+                } 
+                else 
+                {
+                  analogWrite(Sensor[i].PWMPin, 0);
+                }
             }
             break;
         default:
@@ -62,14 +102,28 @@ void AdjustFlow()
             if (Sensor[i].pwmSetting >= 0)
             {
                 //increase
-                digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
-                analogWrite(Sensor[i].PWMPin, Sensor[i].pwmSetting);
+                if (MDL.UseMCP23017)
+                {
+                  setPwmForSection(i, Sensor[i].pwmSetting);
+                } 
+                else 
+                {
+                  digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
+                  analogWrite(Sensor[i].PWMPin, Sensor[i].pwmSetting);
+                }
             }
             else
             {
                 //decrease
-                digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
-                analogWrite(Sensor[i].PWMPin, -Sensor[i].pwmSetting);	// offsets the negative pwm value
+                if (MDL.UseMCP23017)
+                {
+                  setPwmForSection(i, Sensor[i].pwmSetting);
+                } 
+                else 
+                {
+                  digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
+                  analogWrite(Sensor[i].PWMPin, -Sensor[i].pwmSetting);	// offsets the negative pwm value
+                }
             }
             break;
         }
