@@ -8,9 +8,6 @@ int8_t positionNeutral[] = {  0,  0,  0,  0,   0,  0,  0,  0 };
 int8_t positionClosed[]  = { -1, -1, -1, -1,  -1, -1, -1, -1 };   
 #define TIME_RETURN_NEUTRAL 50 //time to return to neutral 0 means never go back to zero, 10 means 1 second
 
-int16_t pinPwmLo[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-int16_t pinPwmHi[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
 #define SERVO_FREQ 3000 //no idea what's the right value :)
 
 uint8_t maxSections = 6; // 7 / 8 is reserved
@@ -138,24 +135,20 @@ void setPosition(uint8_t section, int8_t mode) {
 
 void setPwmForPin(uint8_t pin, int16_t pwmLo, int16_t pwmHi) {
   //pwm.setPWM(pin1, 0, 4096); //off
-  if(pinPwmLo[pin] != pwmLo && pinPwmHi[pin] != pwmHi){
-    if(pin < 16) {
-      pwm.setPWM(pin, pwmLo, pwmHi);
-    } else {
-      //TODO we'll need a 2nd PCA for the extra sections / pins
-    }
-      pinPwmLo[pin] = pwmLo;
-      pinPwmHi[pin] = pwmHi;
+  if(pin < 16) {
+    pwm.setPWM(pin, pwmLo, pwmHi);
+  } else {
+    //TODO we'll need a 2nd PCA for the extra sections / pins
   }
 }
 
 /* pwm can be from -255 to 255 */
 void setPwmForSection(uint8_t section, short pwm) {
   if(!PCAFound) return;
-  uint8_t pin1 = (7+section)*2;
+  uint8_t pin1 = (6+section)*2;
   uint8_t pin2 = pin1+1;
     Serial.println("");
-    Serial.print("Section ");
+    Serial.print("Sensor ");
     Serial.print(section);
     Serial.print(" pin1 ");
     Serial.print(pin1);
