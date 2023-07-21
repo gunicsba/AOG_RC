@@ -50,8 +50,8 @@ void CheckRelays()
       {
           for(int i = 0 ; i < 8; i++)  
           {
-            if (bitRead(NewLo, 0)) setPosition(i, 1); else setPosition(i, -1);
-            if (bitRead(NewHi, 0)) setPosition(i+8, 1); else setPosition(i+8, -1);
+            if (bitRead(NewLo, i)) setPosition(i, 1); else setPosition(i, -1);
+            if (bitRead(NewHi, i)) setPosition(i+8, 1); else setPosition(i+8, -1);
           }
       }
     }
