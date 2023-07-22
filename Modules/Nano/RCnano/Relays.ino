@@ -50,8 +50,8 @@ void CheckRelays()
       {
           for(int i = 0 ; i < 8; i++)  
           {
-            if (bitRead(NewLo, i)) setPosition(i, 1); else setPosition(i, -1);
-            if (bitRead(NewHi, i)) setPosition(i+8, 1); else setPosition(i+8, -1);
+            if (bitRead(NewLo, i)) setSection(i, MDL.RelayOnSignal); else setPosition(i, !MDL.RelayOnSignal);
+            if (bitRead(NewHi, i)) setSection(i+8, MDL.RelayOnSignal); else setPosition(i+8, !MDL.RelayOnSignal);
           }
       }
     }

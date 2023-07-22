@@ -10,6 +10,8 @@ int8_t positionClosed[]  = { -1, -1, -1, -1,  -1, -1, -1, -1 };
 
 #define SERVO_FREQ 3000 //no idea what's the right value :)
 
+#define PCADEBUG
+
 uint8_t maxSections = 6; // 7 / 8 is reserved
 
 uint8_t lastTimeSectionMove[] = { 0,0,0,0, 0,0,0,0 };
@@ -92,6 +94,7 @@ void setPosition(uint8_t section, int8_t mode) {
     if(section == 7) return;
     uint8_t pin1 = section*2;
     uint8_t pin2 = pin1+1;
+    #ifdef PCADEBUG
     Serial.println("");
     Serial.print("Section ");
     Serial.print(section);
@@ -101,6 +104,7 @@ void setPosition(uint8_t section, int8_t mode) {
     Serial.print(pin2);
     Serial.print(" mode ");
     Serial.print(mode);
+    #endif
 
     //section 6 / 7 is reserved, so we have to offset it!
     if(section >= 6) 
@@ -147,6 +151,7 @@ void setPwmForSection(uint8_t section, short pwm) {
   if(!PCAFound) return;
   uint8_t pin1 = (6+section)*2;
   uint8_t pin2 = pin1+1;
+    #ifdef PCADEBUG
     Serial.println("");
     Serial.print("Sensor ");
     Serial.print(section);
@@ -155,22 +160,30 @@ void setPwmForSection(uint8_t section, short pwm) {
     Serial.print(" pin2 ");
     Serial.print(pin2);
     Serial.print(" pwm ");
+    #endif
   if( pwm < 0) { //we need to turn off 1 direction
     setPwmForPin(pin1, 0, 4096); //off
     setPwmForPin(pin2, 0, pwm*-16);
+    #ifdef PCADEBUG
     Serial.print( pwm*-16 );
+    #endif
   } else if ( pwm == 0) {
     setPwmForPin(pin1, 4096, 0); //on
     setPwmForPin(pin2, 4096, 0); //on
     delay(100);
+    #ifdef PCADEBUG
     Serial.print(" 0-0 ");
+    #endif
   } else {
     setPwmForPin(pin1, 0, pwm*16);
     setPwmForPin(pin2, 0, 4096); //off
+    #ifdef PCADEBUG
     Serial.print( pwm*16 );
+    #endif
   }
+  #ifdef PCADEBUG
   Serial.println("");
-
+  #endif
 }
 
 
