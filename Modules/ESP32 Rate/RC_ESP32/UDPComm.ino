@@ -83,15 +83,11 @@ void SendUDP()
         Ethernet.hardwareStatus();
 
         // ethernet
-        if (HardwareFound)
+        if (ETHconnected)
         {
-            if (Ethernet.linkStatus() == LinkON)
-            {
-
-                UDPcomm.beginPacket(DestinationIP, DestinationPort);
-                UDPcomm.write(Data, 13);
-                UDPcomm.endPacket();
-            }
+          UDPcomm.beginPacket(DestinationIP, DestinationPort);
+          UDPcomm.write(Data, 13);
+          UDPcomm.endPacket();
         }
 
         // wifi
@@ -142,15 +138,11 @@ void SendUDP()
     Data[14] = CRC(Data, 14, 0);
 
     // ethernet
-    if (HardwareFound)
+    if (ETHconnected)
     {
-        if (Ethernet.linkStatus() == LinkON)
-        {
-
-            UDPcomm.beginPacket(DestinationIP, DestinationPort);
-            UDPcomm.write(Data, 15);
-            UDPcomm.endPacket();
-        }
+      UDPcomm.beginPacket(DestinationIP, DestinationPort);
+      UDPcomm.write(Data, 15);
+      UDPcomm.endPacket();
     }
 
     // wifi
@@ -164,19 +156,16 @@ void SendUDP()
 
 void ReceiveUDP()
 {
-    if (HardwareFound)
+    if (ETHconnected)
     {
-        if (Ethernet.linkStatus() == LinkON)
-        {
-            byte Data[MaxReadBuffer];
+      byte Data[MaxReadBuffer];
 
-            uint16_t len = UDPcomm.parsePacket();
-            if (len)
-            {
-                UDPcomm.read(Data, MaxReadBuffer);
-                ParseData(Data, len);
-            }
-        }
+      uint16_t len = UDPcomm.parsePacket();
+      if (len)
+      {
+        UDPcomm.read(Data, MaxReadBuffer);
+        ParseData(Data, len);
+      }
     }
 
     if (ESPconnected)
@@ -426,35 +415,32 @@ void ParseData(byte Data[], uint16_t len)
 
 void ReceiveAGIO()
 {
-    if (HardwareFound)
+    if (ETHconnected)
     {
-        if (Ethernet.linkStatus() == LinkON)
+      byte Data[MaxReadBuffer];
+
+      uint16_t len = AGIOcomm.parsePacket();
+      if (len)
+      {
+        AGIOcomm.read(Data, MaxReadBuffer);
+        if ((Data[0] == 128) && (Data[1] == 129) && (Data[2] == 127))  // 127 is source, AGIO
         {
-            byte Data[MaxReadBuffer];
-
-            uint16_t len = AGIOcomm.parsePacket();
-            if (len)
+          switch (Data[3])
+          {
+          case 201:
+            if ((Data[4] == 5) && (Data[5] == 201) && (Data[6] == 201))
             {
-                AGIOcomm.read(Data, MaxReadBuffer);
-                if ((Data[0] == 128) && (Data[1] == 129) && (Data[2] == 127))  // 127 is source, AGIO
-                {
-                    switch (Data[3])
-                    {
-                    case 201:
-                        if ((Data[4] == 5) && (Data[5] == 201) && (Data[6] == 201))
-                        {
-                            MDL.IP0 = Data[7];
-                            MDL.IP1 = Data[8];
-                            MDL.IP2 = Data[9];
+              MDL.IP0 = Data[7];
+              MDL.IP1 = Data[8];
+              MDL.IP2 = Data[9];
 
-                            SaveData();
-                            esp_restart();
-                        }
-                        break;
-                    }
-                }
+              SaveData();
+              esp_restart();
             }
+          break;
+          }
         }
+      }
     }
 }
 

@@ -147,6 +147,27 @@ void CheckRelays()
             }
         }
         break;
+    case 6:
+      //PCA9685
+      if(PCA9685_1_found){
+        Rlys = NewLo;
+        for (int i = 0; i < 8; i++)
+        {
+          int pin = i*2;
+          if (bitRead(Rlys, i))
+          {
+            PCA1.setPWM(pin, 0, 4095);
+            PCA1.setPWM(pin+1, 0, 0);
+          }
+          else
+          {
+            PCA1.setPWM(pin, 0, 0);
+            PCA1.setPWM(pin+1, 0, 4095);
+          }
+        }
+      }
+      //PCA9685_2_found for extender
+      break;
     }
 }
 

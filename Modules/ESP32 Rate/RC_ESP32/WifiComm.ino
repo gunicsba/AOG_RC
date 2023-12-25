@@ -23,7 +23,7 @@ void ConnectWifi()
 
 		Serial.println("Waiting for Wifi connection ...");
 }
-
+/*
 void WiFiEvent(WiFiEvent_t event)
 {
 	switch (event)
@@ -51,3 +51,4 @@ void WiFiEvent(WiFiEvent_t event)
 		break;
 	}
 }
+*/

@@ -124,7 +124,70 @@ int PIDmotor(byte ID)
 	return (int)Result;
 }
 
+/*
 int PIDvalve(byte ID)
+{
+    float Result = 0;
+    if (Sensor[ID].FlowEnabled && Sensor[ID].RateSetting > 0)
+    {
+        float ErrorPercent = Sensor[ID].RateError / Sensor[ID].RateSetting;
+
+        if (abs(ErrorPercent) > (float)Sensor[ID].Deadband / 100.0)
+        {
+            Result = Sensor[ID].MinPWM;
+            if(ErrorPercent<0) Result = -Sensor[ID].MinPWM;
+            
+            Result += Sensor[ID].KP * ErrorPercent; //Errorpercent -0.19 -> 19%
+
+            unsigned long elapsedTime = millis() - CurrentAdjustTime[ID];
+            CurrentAdjustTime[ID] = millis();
+
+            ErrorPercentCum[ID] += ErrorPercent * (elapsedTime * 0.001);
+
+            Integral[ID] += Sensor[ID].KI * ErrorPercentCum[ID];
+            if (Integral[ID] > 10) Integral[ID] = 10;
+            if (Integral[ID] < -10) Integral[ID] = -10;
+            if (Sensor[ID].KI == 0)
+            {
+                Integral[ID] = 0;
+                ErrorPercentCum[ID] = 0;
+            }
+            
+
+            Result += Integral[ID];
+
+            Result += (float)Sensor[ID].KD * (ErrorPercent - ErrorPercentLast[ID]) / (elapsedTime * 0.001) * 0.001;
+
+            ErrorPercentLast[ID] = ErrorPercent;
+
+            bool IsPositive = (Result > 0);
+            Result = abs(Result);
+
+            if (Result < Sensor[ID].MinPWM)
+            {
+                Result = Sensor[ID].MinPWM;
+            }
+            else
+            {
+                if (abs(ErrorPercent) < (float)Sensor[ID].BrakePoint / 100.0)
+                {
+                    if (Result > Sensor[ID].MinPWM * 3.0) Result = Sensor[ID].MinPWM * 3.0;
+                }
+                if (Result > Sensor[ID].MaxPWM) Result = Sensor[ID].MaxPWM;
+            }
+
+            if (!IsPositive) Result *= -1;
+        }
+        else
+        {
+            Integral[ID] = 0;
+        }
+    }
+    return (int)Result;
+}
+*/
+
+int PIDvalve(byte ID) //TODO
 {
 	double Result = 0;
 	if (Sensor[ID].FlowEnabled && Sensor[ID].TargetUPM > 0)

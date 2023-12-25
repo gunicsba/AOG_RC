@@ -5,6 +5,7 @@
 #include <Adafruit_MCP23X08.h>
 #include <Adafruit_MCP23X17.h>
 #include <Adafruit_MCP23XXX.h>
+#include <Adafruit_PWMServoDriver.h>
 
 #include <Adafruit_BusIO_Register.h>
 #include <Adafruit_I2CDevice.h>
@@ -16,10 +17,17 @@
 #include <WiFiClient.h>
 #include <WiFiAP.h>
 
+#include "ETHClass.h"
+#include <EthernetUdp.h>
+
 #include <ArduinoOTA.h>
 #include <WebServer.h>
-#include <EthernetLarge.h>	// https://github.com/OPEnSLab-OSU/EthernetLarge
 #include <EEPROM.h> 
+
+#include <elapsedMillis.h>
+#include <esp_task_wdt.h>
+#define WDT_TIMEOUT 90
+#include "driver/temp_sensor.h"
 
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
 # define InoDescription "RC_ESP32 :  07-Dec-2023"
@@ -40,7 +48,7 @@ struct ModuleConfig
 	uint8_t IP1 = 168;
 	uint8_t IP2 = 1;
 	uint8_t IP3 = 60;
-	uint8_t RelayControl = 2;		// 0 - no relays, 1 - RS485, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - Teensy GPIO
+	uint8_t RelayControl = 6;		// 0 - no relays, 1 - RS485, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - Teensy GPIO, 6 - PCA9685
 	uint8_t RelayPins[16] = { 8,9,10,11,12,25,26,27,0,0,0,0,0,0,0,0 };		// pin numbers when GPIOs are used for relay control (5), default RC11
 	char Name[ModStringLengths] = "RateModule";
 	char SSID[ModStringLengths] = "tractor";
@@ -76,15 +84,16 @@ struct SensorConfig
 SensorConfig Sensor[2];
 
 // network
+static bool ETHconnected = false; //Ethernet.linkStatus() is too slow
 const uint16_t ListeningPort = 28888;
 const uint16_t DestinationPort = 29999;
 
 // ethernet
-EthernetUDP UDPcomm;
+WiFiUDP UDPcomm;
 IPAddress DestinationIP(MDL.IP0, MDL.IP1, MDL.IP2, 255);
 
 // AGIO
-EthernetUDP AGIOcomm;
+WiFiUDP AGIOcomm;
 uint16_t ListeningPortAGIO = 8888;		// to listen on
 uint16_t DestinationPortAGIO = 9999;	// to send to
 
@@ -121,6 +130,9 @@ bool PCA9555PW_found = false;
 
 Adafruit_MCP23X17 MCP;
 bool MCP23017_found = false;
+
+Adafruit_PWMServoDriver PCA1 = Adafruit_PWMServoDriver(0x40);
+bool PCA9685_1_found = false;
 
 int TimedCombo(byte, bool);	// function prototype
 
@@ -177,6 +189,7 @@ void loop()
 	server.handleClient();
 
 	Blink();
+ 	wdt_timer();
 }
 
 byte ParseModID(byte ID)
@@ -216,16 +229,26 @@ byte CRC(byte Chk[], byte Length, byte Start)
 }
 
 bool State = false;
-uint32_t LastBlink;
-uint32_t LastLoop;
+elapsedMillis BlinkTmr;
+elapsedMicros LoopTmr;
+elapsedMillis WdtTmr;
 byte ReadReset;
 uint32_t MaxLoopTime;
 
+void wdt_timer() {
+  // resetting WDT every 2s, 5 times only
+  if (WdtTmr >= 5000) {
+      WdtTmr = 0;
+      Serial.println("Resetting WDT...");
+      esp_task_wdt_reset();
+      }
+}
+
 void Blink()
 {
-	if (millis()-LastBlink > 1000)
+	if (BlinkTmr > 1000)
 	{
-		LastBlink = millis();
+		BlinkTmr = 0;
 		State = !State;
 		//digitalWrite(LED_BUILTIN, State);
 		Serial.println(".");	// needed to allow PCBsetup to connect
@@ -233,6 +256,13 @@ void Blink()
 		Serial.print(" Micros: ");
 		Serial.print(MaxLoopTime);
 
+		Serial.print(", Temp: ");
+    float result = 0;
+    temp_sensor_read_celsius(&result);
+    Serial.print(result);
+
+		Serial.print(", TotalPulses: ");
+		Serial.print(Sensor[0].TotalPulses);
 		Serial.println("");
 
 		if (ReadReset++ > 5)
@@ -241,6 +271,6 @@ void Blink()
 			MaxLoopTime = 0;
 		}
 	}
-	if (micros() - LastLoop > MaxLoopTime) MaxLoopTime = micros() - LastLoop;
-	LastLoop = micros();
+	if (LoopTmr > MaxLoopTime) MaxLoopTime = LoopTmr;
+	LoopTmr = 0;
 }

@@ -15,6 +15,7 @@ unsigned long Omax[MaxProductCount];
 unsigned long Omin[MaxProductCount];
 byte Ocount[MaxProductCount];
 float Oave[MaxProductCount];
+#define DEBOUNCE_FACTOR 30 //down from 1000
 
 void ISR0()
 {
@@ -40,7 +41,7 @@ void ISR0()
 		PulseTime = micronow;
 		PulseCount[0]++;
 	}
-	else if (dur > Sensor[0].Debounce * 1000)
+	else if (dur > Sensor[0].Debounce * DEBOUNCE_FACTOR)
 	{
 		if (avDurs[0] == 0) avDurs[0] = dur;
 
@@ -95,7 +96,7 @@ void ISR1()
 		PulseTime = micronow;
 		PulseCount[1]++;
 	}
-	else if (dur > Sensor[1].Debounce * 1000)
+	else if (dur > Sensor[1].Debounce * DEBOUNCE_FACTOR)
 	{
 		if (avDurs[1] == 0) avDurs[1] = dur;
 
