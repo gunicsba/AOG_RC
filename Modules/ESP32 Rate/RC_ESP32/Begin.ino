@@ -1,6 +1,7 @@
 
 void DoSetup()
 {
+  fastLEDSetup();
 	uint8_t ErrorCount;
 	int ADS[] = { 0x48,0x49,0x4A,0x4B };	// ADS1115 addresses
 
@@ -11,6 +12,11 @@ void DoSetup()
 	Sensor[0].FlowPin = 21;
 	Sensor[0].DirPin = 4;
 	Sensor[0].PWMPin = 5;
+
+	// default flow pins
+	Sensor[1].FlowPin = 47;
+	Sensor[1].DirPin = 7;
+	Sensor[1].PWMPin = 15;
 
 	// default pid
 	Sensor[0].KP = 5;
@@ -23,8 +29,8 @@ void DoSetup()
 	Sensor[1].KP = 5;
 	Sensor[1].KI = 0;
 	Sensor[1].KD = 0;
-	Sensor[1].MinPWM = 5;
-	Sensor[1].MaxPWM = 50;
+	Sensor[1].MinPWM = 0;
+	Sensor[1].MaxPWM = 255;
 	Sensor[1].Debounce = 3;
 
 	Serial.begin(38400);
@@ -328,7 +334,9 @@ void DoSetup()
 	server.on("/", HandleRoot);
 	server.on("/page1", HandlePage1);
 	server.on("/page2", HandlePage2);
+  server.on("/info", HandleInfo);
 	server.on("/ButtonPressed", ButtonPressed);
+  server.on("/Cytron", Cytron);
 	server.onNotFound(HandleRoot);
 	server.begin();
 
@@ -412,4 +420,25 @@ void initTempSensor(){
     temp_sensor.dac_offset = TSENS_DAC_L2;  // TSENS_DAC_L2 is default; L4(-40°C ~ 20°C), L2(-10°C ~ 80°C), L1(20°C ~ 100°C), L0(50°C ~ 125°C)
     temp_sensor_set_config(temp_sensor);
     temp_sensor_start();
+}
+
+void fastLEDSetup() {
+  GPIO.func_out_sel_cfg[CRGB_PIN].inv_sel = 1;
+  FastLED.addLeds<WS2812, CRGB_PIN, GRB>(leds, CRGB_LED_COUNT);
+/*
+  FastLED.clear();
+  for(int i = 0; i < 255; i++){
+    leds[1] = CRGB(i,0,0);
+  FastLED.show();
+    delay(50);
+    leds[1] = CRGB(0,i,0);
+      FastLED.show();
+    delay(50);
+    leds[1] = CRGB(0,0,i);
+      FastLED.show();
+    delay(50);
+    Serial.println(i);
+  }
+  FastLED.clear();
+*/
 }

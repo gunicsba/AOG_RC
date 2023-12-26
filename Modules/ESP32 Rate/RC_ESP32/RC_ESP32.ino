@@ -29,19 +29,29 @@
 #define WDT_TIMEOUT 90
 #include "driver/temp_sensor.h"
 
+#include <FastLED.h>
+#define CRGB_LED_COUNT 4
+#define CRGB_PIN 39
+CRGB leds[4];
+
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
-# define InoDescription "RC_ESP32 :  07-Dec-2023"
-const uint16_t InoID = 7123;	// change to send defaults to eeprom, ddmmy, no leading 0
+# define InoDescription "RC_ESP32 :  26-Dec-2023"
+const uint16_t InoID = 26123;	// change to send defaults to eeprom, ddmmy, no leading 0
 
 #define MaxReadBuffer 100	// bytes
 #define MaxProductCount 1
 #define EEPROM_SIZE 512
 #define ModStringLengths 20
 
+elapsedMicros SlowestStepCounter;
+uint32_t SlowestStep;
+String SlowestStepName;
+
+
 struct ModuleConfig
 {
 	uint8_t ID = 0;
-	uint8_t SensorCount = 1;        // up to 2 sensors, if 0 rate control will be disabled
+	uint8_t SensorCount = 2;        // up to 2 sensors, if 0 rate control will be disabled
 	uint8_t RelayOnSignal = 0;	    // value that turns on relays
 	uint8_t FlowOnDirection = 0;	// sets on value for flow valve or sets motor direction
 	uint8_t IP0 = 192;
@@ -151,6 +161,7 @@ bool ADSfound = false;
 
 void setup()
 {
+  SlowestStep = 0;
 	DoSetup();
 }
 
@@ -167,29 +178,49 @@ void loop()
 					|| ((Sensor[i].ControlType == 4) && (Sensor[i].TargetUPM > 0))
 					|| (!AutoOn && MasterOn));
 		}
-
+    SlowestStepCounter = 0;
 		CheckRelays();
+//    SlowestStepHelper("CheckRelays");
 		GetUPM();
+    SlowestStepHelper("GetUPM");
 		AdjustFlow();
+    SlowestStepHelper("AdjustFlow");
 		ReadAnalog();
+    SlowestStepHelper("ReadAnalog");
 		CheckWifi();
+//    SlowestStepHelper("CheckWifi");
 	}
 
 	if (millis() - SendLast > SendTime)
 	{
 		SendLast = millis();
+    SlowestStepCounter = 0;
 		SendUDP();
+    SlowestStepHelper("SendUDP");
 	}
 
+  SlowestStepCounter = 0;
 	SetPWM();
+  SlowestStepHelper("SetPWM");
 	ReceiveUDP();
+  SlowestStepHelper("ReceiveUDP");
 	ReceiveAGIO();
+  SlowestStepHelper("ReceiveAGIO");
+
 
 	ArduinoOTA.handle();
+  SlowestStepHelper("ArduinoOTA");
 	server.handleClient();
-
 	Blink();
- 	wdt_timer();
+  wdt_timer();
+}
+
+void SlowestStepHelper(String stepName){
+  if(SlowestStep < SlowestStepCounter){
+    SlowestStepName = stepName;
+    SlowestStep = SlowestStepCounter;
+  }
+  SlowestStepCounter = 0;
 }
 
 byte ParseModID(byte ID)
