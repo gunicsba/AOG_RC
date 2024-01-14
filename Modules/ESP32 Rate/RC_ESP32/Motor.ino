@@ -11,15 +11,15 @@ void AdjustFlow()
             {
                 //increase
 //                digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
-                ledcWrite(i  , Sensor[i].PWM);
-                ledcWrite(4+i, 0);
+                ledcWrite(4+i  , Sensor[i].PWM);
+                ledcWrite(i, 0);
             }
             else
             {
                 //decrease
 //                digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
-                ledcWrite(4+i,-Sensor[i].PWM);   // offsets the negative pwm value
-                ledcWrite(i  , 0);
+                ledcWrite(i,-Sensor[i].PWM);   // offsets the negative pwm value
+                ledcWrite(4+i  , 0);
             }
             break;
 
@@ -31,15 +31,15 @@ void AdjustFlow()
                 if (Sensor[i].PWM >= 0)
                 {
 //                    digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
-                    ledcWrite(4+i,0);
-                    ledcWrite(i, Sensor[i].PWM);
+                    ledcWrite(i,0);
+                    ledcWrite(4+i, Sensor[i].PWM);
                 }
                 else
                 {
                     //decrease
 //                    digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
-                    ledcWrite(i,0);
-                    ledcWrite(4+i, -Sensor[i].PWM);   // offsets the negative pwm value
+                    ledcWrite(4+i,0);
+                    ledcWrite(i, -Sensor[i].PWM);   // offsets the negative pwm value
                 }
             }
             else
@@ -47,8 +47,8 @@ void AdjustFlow()
                 // stop flow
 //                digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
 //                ledcWrite(i, 255);
-                ledcWrite(i,0);
-                ledcWrite(4+i,255);
+                ledcWrite(4+i,0);
+                ledcWrite(i,255);
             }
             break;
 
@@ -62,16 +62,16 @@ void AdjustFlow()
                     //increase
 //                    digitalWrite(Sensor[i].DirPin, MDL.FlowOnDirection);
 //                    ledcWrite(i, Sensor[i].PWM);
-                    ledcWrite(4+i,0);
-                    ledcWrite(i, Sensor[i].PWM);
+                    ledcWrite(i,0);
+                    ledcWrite(4+i, Sensor[i].PWM);
                 }
                 else
                 {
                     //decrease
 //                    digitalWrite(Sensor[i].DirPin, !MDL.FlowOnDirection);
 //                    ledcWrite(i, -Sensor[i].PWM);   // offsets the negative pwm value
-                    ledcWrite(i,0);
-                    ledcWrite(4+i, -Sensor[i].PWM);   // offsets the negative pwm value
+                    ledcWrite(4+i,0);
+                    ledcWrite(i, -Sensor[i].PWM);   // offsets the negative pwm value
                 }
             }
             else

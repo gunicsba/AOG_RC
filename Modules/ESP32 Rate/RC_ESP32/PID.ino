@@ -67,6 +67,45 @@ void SetPWM()
 	}
 }
 
+String getDebugPID(byte ID){
+  String fr = "";
+  fr += "PID Debug for valve:";
+  fr += ID;
+  fr += "<br> MaxPWM: ";
+  fr += Sensor[ID].MaxPWM;
+  fr += " MinPWM: ";
+  fr += Sensor[ID].MinPWM;
+  fr += "<br> FlowEnabled? ";
+  fr += Sensor[ID].FlowEnabled;
+  fr += "<br> TargetUPM: ";
+  fr += Sensor[ID].TargetUPM;
+  fr += " UPM: ";
+  fr += Sensor[ID].UPM;
+  fr += " RateError: ";
+  fr += (Sensor[ID].TargetUPM - Sensor[ID].UPM);
+  fr += "<br> LastCheck: ";
+  fr += LastCheck[ID];
+  fr += " SampleTime: ";
+  fr += SampleTime;
+  fr += "<br> BrakePoint: ";
+  fr += BrakePoint;
+  fr += "<br> IntegralSum[ID]: "; 
+  fr += IntegralSum[ID];
+  fr += " KD: ";
+  fr += Sensor[ID].KD;
+  fr += " KP: ";
+  fr += Sensor[ID].KP;
+  fr += " IntegralSum: ";
+  fr += IntegralSum[ID];
+  fr += "<br> LastPWM ";
+  fr += LastPWM[ID];
+  fr += "<br><br> DifValue = Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM) ";
+  fr += (Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM));
+  fr += "<br><br> Sensor[ID].KP * SF * RateError + IntegralSum[ID] + DifValue) ";
+  fr += Sensor[ID].KP * SF * RateError + IntegralSum[ID];
+ return fr;
+}
+
 int PIDmotor(byte ID)
 {
 	double Result = 0;
@@ -167,8 +206,9 @@ int PIDvalve(byte ID) //NEWstyle
 
 				DifValue = Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM);
 
-				Result = Sensor[ID].MinPWM + 
-					(Sensor[ID].KP * SF * RateError) + 
+				Result = Sensor[ID].MinPWM;
+        if(RateError < 0) Result *= -1;
+        Result += (Sensor[ID].KP * SF * RateError / 50) + 
 					IntegralSum[ID] + DifValue;
 
 				bool IsPositive = (RateError > 0);
