@@ -76,7 +76,9 @@ void handleCredentials()
 void Cytron() {
   if(server.hasArg("pwm1")) {
     int newPwm = server.arg("pwm1").toInt();
-    if(newPwm >= -255 && newPwm <= 255) Sensor[1].PWM = newPwm;  
+    if(newPwm >= 0 && newPwm <= 255) Sensor[1].PWM = newPwm;  
+    if(newPwm <= 75) digitalWrite(Sensor1SleepPin,0); //TODO
+      else digitalWrite(Sensor1SleepPin,1);    
   }
   HandleInfo();
 

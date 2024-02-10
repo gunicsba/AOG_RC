@@ -47,6 +47,10 @@ elapsedMicros SlowestStepCounter;
 uint32_t SlowestStep;
 String SlowestStepName;
 
+#define Sensor1SleepPin 13 //SLEEP_ESP
+#define Current1Pin 6 //CURRENT_SECTIONS
+#define Current2Pin 14 //CURRENT_CYTRON
+
 
 struct ModuleConfig
 {

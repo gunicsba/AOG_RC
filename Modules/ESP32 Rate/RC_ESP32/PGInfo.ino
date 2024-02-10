@@ -88,8 +88,21 @@ String GetPageInfo()
   st += Sensor[1].PWM;
   st += "\n<input type='range' id='pwm1' name='pwm1' min='-255' max='255' value='";
   st += Sensor[1].PWM;
-  st += "\n'/></td><td>húzd mínuszba a másik irányhoz :)</td>";
+  st += "\n'/></td><td>húzd mínuszba a másik irányhoz :) 70 alatt ESP sleep!! </td>";
   st += "\n  </tr>";
+
+  st += "\n<tr><td>Amper Cytron: </td>";
+  st += "\n";
+  st += "\n<td>";
+  st += getCurrentInAmps(Current2Pin);
+  st += "\n  </td></tr>";
+
+  st += "\n<tr><td>Amper szakasz: </td>";
+  st += "\n";
+  st += "\n<td>";
+  st += getCurrentInAmps(Current1Pin);
+  st += "\n  </td></tr>";
+
 
   st += "\n<tr><td>PID0</td>";
   st += "\n<td>Debug info</td>";

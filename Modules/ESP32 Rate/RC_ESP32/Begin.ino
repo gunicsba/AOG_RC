@@ -209,6 +209,11 @@ void DoSetup()
 		ledcAttachPin(Sensor[i].DirPin, 4+i);
 	}
 
+  pinMode(Sensor1SleepPin,OUTPUT);//Sleep
+  //currentSetup()
+  pinMode(Current2Pin, INPUT);
+  pinMode(Current1Pin, INPUT);  
+  
 	// Relays
 	switch (MDL.RelayControl)
 	{
@@ -441,4 +446,8 @@ void fastLEDSetup() {
   }
   FastLED.clear();
 */
+}
+float getCurrentInAmps(int pin) {
+  int volt = analogRead(pin);
+  return map(volt,3000,500,0,30)/10.0;
 }
