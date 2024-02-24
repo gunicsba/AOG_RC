@@ -272,6 +272,12 @@ void ParseData(byte Data[], uint16_t len)
         {
             if (GoodCRC(Data, PGNlength))
             {
+                Serial.print("Received Relay config");
+                Serial.print( ParseModID(Data[2]) );
+                Serial.print(" ");
+                Serial.print( Data[3] );
+                Serial.println( Data[4] );
+                
                 if (ParseModID(Data[2]) == MDL.ID)
                 {
                     RelayLo = Data[3];

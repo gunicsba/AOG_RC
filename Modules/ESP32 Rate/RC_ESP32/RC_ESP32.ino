@@ -36,7 +36,7 @@ CRGB leds[4];
 
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
 # define InoDescription "RC_ESP32 :  26-Dec-2023"
-const uint16_t InoID = 26123;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint16_t InoID = 27123;	// change to send defaults to eeprom, ddmmy, no leading 0
 
 #define MaxReadBuffer 100	// bytes
 #define MaxProductCount 1
@@ -55,7 +55,7 @@ String SlowestStepName;
 struct ModuleConfig
 {
 	uint8_t ID = 0;
-	uint8_t SensorCount = 2;        // up to 2 sensors, if 0 rate control will be disabled
+	uint8_t SensorCount = 1;        // up to 2 sensors, if 0 rate control will be disabled
 	uint8_t RelayOnSignal = 0;	    // value that turns on relays
 	uint8_t FlowOnDirection = 0;	// sets on value for flow valve or sets motor direction
 	uint8_t IP0 = 192;
