@@ -33,9 +33,9 @@ void DoSetup()
 	Serial.println("");
 
 	// I2C
-	Wire.begin();			// I2C on pins SCL 22, SDA 21
-	Wire.setClock(400000);	//Increase I2C data rate to 400kHz
-
+  Wire.begin(8,18,400000);			// I2C on pins SDA 8, SCL 18, data rate to 400kHz
+  scanI2CDevices();
+  
 	// ADS1115
 	if (MDL.AdsAddress == 0)
 	{
@@ -114,45 +114,52 @@ void DoSetup()
 	IPAddress LocalIP(MDL.IP0, MDL.IP1, MDL.IP2, MDL.IP3);
 	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDL.IP3 };
 
-	Ethernet.init(W5500_SS);   // SS pin
-	Ethernet.begin(LocalMac, 0);
-	Ethernet.setLocalIP(LocalIP);
 	IPAddress Mask(255, 255, 255, 0);
-	Ethernet.setSubnetMask(Mask);
 	IPAddress Gateway(MDL.IP0, MDL.IP1, MDL.IP2, 1);
-	Ethernet.setGatewayIP(Gateway);
-
-	delay(1500);
-	ChipFound = (Ethernet.hardwareStatus() != EthernetNoHardware);
-	if (ChipFound)
-	{
-		if (Ethernet.linkStatus() == LinkON)
-		{
-			Serial.println("Ethernet Connected.");
-		}
-		else
-		{
-			Serial.println("Ethernet Not Connected.");
-		}
-		Serial.print("IP Address: ");
-		Serial.println(Ethernet.localIP());
-	}
-	else
-	{
-		Serial.println("No ethernet hardware found.");
-	}
-
 	Ethernet_DestinationIP = IPAddress(MDL.IP0, MDL.IP1, MDL.IP2, 255);	// update from saved data
 
+  WT5500setup();
+
+  // write confir for static IP, gateway,subnet,dns1,dns2
+    if (ETH.config(LocalIP, Gateway, Mask) == false) {
+      Serial.println("WT5500 Configuration failed.");
+    } else {
+      Serial.println("WT5500 Configuration success.");
+    }
+
+    int timeout = 10;
+    while (!ETHconnected && --timeout >= 0) {
+      Serial.print("Linkup:");
+      Serial.print(ETH.linkUp());
+      
+      Serial.print("Linkspeed:");
+      Serial.print(ETH.linkSpeed());
+
+      Serial.print("LocalIP:");
+      Serial.print(ETH.localIP());
+      Serial.println("  Wait for network connect ..."); 
+      delay(500);
+    }
+  Serial.println("UDP begin ");
 	// UDP
 	UDP_Ethernet.begin(ListeningPort);
-
-	// AGIO
+  
+  // AGIO
 	UDP_AGIO.begin(ListeningPortAGIO);
+
+  Serial.println("Sensors setup ");
 
 	// sensors
 	for (int i = 0; i < MDL.SensorCount; i++)
 	{
+    Serial.print("Flow");
+    Serial.print(i);
+    Serial.print(" pin: ");
+    Serial.print(Sensor[i].FlowPin);
+    Serial.print(" IN1: ");
+    Serial.print(Sensor[i].IN1);
+    Serial.print(" IN2: ");
+    Serial.println(Sensor[i].IN2);    
 		pinMode(Sensor[i].FlowPin, INPUT_PULLUP);
 		pinMode(Sensor[i].IN1, OUTPUT);
 		pinMode(Sensor[i].IN2, OUTPUT);
@@ -160,10 +167,10 @@ void DoSetup()
 		switch (i)
 		{
 		case 0:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, CHANGE);
 			break;
 		case 1:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, CHANGE);
 			break;
 		}
 
@@ -176,6 +183,8 @@ void DoSetup()
 		ledcSetup(i * 2 + 1, 500, 8);
 		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
 	}
+
+  Serial.println("Relays setup ");
 
 	// Relays
 	switch (MDL.RelayControl)
@@ -280,8 +289,8 @@ void DoSetup()
 			PWMServoDriver.begin();
 			PWMServoDriver.setPWMFreq(200);
 
-			pinMode(OutputEnablePin, OUTPUT);
-			digitalWrite(OutputEnablePin, LOW);	//enable
+//			pinMode(OutputEnablePin, OUTPUT);
+//			digitalWrite(OutputEnablePin, LOW);	//enable
 		}
 		else
 		{
@@ -348,6 +357,8 @@ void DoSetup()
 	server.on("/page1", HandlePage1);
 	server.on("/page2", HandlePage2);
 	server.on("/ButtonPressed", ButtonPressed);
+  server.on("/info", HandleInfo);
+  server.on("/Cytron", Cytron);
 	server.onNotFound(HandleRoot);
 
 	// OTA
@@ -433,13 +444,13 @@ void LoadDefaults()
 	Serial.println("Loading default settings.");
 
 	// default flow pins
-	Sensor[0].FlowPin = 17;
-	Sensor[0].IN1 = 32;
-	Sensor[0].IN2 = 33;
+	Sensor[0].FlowPin = 21;
+	Sensor[0].IN1 = 4;
+	Sensor[0].IN2 = 5;
 
-	Sensor[1].FlowPin = 16;
-	Sensor[1].IN1 = 25;
-	Sensor[1].IN2 = 26;
+	Sensor[1].FlowPin = 47;
+	Sensor[1].IN1 = 15;
+	Sensor[1].IN2 = 7;
 
 	// default pid
 	Sensor[0].KP = 5;
@@ -533,3 +544,53 @@ bool ValidData()
 	return Result;
 }
 
+String scanI2CDevices(){
+  String forReturn="";
+  byte error, address;
+  int nDevices;
+  Serial.println("Scanning...");   /*ESP32 starts scanning available I2C devices*/
+  forReturn += "Scanning...\n";
+  nDevices = 0;
+  for(address = 1; address < 127; address++ ) {   /*for loop to check number of devices on 127 address*/
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+    if (error == 0) {   /*if I2C device found*/
+      Serial.print("I2C device found at address 0x");/*print this line if I2C device found*/
+      forReturn += "I2C device found at address 0x";
+      if (address<16) {
+        Serial.print("0");
+        forReturn += "0";
+      }
+      Serial.println(address,HEX);  /*prints the HEX value of I2C address*/
+      forReturn += String(address, HEX);
+      nDevices++;
+    }
+    else if (error==4) {
+      Serial.print("Unknown error at address 0x");
+      if (address<16) {
+        Serial.print("0");
+      }
+      Serial.println(address,HEX);
+    }    
+  }
+  if (nDevices == 0) {
+    Serial.println("No I2C devices found\n"); /*If no I2C device attached print this message*/
+    forReturn += "No I2C devices found\n";
+  }
+  else {
+    Serial.println("done\n");
+  }
+  return forReturn;
+}
+
+void initTempSensor(){
+    temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
+    temp_sensor.dac_offset = TSENS_DAC_L2;  // TSENS_DAC_L2 is default; L4(-40°C ~ 20°C), L2(-10°C ~ 80°C), L1(20°C ~ 100°C), L0(50°C ~ 125°C)
+    temp_sensor_set_config(temp_sensor);
+    temp_sensor_start();
+}
+
+float getCurrentInAmps(int pin) {
+  int volt = analogRead(pin);
+  return map(volt,3000,500,0,30)/10.0;
+}

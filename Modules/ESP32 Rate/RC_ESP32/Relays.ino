@@ -203,14 +203,14 @@ void CheckRelays()
                     if (BitState)
                     {
                         // on  
-                        PWMServoDriver.setPWM(IOpin, 4096, 0);
-                        PWMServoDriver.setPWM(IOpin + 1, 0, 4096);
+                        PWMServoDriver.setPWM(IOpin, 0, 4095);
+                        PWMServoDriver.setPWM(IOpin + 1, 0, 0);
                     }
                     else
                     {
                         // off
-                        PWMServoDriver.setPWM(IOpin, 0, 4096);
-                        PWMServoDriver.setPWM(IOpin + 1, 4096, 0);
+                        PWMServoDriver.setPWM(IOpin, 0, 0);
+                        PWMServoDriver.setPWM(IOpin + 1, 0, 4095);
                     }
                     RelayStatus[i] = BitState;
                 }

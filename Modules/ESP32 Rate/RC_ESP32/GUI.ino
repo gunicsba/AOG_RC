@@ -22,6 +22,10 @@ void HandlePage2()
 	server.send(200, "text/html", GetPage2());
 }
 
+void HandleInfo()
+{
+  server.send(200, "text/html", GetPageInfo());
+}
 void handleCredentials()
 {
 	int NewID;
@@ -38,6 +42,12 @@ void handleCredentials()
 	delay(3000);
 
 	ESP.restart();
+}
+
+void Cytron() {
+
+  HandleInfo();
+
 }
 
 void ButtonPressed()

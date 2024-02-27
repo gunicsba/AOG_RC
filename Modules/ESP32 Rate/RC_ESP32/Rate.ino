@@ -40,7 +40,7 @@ void IRAM_ATTR ISR0()
 		PulseTime = micronow;
 		PulseCount[0]++;
 	}
-	else if (dur > Sensor[0].Debounce * 1000)
+	else if (dur > Sensor[0].Debounce * 30)
 	{
 		if (avDurs[0] == 0) avDurs[0] = dur;
 
@@ -95,7 +95,7 @@ void IRAM_ATTR ISR1()
 		PulseTime = micronow;
 		PulseCount[1]++;
 	}
-	else if (dur > Sensor[1].Debounce * 1000)
+	else if (dur > Sensor[1].Debounce * 30)
 	{
 		if (avDurs[1] == 0) avDurs[1] = dur;
 

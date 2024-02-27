@@ -160,13 +160,14 @@ int PIDvalve(byte ID)
 			// check deadband
 			if (abs(RateError) > Deadband * Sensor[ID].TargetUPM)
 			{
-				IntegralSum[ID] += Sensor[ID].KI * RateError;
+        if( (RateError > 0) != (Result > 0) ) IntegralSum[ID] = 0; //if we shoot over reset IntegralSum
+				IntegralSum[ID] += Sensor[ID].KI * abs(RateError) * SF;
+        if(IntegralSum[ID] > 50) IntegralSum[ID] = 100;
 				IntegralSum[ID] *= (Sensor[ID].KI > 0);	// zero out if not using KI
-
 				DifValue = Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM);
-				Result = Sensor[ID].MinPWM + Sensor[ID].KP * SF * RateError + IntegralSum[ID] + DifValue;
+				Result = Sensor[ID].MinPWM + Sensor[ID].KP * SF * abs(RateError) + IntegralSum[ID] + DifValue;
 
-				bool IsPositive = (Result > 0);
+				bool IsPositive = (RateError > 0);
 				Result = abs(Result);
 
 				if (Result > Sensor[ID].MaxPWM * SF) Result = Sensor[ID].MaxPWM * SF;
@@ -177,6 +178,7 @@ int PIDvalve(byte ID)
 			else
 			{
 				Result = 0;
+        IntegralSum[ID] = 0;
 			}
 			LastUPM[ID] = Sensor[ID].UPM;
 		}
@@ -188,6 +190,45 @@ int PIDvalve(byte ID)
 
 	LastPWM[ID] = Result;
 	return (int)Result;
+}
+
+String getDebugPID(byte ID){
+  String fr = "";
+  fr += "PID Debug for valve:";
+  fr += ID;
+  fr += "<br> MaxPWM: ";
+  fr += Sensor[ID].MaxPWM;
+  fr += " MinPWM: ";
+  fr += Sensor[ID].MinPWM;
+  fr += "<br> FlowEnabled? ";
+  fr += Sensor[ID].FlowEnabled;
+  fr += "<br> TargetUPM: ";
+  fr += Sensor[ID].TargetUPM;
+  fr += " UPM: ";
+  fr += Sensor[ID].UPM;
+  fr += " RateError: ";
+  fr += (Sensor[ID].TargetUPM - Sensor[ID].UPM);
+  fr += "<br> LastCheck: ";
+  fr += LastCheck[ID];
+  fr += " SampleTime: ";
+  fr += SampleTime;
+  fr += "<br> BrakePoint: ";
+  fr += BrakePoint;
+  fr += "<br> IntegralSum[ID]: "; 
+  fr += IntegralSum[ID];
+  fr += " KD: ";
+  fr += Sensor[ID].KD;
+  fr += " KP: ";
+  fr += Sensor[ID].KP;
+  fr += " IntegralSum: ";
+  fr += IntegralSum[ID];
+  fr += "<br> LastPWM ";
+  fr += LastPWM[ID];
+  fr += "<br><br> DifValue = Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM) ";
+  fr += (Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM));
+  fr += "<br><br> Sensor[ID].KP * SF * RateError + IntegralSum[ID] + DifValue) ";
+  fr += Sensor[ID].KP * SF * RateError + IntegralSum[ID];
+ return fr;
 }
 
 int TimedCombo(byte ID, bool ManualAdjust = false)

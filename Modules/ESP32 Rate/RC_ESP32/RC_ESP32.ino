@@ -23,13 +23,17 @@
 #include <EEPROM.h> 
 #include <Wire.h>
 
-#include <SPI.h>
-#include <Ethernet.h>
+//#include <SPI.h>
+//#include <Ethernet.h>
+#include "ETHClass.h"
 #include <EthernetUdp.h>
 
+#include <elapsedMillis.h>
+#include "driver/temp_sensor.h"
+
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
-# define InoDescription "RC_ESP32 :  27-Feb-2024"
-const uint16_t InoID = 27024;	// change to send defaults to eeprom, ddmmy, no leading 0
+# define InoDescription "RC_ESP32 :  26-Feb-2024"
+const uint16_t InoID = 26024;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 
@@ -39,12 +43,15 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 #define ModStringLengths 20
 
 // servo driver
-#define OutputEnablePin 27
-#define PCAaddress 0x55
+//#define OutputEnablePin 27
+#define PCAaddress 0x40
 
 #define PCFaddress 0x20
 #define W5500_SS 5	// W5500 SPI SS
 #define NC 0xFF		// Pin not connected
+
+#define Current1Pin 6 //CURRENT_SECTIONS
+#define Current2Pin 14 //CURRENT_CYTRON
 
 struct ModuleConfig
 {
@@ -95,16 +102,17 @@ struct SensorConfig
 SensorConfig Sensor[2];
 
 // network
+static bool ETHconnected = false; //Ethernet.linkStatus() is too slow
 const uint16_t ListeningPort = 28888;
 const uint16_t DestinationPort = 29999;
 
 // ethernet
-EthernetUDP UDP_Ethernet;
+WiFiUDP UDP_Ethernet;
 IPAddress Ethernet_DestinationIP(MDL.IP0, MDL.IP1, MDL.IP2, 255);
 bool ChipFound;
 
 // AGIO
-EthernetUDP UDP_AGIO;
+WiFiUDP UDP_AGIO;
 uint16_t ListeningPortAGIO = 8888;		// to listen on
 uint16_t DestinationPortAGIO = 9999;	// to send to
 
@@ -239,7 +247,7 @@ void loop()
 
 	server.handleClient();
 
-	//Blink();
+//	Blink();
 }
 
 byte ParseModID(byte ID)

@@ -10,6 +10,8 @@ void AdjustFlow()
             if (Sensor[i].FlowEnabled)
             {
                 SetPWM(i, Sensor[i].PWM);
+            } else {
+                SetPWM(i, 0);
             }
             break;
 
@@ -48,14 +50,14 @@ void SetPWM(byte ID, double PWM)
 {
     if (MDL.FlowOnDirection == 0) PWM *= -1;    // flow on low
 
-    if (PWM > 0)
+    if (PWM < 0)
     {
+        PWM = abs(PWM);
         ledcWrite(ID * 2, PWM);     // IN1
         ledcWrite(ID * 2 + 1, 0);   // IN2
     }
     else
     {
-        PWM = abs(PWM);
         ledcWrite(ID * 2 + 1, PWM); // IN2
         ledcWrite(ID * 2, 0);       // IN1
     }
