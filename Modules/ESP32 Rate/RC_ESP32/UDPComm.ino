@@ -404,7 +404,7 @@ void ParseData(byte Data[], uint16_t len)
         // 30       CRC
 
         PGNlength = 31;
-        if (len > PGNlength - 1)
+        if (false && len > PGNlength - 1)
         {
             if (GoodCRC(Data, PGNlength))
             {
