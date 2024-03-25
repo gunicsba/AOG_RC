@@ -61,24 +61,6 @@ void SendUDP()
         // status
         Data[11] = 0;
 
-        if (WiFi.isConnected())
-        {
-            int8_t WifiStrength = WiFi.RSSI();
-            if (WifiStrength < -80)
-            {
-                Data[11] |= 0b00000100;
-            }
-            else if (WifiStrength < -70)
-            {
-                Data[11] |= 0b00001000;
-            }
-            else
-            {
-                Data[11] |= 0b00010000;
-            }
-            Data[11] |= 0b00100000;
-        }
-
         if (millis() - Sensor[0].CommTime < 4000) Data[11] |= 0b00000001;
         if (millis() - Sensor[1].CommTime < 4000) Data[11] |= 0b00000010;
 
@@ -107,13 +89,6 @@ void SendUDP()
             }
         }
 
-        // wifi
-        if (!Sent)
-        {
-            UDP_Wifi.beginPacket(Wifi_DestinationIP, DestinationPort);
-            UDP_Wifi.write(Data, 13);
-            UDP_Wifi.endPacket();
-        }
     }
 
     //PGN32401, module, analog info from module to RC
@@ -136,7 +111,7 @@ void SendUDP()
     Data[0] = 145;
     Data[1] = 126;
     Data[2] = MDL.ID;
-
+/*
     Data[3] = (byte)AINs.AIN0;
     Data[4] = (byte)(AINs.AIN0 >> 8);
     Data[5] = (byte)AINs.AIN1;
@@ -145,7 +120,7 @@ void SendUDP()
     Data[8] = (byte)(AINs.AIN2 >> 8);
     Data[9] = (byte)AINs.AIN3;
     Data[10] = (byte)(AINs.AIN3 >> 8);
-
+*/
     Data[11] = (byte)InoID;
     Data[12] = InoID >> 8;
 
@@ -168,13 +143,6 @@ void SendUDP()
         }
     }
 
-    // wifi
-    if (!Sent)
-    {
-        UDP_Wifi.beginPacket(Wifi_DestinationIP, DestinationPort);
-        UDP_Wifi.write(Data, 15);
-        UDP_Wifi.endPacket();
-    }
 }
 
 void ReceiveUDP()
@@ -193,13 +161,6 @@ void ReceiveUDP()
         }
     }
 
-    uint16_t len = UDP_Wifi.parsePacket();
-    if (len)
-    {
-        byte Data[MaxReadBuffer];
-        UDP_Wifi.read(Data, MaxReadBuffer);
-        ParseData(Data, len);
-    }
 }
 
 void ParseData(byte Data[], uint16_t len)
@@ -342,6 +303,12 @@ void ParseData(byte Data[], uint16_t len)
                     {
                         uint32_t tmp = Data[3] | (uint32_t)Data[4] << 8 | (uint32_t)Data[5] << 16 | (uint32_t)Data[6] << 24;
                         Sensor[SensorID].KP = (float)(tmp * 0.0001);
+                        if(SensorID == 0) {
+                          for(int j = 0; j<MAX_STEPPER; j++) {
+                            FastAccelStepper *newstepper = stepper[j];
+                            newstepper->setAcceleration(Sensor[0].KP*10);
+                          }
+                        }
 
                         tmp = Data[7] | (uint32_t)Data[8] << 8 | (uint32_t)Data[9] << 16 | (uint32_t)Data[10] << 24;
                         Sensor[SensorID].KI = (float)(tmp * 0.0001);
@@ -492,6 +459,17 @@ void ReceiveAGIO()
                             ESP.restart();
                         }
                         break;
+                    case 239:
+                      gpsSpeed = (float)Data[6];//actual speed times 4, single uint8_t
+                      break;
+                    case 229:
+//                      Serial.print("P_229 received! L-R: ");
+                      lSpeed = (float)Data[13];
+                      rSpeed = (float)Data[14];
+//                      Serial.print(lSpeed);
+//                      Serial.print(" - ");
+//                      Serial.println(rSpeed);
+                      break;
                     }
                 }
             }

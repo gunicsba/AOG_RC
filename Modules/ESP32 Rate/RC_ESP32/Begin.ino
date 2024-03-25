@@ -32,82 +32,6 @@ void DoSetup()
 	Serial.println(InoID);
 	Serial.println("");
 
-	// I2C
-  Wire.begin(8,18,400000);			// I2C on pins SDA 8, SCL 18, data rate to 400kHz
-  scanI2CDevices();
-  
-	// ADS1115
-	if (MDL.AdsAddress == 0)
-	{
-		for (int i = 0; i < 4; i++)
-		{
-			ADS1115_Address = ADS[i];
-			Serial.print("Starting ADS1115 at address ");
-			Serial.println(ADS1115_Address);
-			ErrorCount = 0;
-			while (!ADSfound)
-			{
-				Wire.beginTransmission(ADS1115_Address);
-				Wire.write(0b00000000);	//Point to Conversion register
-				Wire.endTransmission();
-				Wire.requestFrom(ADS1115_Address, 2);
-				ADSfound = Wire.available();
-				Serial.print(".");
-				delay(500);
-				if (ErrorCount++ > 5) break;
-			}
-			Serial.println("");
-			if (ADSfound)
-			{
-				Serial.print("ADS1115 connected at address ");
-				Serial.println(ADS1115_Address);
-				Serial.println("");
-				break;
-			}
-			else
-			{
-				Serial.print("ADS1115 not found.");
-				Serial.println("");
-			}
-		}
-	}
-	else
-	{
-		ADS1115_Address = MDL.AdsAddress;
-		Serial.print("Starting ADS1115 at address ");
-		Serial.println(ADS1115_Address);
-		ErrorCount = 0;
-		while (!ADSfound)
-		{
-			Wire.beginTransmission(ADS1115_Address);
-			Wire.write(0b00000000);	//Point to Conversion register
-			Wire.endTransmission();
-			Wire.requestFrom(ADS1115_Address, 2);
-			ADSfound = Wire.available();
-			Serial.print(".");
-			delay(500);
-			if (ErrorCount++ > 5) break;
-		}
-		Serial.println("");
-		if (ADSfound)
-		{
-			Serial.print("ADS1115 connected at address ");
-			Serial.println(ADS1115_Address);
-			Serial.println("");
-		}
-		else
-		{
-			Serial.print("ADS1115 not found.");
-			Serial.println("");
-		}
-	}
-
-	if (!ADSfound)
-	{
-		Serial.println("ADS1115 disabled.");
-		Serial.println("");
-	}
-
 	// ethernet 
 	Serial.println("Starting Ethernet ...");
 	MDL.IP3 = MDL.ID + 50;
@@ -147,209 +71,6 @@ void DoSetup()
   // AGIO
 	UDP_AGIO.begin(ListeningPortAGIO);
 
-  Serial.println("Sensors setup ");
-
-	// sensors
-	for (int i = 0; i < MDL.SensorCount; i++)
-	{
-    Serial.print("Flow");
-    Serial.print(i);
-    Serial.print(" pin: ");
-    Serial.print(Sensor[i].FlowPin);
-    Serial.print(" IN1: ");
-    Serial.print(Sensor[i].IN1);
-    Serial.print(" IN2: ");
-    Serial.println(Sensor[i].IN2);    
-		pinMode(Sensor[i].FlowPin, INPUT_PULLUP);
-		pinMode(Sensor[i].IN1, OUTPUT);
-		pinMode(Sensor[i].IN2, OUTPUT);
-
-		switch (i)
-		{
-		case 0:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, CHANGE);
-			break;
-		case 1:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, CHANGE);
-			break;
-		}
-
-		// pwm
-		// DRV8870 IN1
-		ledcSetup(i * 2, 500, 8);
-		ledcAttachPin(Sensor[i].IN1, i * 2);
-		
-		// DRV8870 IN2
-		ledcSetup(i * 2 + 1, 500, 8);
-		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
-	}
-
-  Serial.println("Relays setup ");
-
-	// Relays
-	switch (MDL.RelayControl)
-	{
-	case 1:
-		// Relay GPIO Pins
-		Serial.println("");
-		Serial.println("Using GPIO pins for relays.");
-		for (int i = 0; i < 16; i++)
-		{
-			if (MDL.RelayPins[i] < NC)
-			{
-				pinMode(MDL.RelayPins[i], OUTPUT);
-			}
-		}
-		break;
-
-	case 2:
-	case 3:
-		// PCA9555 I/O expander on default address 0x20
-		Serial.println("");
-		Serial.println("Starting PCA9555 I/O Expander ...");
-		ErrorCount = 0;
-		while (!PCA9555PW_found)
-		{
-			Serial.print(".");
-			Wire.beginTransmission(0x20);
-			PCA9555PW_found = (Wire.endTransmission() == 0);
-			ErrorCount++;
-			delay(500);
-			if (ErrorCount > 5) break;
-		}
-
-		Serial.println("");
-		if (PCA9555PW_found)
-		{
-			Serial.println("PCA9555 expander found.");
-
-			PCA.attach(Wire);
-			PCA.polarity(PCA95x5::Polarity::ORIGINAL_ALL);
-			PCA.direction(PCA95x5::Direction::OUT_ALL);
-			PCA.write(PCA95x5::Level::H_ALL);
-		}
-		else
-		{
-			Serial.println("PCA9555 expander not found.");
-		}
-		break;
-
-	case 4:
-		// MCP23017 I/O expander on default address 0x20
-		Serial.println("");
-		Serial.println("Starting MCP23017 ...");
-		ErrorCount = 0;
-		while (!MCP23017_found)
-		{
-			Serial.print(".");
-			Wire.beginTransmission(0x20);
-			MCP23017_found = (Wire.endTransmission() == 0);
-			ErrorCount++;
-			delay(500);
-			if (ErrorCount > 5) break;
-		}
-
-		Serial.println("");
-		if (MCP23017_found)
-		{
-			Serial.println("MCP23017 found.");
-			MCP.begin_I2C();
-
-			for (int i = 0; i < 16; i++)
-			{
-				MCP.pinMode(MDL.RelayPins[i], OUTPUT);
-			}
-		}
-		else
-		{
-			Serial.println("MCP23017 not found.");
-		}
-		break;
-
-	case 5:
-	case 6:
-		// PCA9685
-		Serial.println("");
-		Serial.println("Starting PCA9685 I/O Expander ...");
-		ErrorCount = 0;
-		while (!PCA9685_found)
-		{
-			Serial.print(".");
-			Wire.beginTransmission(PCAaddress);
-			PCA9685_found = (Wire.endTransmission() == 0);
-			ErrorCount++;
-			delay(500);
-			if (ErrorCount > 5)break;
-		}
-
-		Serial.println("");
-		if (PCA9685_found)
-		{
-			Serial.println("PCA9685 expander found.");
-			PWMServoDriver.begin();
-			PWMServoDriver.setPWMFreq(200);
-
-//			pinMode(OutputEnablePin, OUTPUT);
-//			digitalWrite(OutputEnablePin, LOW);	//enable
-		}
-		else
-		{
-			Serial.println("PCA9685 expander not found.");
-		}
-		break;
-
-	case 7:
-		// PCF8574
-		Serial.println("");
-		Serial.println("Starting PCF8574 I/O Expander ...");
-		ErrorCount = 0;
-		while (!PCF_found)
-		{
-			Serial.print(".");
-			Wire.beginTransmission(PCFaddress);
-			PCF_found = (Wire.endTransmission() == 0);
-			ErrorCount++;
-			delay(500);
-			if (ErrorCount > 5) break;
-		}
-
-		Serial.println("");
-		if (PCF_found)
-		{
-			Serial.println("PCF8574 expander found.");
-			PCF.begin();
-		}
-		else
-		{
-			Serial.println("PCF8574 expander not found.");
-		}
-		break;
-	}
-	
-	// Wifi
-	WiFi.mode(WIFI_MODE_APSTA);
-	WiFi.disconnect(true);
-
-	// Access Point
-	IPAddress AP_LocalIP = IPAddress(192, 168, MDL.ID + 200, 1);
-	Wifi_DestinationIP = IPAddress(192, 168, MDL.ID + 200, 255);
-	
-	String AP = MDL.APname;
-	AP += "  (";
-	AP += WiFi.macAddress();
-	AP += ")";
-
-	WiFi.softAP(AP, MDL.APpassword, 1, 0, 2);
-	delay(500);
-	WiFi.softAPConfig(AP_LocalIP, AP_LocalIP, AP_Subnet);
-	UDP_Wifi.begin(ListeningPort);
-
-	Serial.println("");
-	Serial.print("Access Point name: ");
-	Serial.println(AP);
-	Serial.print("Access Point IP: ");
-	Serial.println(AP_LocalIP);
-
 	// web server
 	Serial.println();
 	Serial.println("Starting Web Server");
@@ -373,19 +94,24 @@ void DoSetup()
 	ESP2SOTA.begin(&server);
 	
 	Serial.println("OTA started.");
+  engine.init();
+        for(int i = 0 ; i < MAX_STEPPER; i++){
+          Serial.print("Connection to stepper ");
+          Serial.print(i);
+          Serial.print(" with pin ");
+          Serial.print(stepPinStepper[i]);
+          FastAccelStepper *newstepper = NULL;
+          newstepper = engine.stepperConnectToPin(stepPinStepper[i]);
+          if(newstepper) {
+            newstepper->setAutoEnable(false);
+            newstepper->setAcceleration(Sensor[0].KP*10);
+            Serial.println(" success ");
+          } else {
+            Serial.println(" fail ");
+          }
+          stepper[i] = newstepper;
+        }
 
-	// wifi client mode
-	if (MDL.WifiMode == 1)
-	{
-		// connect to network
-		delay(1000);
-		WiFi.onEvent(WiFiStationConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
-		WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
-		WiFi.onEvent(WiFiStationDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
-		WiFi.begin(MDL.SSID, MDL.Password);
-		Serial.println();
-		Serial.println("Connecting to wifi network ...");
-	}
 
 	delay(1500);
 	Serial.println("");
@@ -445,12 +171,12 @@ void LoadDefaults()
 
 	// default flow pins
 	Sensor[0].FlowPin = 21;
-	Sensor[0].IN1 = 4;
-	Sensor[0].IN2 = 5;
+	Sensor[0].IN1 = 19;
+	Sensor[0].IN2 = 19;
 
 	Sensor[1].FlowPin = 47;
-	Sensor[1].IN1 = 15;
-	Sensor[1].IN2 = 7;
+	Sensor[1].IN1 = 19;
+	Sensor[1].IN2 = 19;
 
 	// default pid
 	Sensor[0].KP = 5;
@@ -590,7 +316,3 @@ void initTempSensor(){
     temp_sensor_start();
 }
 
-float getCurrentInAmps(int pin) {
-  int volt = analogRead(pin);
-  return map(volt,3000,500,0,30)/10.0;
-}

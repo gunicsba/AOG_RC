@@ -1,9 +1,9 @@
-#define ETH_MISO_PIN                    37
-#define ETH_MOSI_PIN                    35
-#define ETH_SCLK_PIN                    36
-#define ETH_CS_PIN                      38  ///???
-#define ETH_INT_PIN                     45
-#define ETH_RST_PIN                     48
+#define ETH_MISO_PIN                    11
+#define ETH_MOSI_PIN                    12
+#define ETH_SCLK_PIN                    10
+#define ETH_CS_PIN                      9  ///???
+#define ETH_INT_PIN                     13
+#define ETH_RST_PIN                     14
 #define ETH_ADDR                        1  ////???
 
 void WT5500setup() {

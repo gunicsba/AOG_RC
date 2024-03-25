@@ -1,13 +1,4 @@
-#include "PCA95x5_RC.h"		// modified from https://github.com/hideakitai/PCA95x5
-#include <PCF8574.h>		// https://github.com/RobTillaart/PCF8574
 #include <ESP2SOTA.h>		// https://github.com/pangodream/ESP2SOTA
-
-#include <Adafruit_PWMServoDriver.h>
-
-#include <Adafruit_MCP23008.h>
-#include <Adafruit_MCP23X08.h>
-#include <Adafruit_MCP23X17.h>
-#include <Adafruit_MCP23XXX.h>
 
 #include <Adafruit_BusIO_Register.h>
 #include <Adafruit_I2CDevice.h>
@@ -31,14 +22,25 @@
 #include <elapsedMillis.h>
 #include "driver/temp_sensor.h"
 
+#include "FastAccelStepper.h" //https://github.com/gin66/FastAccelStepper/tags 0.30.10 or above
+FastAccelStepperEngine engine = FastAccelStepperEngine();
+#define MAX_STEPPER 6
+FastAccelStepper *stepper[MAX_STEPPER];
+
+//int stepPinStepper[] = {4,5,6,1}; //OK 1,4,5,6   //not ok: 0, 10-16
+int stepPinStepper[] = {0,1,2,4,5,6};
+#define STEP_ACCEL 1500
+#define enablePinStepper 45
+#define dirPinStepper 47
+
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
-# define InoDescription "RC_ESP32 :  24-Mar-2024"
-const uint16_t InoID = 24034;	// change to send defaults to eeprom, ddmmy, no leading 0
+# define InoDescription "RC_ESP32 Stepper :  25-Mar-2024"
+const uint16_t InoID = 25034;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 
 #define MaxReadBuffer 100	// bytes
-#define MaxProductCount 2
+#define MaxProductCount 1
 #define EEPROM_SIZE 512
 #define ModStringLengths 20
 
@@ -50,7 +52,7 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 #define W5500_SS 5	// W5500 SPI SS
 #define NC 0xFF		// Pin not connected
 
-#define Current1Pin 6 //CURRENT_SECTIONS
+#define Current1Pin 14 //CURRENT_SECTIONS
 #define Current2Pin 14 //CURRENT_CYTRON
 
 struct ModuleConfig
@@ -110,7 +112,9 @@ const uint16_t DestinationPort = 29999;
 WiFiUDP UDP_Ethernet;
 IPAddress Ethernet_DestinationIP(MDL.IP0, MDL.IP1, MDL.IP2, 255);
 bool ChipFound;
-
+float gpsSpeed = 0;
+float lSpeed = 0;
+float rSpeed = 0;
 // AGIO
 WiFiUDP UDP_AGIO;
 uint16_t ListeningPortAGIO = 8888;		// to listen on
@@ -144,27 +148,6 @@ uint32_t SendLast = SendTime;
 bool MasterOn = false;
 bool AutoOn = true;
 
-PCF8574 PCF;
-bool PCF_found = false;
-
-PCA9555 PCA;
-bool PCA9555PW_found = false;
-
-Adafruit_PWMServoDriver PWMServoDriver = Adafruit_PWMServoDriver(PCAaddress);
-bool PCA9685_found = false;
-
-Adafruit_MCP23X17 MCP;
-bool MCP23017_found = false;
-
-// analog
-struct AnalogConfig
-{
-	int16_t AIN0;	// Pressure 0
-	int16_t AIN1;	// Pressure 1
-	int16_t AIN2;
-	int16_t AIN3;
-};
-AnalogConfig AINs;
 
 int ADS1115_Address;
 bool ADSfound = false;
@@ -230,9 +213,44 @@ void loop()
 		}
 
 		CheckRelays();
-		GetUPM();
-		AdjustFlow();
-		ReadAnalog();
+    for (int i = 0; i < MDL.SensorCount; i++)
+    {
+      int sectionsOn = 0;
+      Sensor[i].UPM = 0;
+      for(int j = 0; j < MAX_STEPPER; j++){
+        bool sectionOn = bitRead(RelayLo,j);
+        if(sectionOn) sectionsOn++;
+        Sensor[i].UPM += stepper[j]->getCurrentSpeedInMilliHz()/1000/Sensor[i].MeterCal; //TODO
+
+      }
+      Serial.print(Sensor[i].FlowEnabled);
+      Serial.print(" sections: ");
+      Serial.print(sectionsOn);
+      Serial.print(" gpsSpeed: ");
+      Serial.print(gpsSpeed);
+      for(int j = 0; j < MAX_STEPPER; j++){
+        FastAccelStepper *newstepper = stepper[j];
+        bool sectionOn = bitRead(RelayLo,j);
+        if(!Sensor[i].FlowEnabled || !sectionOn) {
+          newstepper->stopMove();
+        } else {
+          double lRRate = (double)j/(MAX_STEPPER-1);
+          float speedModifier = ((rSpeed * lRRate) + (lSpeed * (1-lRRate))) / ((rSpeed+lSpeed)/2);
+          if(gpsSpeed < 4) speedModifier = 0;
+          Serial.print(j);
+          Serial.print(":");
+          Serial.print(speedModifier);
+          Serial.print(" ");
+          Serial.print( (Sensor[i].TargetUPM / sectionsOn) * speedModifier * Sensor[i].MeterCal );
+          Serial.print(" ; ");
+
+          newstepper->setSpeedInHz(Sensor[i].TargetUPM * speedModifier * Sensor[i].MeterCal / sectionsOn);       // 500 steps/s
+          newstepper->applySpeedAcceleration();
+          newstepper->runForward();
+        }
+      }
+      Serial.println();
+    }
 	}
 
 	if (millis() - SendLast > SendTime)
@@ -240,14 +258,12 @@ void loop()
 		SendLast = millis();
 		SendUDP();
 	}
-
-	SetPWM();
 	ReceiveUDP();
 	ReceiveAGIO();
 
 	server.handleClient();
 
-//	Blink();
+	Blink();
 }
 
 byte ParseModID(byte ID)
