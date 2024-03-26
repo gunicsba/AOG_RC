@@ -1,5 +1,6 @@
 void HandleRoot()
 {
+  Serial.println("HandleRoot");
 	if (server.hasArg("prop1"))
 	{
 		handleCredentials();
@@ -24,6 +25,7 @@ void HandlePage2()
 
 void HandleInfo()
 {
+  Serial.println("HandleInfo");
   server.send(200, "text/html", GetPageInfo());
 }
 void handleCredentials()
@@ -54,17 +56,15 @@ void ButtonPressed()
 {
 	if (server.arg("Btn") == "Master")
 	{
-		WifiMasterOn = !WifiMasterOn;
-		WifiSwitchesTimer = millis();
+    Leforgat(-1);
 		HandlePage1();
 	}
 	else
 	{
 		int ID = server.arg("Btn").toInt() - 1;
-		if (ID >= 0 && ID < 16)
+		if (ID >= 0 && ID < 6)
 		{
-			Button[ID] = !Button[ID];
-			WifiSwitchesTimer = millis();
+      Leforgat(ID);
 			HandlePage1();
 		}
 	}

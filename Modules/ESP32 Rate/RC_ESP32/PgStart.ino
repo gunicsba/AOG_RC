@@ -28,7 +28,7 @@ String GetPage0()
 	st += "    </form>";
 	st += "";
 	st += "</HTML>";
-
+  Serial.println(st);
 	return st;
 }
 

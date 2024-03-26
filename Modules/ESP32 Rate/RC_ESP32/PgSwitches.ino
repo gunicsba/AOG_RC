@@ -25,7 +25,7 @@ String GetPage1()
 	if (WifiMasterOn) tmp = "button-on"; else tmp = "button-off";
 	st += "      <p> <input class='" + tmp + "' name='Btn' type=submit formaction='/ButtonPressed' value='Master'> </p>";
 
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < 6; i++)
 	{
 		if (Button[i]) tmp = "button-on"; else tmp = "button-off";
 		st += "      <p> <input class='" + tmp + "' name='Btn' type=submit formaction='/ButtonPressed' value='" + String(i + 1) + "'> </p>";
@@ -35,7 +35,7 @@ String GetPage1()
 	st += "    </form>";
 	st += "";
 	st += "</HTML>";
-
+Serial.println(st);
 	return st;
 }
 

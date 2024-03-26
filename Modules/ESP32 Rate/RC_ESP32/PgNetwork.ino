@@ -49,7 +49,7 @@ String GetPage2()
 	st += "</body>";
 	st += "";
 	st += "</HTML>";
-
+Serial.println(st);
 	return st;
 }
 

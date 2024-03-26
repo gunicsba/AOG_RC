@@ -38,7 +38,7 @@ String GetPageInfo()
   st += "\n  <tr>";
   st += "\n<td>ESP maghőmérséklet</td><td>";
   float result = 0;
-  temp_sensor_read_celsius(&result);
+//  temp_sensor_read_celsius(&result);
   st += result;
   st += "\n</td><td>Valószínűleg jó pár fokkal melegebb mint a környezet. 100 fölött aggódnék :) </td> ";
   st += "\n  </tr>";
@@ -108,6 +108,7 @@ String GetPageInfo()
 	st += "\n";
 	st += "\n</html>";
 //  SlowestStep = 0;
+Serial.println(st);
 	return st;
 }
 

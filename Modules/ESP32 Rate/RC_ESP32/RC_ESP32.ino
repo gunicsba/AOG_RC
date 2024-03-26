@@ -228,22 +228,22 @@ void loop()
       Serial.print(sectionsOn);
       Serial.print(" gpsSpeed: ");
       Serial.print(gpsSpeed);
+
       for(int j = 0; j < MAX_STEPPER; j++){
         FastAccelStepper *newstepper = stepper[j];
         bool sectionOn = bitRead(RelayLo,j);
-        if(!Sensor[i].FlowEnabled || !sectionOn) {
+        if(!Sensor[i].FlowEnabled || !sectionOn || gpsSpeed < 4) {
           newstepper->stopMove();
         } else {
           double lRRate = (double)j/(MAX_STEPPER-1);
           float speedModifier = ((rSpeed * lRRate) + (lSpeed * (1-lRRate))) / ((rSpeed+lSpeed)/2);
           if(gpsSpeed < 4) speedModifier = 0;
-          Serial.print(j);
+          Serial.print(j+1);
           Serial.print(":");
           Serial.print(speedModifier);
           Serial.print(" ");
           Serial.print( (Sensor[i].TargetUPM / sectionsOn) * speedModifier * Sensor[i].MeterCal );
           Serial.print(" ; ");
-
           newstepper->setSpeedInHz(Sensor[i].TargetUPM * speedModifier * Sensor[i].MeterCal / sectionsOn);       // 500 steps/s
           newstepper->applySpeedAcceleration();
           newstepper->runForward();
@@ -263,7 +263,7 @@ void loop()
 
 	server.handleClient();
 
-	Blink();
+	//Blink();
 }
 
 byte ParseModID(byte ID)
@@ -310,6 +310,33 @@ uint32_t MaxLoopTime;
 double debug1;
 double debug2;
 double debug3;
+void Leforgat(int ID) {
+  int MICROSTEPS = 3200;
+  if(ID < 0) {
+    for(int j = 0; j < MAX_STEPPER; j++){
+      FastAccelStepper *newstepper = stepper[j];
+      newstepper->stopMove();
+    }
+    delay(1000);
+    for(int j = 0; j < MAX_STEPPER; j++){
+      Serial.print("Rotating stepper: ");
+      Serial.println(j);
+      FastAccelStepper *newstepper = stepper[j];
+      newstepper->setCurrentPosition(0);
+      newstepper->setSpeedInHz(100 * Sensor[0].MeterCal);
+      newstepper->move(MICROSTEPS/4);
+      while(newstepper->isRunning()) delayMicroseconds(500);
+    }
+  } else {
+      Serial.print("Rotating stepper: ");
+      Serial.println(ID);
+      FastAccelStepper *newstepper = stepper[ID];
+      newstepper->setCurrentPosition(0);
+      newstepper->setSpeedInHz(100 * Sensor[0].MeterCal);
+      newstepper->move(MICROSTEPS/4);
+      while(newstepper->isRunning()) delayMicroseconds(500);
+  }
+}
 
 void Blink()
 {
