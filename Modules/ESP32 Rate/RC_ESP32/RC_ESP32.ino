@@ -28,8 +28,8 @@ FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *stepper[MAX_STEPPER];
 
 //int stepPinStepper[] = {4,5,6,1}; //OK 1,4,5,6   //not ok: 0, 10-16
-int stepPinStepper[] = {0,1,2,4,5,6};
-#define STEP_ACCEL 1500
+int stepPinStepper[] = {1,2,41,4,5,6};
+#define STEP_ACCEL 5000
 #define enablePinStepper 45
 #define dirPinStepper 47
 
@@ -223,12 +223,13 @@ void loop()
         Sensor[i].UPM += stepper[j]->getCurrentSpeedInMilliHz()/1000/Sensor[i].MeterCal; //TODO
 
       }
+/*
       Serial.print(Sensor[i].FlowEnabled);
       Serial.print(" sections: ");
       Serial.print(sectionsOn);
       Serial.print(" gpsSpeed: ");
       Serial.print(gpsSpeed);
-
+*/
       for(int j = 0; j < MAX_STEPPER; j++){
         FastAccelStepper *newstepper = stepper[j];
         bool sectionOn = bitRead(RelayLo,j);
@@ -238,18 +239,20 @@ void loop()
           double lRRate = (double)j/(MAX_STEPPER-1);
           float speedModifier = ((rSpeed * lRRate) + (lSpeed * (1-lRRate))) / ((rSpeed+lSpeed)/2);
           if(gpsSpeed < 4) speedModifier = 0;
+/*
           Serial.print(j+1);
           Serial.print(":");
           Serial.print(speedModifier);
           Serial.print(" ");
           Serial.print( (Sensor[i].TargetUPM / sectionsOn) * speedModifier * Sensor[i].MeterCal );
           Serial.print(" ; ");
+*/
           newstepper->setSpeedInHz(Sensor[i].TargetUPM * speedModifier * Sensor[i].MeterCal / sectionsOn);       // 500 steps/s
           newstepper->applySpeedAcceleration();
           newstepper->runForward();
         }
       }
-      Serial.println();
+//      Serial.println();
     }
 	}
 
@@ -324,7 +327,7 @@ void Leforgat(int ID) {
       FastAccelStepper *newstepper = stepper[j];
       newstepper->setCurrentPosition(0);
       newstepper->setSpeedInHz(100 * Sensor[0].MeterCal);
-      newstepper->move(MICROSTEPS/4);
+      newstepper->move(MICROSTEPS/2);
       while(newstepper->isRunning()) delayMicroseconds(500);
     }
   } else {
@@ -333,7 +336,7 @@ void Leforgat(int ID) {
       FastAccelStepper *newstepper = stepper[ID];
       newstepper->setCurrentPosition(0);
       newstepper->setSpeedInHz(100 * Sensor[0].MeterCal);
-      newstepper->move(MICROSTEPS/4);
+      newstepper->move(MICROSTEPS/2);
       while(newstepper->isRunning()) delayMicroseconds(500);
   }
 }
