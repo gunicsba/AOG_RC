@@ -45,6 +45,7 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 // servo driver
 //#define OutputEnablePin 27
 #define PCAaddress 0x40
+#define PCAExtaddress 0x41
 
 #define PCFaddress 0x20
 #define W5500_SS 5	// W5500 SPI SS
@@ -152,6 +153,9 @@ bool PCA9555PW_found = false;
 
 Adafruit_PWMServoDriver PWMServoDriver = Adafruit_PWMServoDriver(PCAaddress);
 bool PCA9685_found = false;
+Adafruit_PWMServoDriver PWMServoDriverExt = Adafruit_PWMServoDriver(PCAExtaddress);
+bool PCA9685Ext_found = false;
+
 
 Adafruit_MCP23X17 MCP;
 bool MCP23017_found = false;

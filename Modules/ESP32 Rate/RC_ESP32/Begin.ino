@@ -296,6 +296,32 @@ void DoSetup()
 		{
 			Serial.println("PCA9685 expander not found.");
 		}
+
+		ErrorCount = 0;
+		while (!PCA9685Ext_found)
+		{
+			Serial.print(".");
+			Wire.beginTransmission(PCAExtaddress);
+			PCA9685Ext_found = (Wire.endTransmission() == 0);
+			ErrorCount++;
+			delay(500);
+			if (ErrorCount > 5)break;
+		}
+
+		Serial.println("");
+		if (PCA9685Ext_found)
+		{
+			Serial.println("PCA9685Ext expander found.");
+			PWMServoDriverExt.begin();
+			PWMServoDriverExt.setPWMFreq(200);
+
+//			pinMode(OutputEnablePin, OUTPUT);
+//			digitalWrite(OutputEnablePin, LOW);	//enable
+		}
+		else
+		{
+			Serial.println("PCA9685Ext expander not found.");
+		}
 		break;
 
 	case 7:

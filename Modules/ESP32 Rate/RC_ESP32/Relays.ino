@@ -190,6 +190,32 @@ void CheckRelays()
 
     case 6:
         // PCA9685 paired
+        if (PCA9685Ext_found)
+        {
+            // 2 pins used for each valve, powered on and off, 8 sections
+            for (int i = 0; i < 8; i++)
+            {
+                BitState = bitRead(NewHi, i);
+
+                if (RelayStatus[8+i] != BitState)
+                {
+                    IOpin = i * 2;
+                    if (BitState)
+                    {
+                        // on  
+                        PWMServoDriverExt.setPWM(IOpin, 0, 4095);
+                        PWMServoDriverExt.setPWM(IOpin + 1, 0, 0);
+                    }
+                    else
+                    {
+                        // off
+                        PWMServoDriverExt.setPWM(IOpin, 0, 0);
+                        PWMServoDriverExt.setPWM(IOpin + 1, 0, 4095);
+                    }
+                    RelayStatus[8+i] = BitState;
+                }
+            }
+        }
         if (PCA9685_found)
         {
             // 2 pins used for each valve, powered on and off, 8 sections
