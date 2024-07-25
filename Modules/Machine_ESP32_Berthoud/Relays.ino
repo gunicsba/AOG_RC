@@ -36,14 +36,15 @@ void CheckRelays()
                     if(relayState[pin[i] - 1])
                     {
                         // on  
-                        PWMServoDriver.setPWM(IOpin, 0, 0);
-                        PWMServoDriver.setPWM(IOpin + 1, 0, 4095); //green
+                        PWMServoDriver.setPWM(IOpin, 0, 4095); //green
+                        PWMServoDriver.setPWM(IOpin + 1, 0, 0);
+
                     }
                     else
                     {
                         // off
-                        PWMServoDriver.setPWM(IOpin, 0, 4095); //red
-                        PWMServoDriver.setPWM(IOpin + 1, 0, 0);
+                        PWMServoDriver.setPWM(IOpin, 0, 0);
+                        PWMServoDriver.setPWM(IOpin + 1, 0, 0); //off
                     }
               }
             }
@@ -58,14 +59,14 @@ void CheckRelays()
                     if(relayState[pin[8+i] - 1])
                     {
                         // on  
-                        PWMServoDriverExt.setPWM(IOpin, 0, 0);
-                        PWMServoDriverExt.setPWM(IOpin + 1, 0, 4095); //green
+                        PWMServoDriverExt.setPWM(IOpin, 0, 4095);  //green
+                        PWMServoDriverExt.setPWM(IOpin + 1, 0, 0);
                     }
                     else
                     {
                         // off
-                        PWMServoDriverExt.setPWM(IOpin, 0, 4095);  //red
-                        PWMServoDriverExt.setPWM(IOpin + 1, 0, 0);
+                        PWMServoDriverExt.setPWM(IOpin, 0, 0);
+                        PWMServoDriverExt.setPWM(IOpin + 1, 0, 0); //off
                     }
                 }
             }
