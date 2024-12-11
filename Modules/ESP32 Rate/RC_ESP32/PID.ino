@@ -78,7 +78,8 @@ int PIDmotor(byte ID)
 			LastCheck[ID] = millis();
 
 			RateError = Sensor[ID].TargetUPM - Sensor[ID].UPM;
-			if (abs(RateError) > Sensor[ID].TargetUPM)
+
+			if (abs(RateError) > Sensor[ID].TargetUPM) //Not sure if this will ever run
 			{
 				if (RateError > 0)
 				{
@@ -101,7 +102,7 @@ int PIDmotor(byte ID)
 			}
 
 			// check deadband
-			if (abs(RateError) > Deadband * Sensor[ID].TargetUPM)
+//			if (abs(RateError) > Deadband * Sensor[ID].TargetUPM)
 			{
 				IntegralSum[ID] += Sensor[ID].KI * RateError;
 				IntegralSum[ID] *= (Sensor[ID].KI > 0);	// zero out if not using KI

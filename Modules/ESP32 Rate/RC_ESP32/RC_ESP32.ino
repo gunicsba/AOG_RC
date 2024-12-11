@@ -32,8 +32,8 @@
 #include "driver/temp_sensor.h"
 
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
-# define InoDescription "RC_ESP32 :  24-Mar-2024"
-const uint16_t InoID = 24034;	// change to send defaults to eeprom, ddmmy, no leading 0
+# define InoDescription "RC_ESP32 :  11-Dec-2024"
+const uint16_t InoID = 11124;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 
@@ -57,7 +57,7 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 struct ModuleConfig
 {
 	uint8_t ID = 0;
-	uint8_t SensorCount = 1;        // up to 2 sensors, if 0 rate control will be disabled
+	uint8_t SensorCount = 2;        // up to 2 sensors, if 0 rate control will be disabled
 	uint8_t RelayOnSignal = 0;	    // value that turns on relays
 	uint8_t FlowOnDirection = 0;	// sets on value for flow valve or sets motor direction
 	uint8_t IP0 = 192;
@@ -228,9 +228,9 @@ void loop()
 		for (int i = 0; i < MDL.SensorCount; i++)
 		{
 			Sensor[i].FlowEnabled = (millis() - Sensor[i].CommTime < 4000)
-				&& ((Sensor[i].TargetUPM > 0 && MasterOn)
+				&& ((Sensor[i].TargetUPM > 0 && MasterOn )
 					|| ((Sensor[i].ControlType == 4) && (Sensor[i].TargetUPM > 0))
-					|| (!AutoOn && MasterOn));
+					|| (!AutoOn && MasterOn) );
 		}
 
 		CheckRelays();

@@ -48,6 +48,14 @@ void AdjustFlow()
 
 void SetPWM(byte ID, double PWM)
 {
+    if( 0 == bitRead(RelayLo, ID) ) {
+        Serial.print("Section ");
+        Serial.print(ID);
+        Serial.println(" off, setting PWM to 0");
+        ledcWrite(ID * 2 + 1, 0); // IN2
+        ledcWrite(ID * 2, 0);       // IN1
+        return;
+    }
     if (MDL.FlowOnDirection == 0) PWM *= -1;    // flow on low
 
     if (PWM < 0)

@@ -1,6 +1,6 @@
 
 // valid pins for each processor
-uint8_t ValidPins0[] = { 0,2,4,13,14,15,16,17,21,22,25,26,27,32,33 };	// SPI pins 5,18,19,23 excluded for ethernet module
+uint8_t ValidPins0[] = { 0,2,4,13,14,15,16,17,21,22,25,26,27,32,33, 3,12,10,11 };	// SPI pins 5,18,19,23 excluded for ethernet module
 
 
 void DoSetup()
@@ -475,19 +475,19 @@ void LoadDefaults()
 	// default flow pins
 	Sensor[0].FlowPin = 21;
 /*
-	Sensor[0].IN1 = 4;
+	Sensor[0].IN1 = 4;  //3.5A
 	Sensor[0].IN2 = 5;
 
 	Sensor[1].FlowPin = 47;
-	Sensor[1].IN1 = 15;
+	Sensor[1].IN1 = 15;  //cytron
 	Sensor[1].IN2 = 7;
 */
-	Sensor[1].IN1 = 4;
-	Sensor[1].IN2 = 5;
+	Sensor[1].IN1 = 15;
+	Sensor[1].IN2 = 7;
 
 	Sensor[1].FlowPin = 47;
-	Sensor[0].IN1 = 15;
-	Sensor[0].IN2 = 7;
+	Sensor[0].IN1 = 10;  //for another cytron from next to esp32
+	Sensor[0].IN2 = 11;
 
 	// default pid
 	Sensor[0].KP = 5;
@@ -495,14 +495,14 @@ void LoadDefaults()
 	Sensor[0].KD = 0;
 	Sensor[0].MinPWM = 5;
 	Sensor[0].MaxPWM = 50;
-	Sensor[0].Debounce = 3;
+	Sensor[0].Debounce = 500;
 
 	Sensor[1].KP = 5;
 	Sensor[1].KI = 0;
 	Sensor[1].KD = 0;
 	Sensor[1].MinPWM = 5;
 	Sensor[1].MaxPWM = 50;
-	Sensor[1].Debounce = 3;
+	Sensor[1].Debounce = 500;
 
 	// relay pins
 	for (int i = 0; i < 16; i++)
