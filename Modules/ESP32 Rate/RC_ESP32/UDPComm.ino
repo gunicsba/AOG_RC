@@ -492,6 +492,8 @@ void ReceiveAGIO()
                             ESP.restart();
                         }
                         break;
+                    case 239:  //machine data
+                        AOGrelayLo = Data[11];          // read relay control from AgOpenGPS
                     }
                 }
             }

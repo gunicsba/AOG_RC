@@ -48,10 +48,7 @@ void AdjustFlow()
 
 void SetPWM(byte ID, double PWM)
 {
-    if( 0 == bitRead(RelayLo, ID) ) {
-        Serial.print("Section ");
-        Serial.print(ID);
-        Serial.println(" off, setting PWM to 0");
+    if( 0 == bitRead(AOGrelayLo, ID) ) {
         ledcWrite(ID * 2 + 1, 0); // IN2
         ledcWrite(ID * 2, 0);       // IN1
         return;

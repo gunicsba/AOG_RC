@@ -137,6 +137,8 @@ byte PowerRelayHi;
 byte InvertedLo;
 byte InvertedHi;
 
+byte AOGrelayLo = 0;
+
 const uint16_t LoopTime = 50;      //in msec = 20hz
 uint32_t LoopLast = LoopTime;
 const uint16_t SendTime = 200;
