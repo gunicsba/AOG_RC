@@ -25,6 +25,9 @@ void HandlePage2()
 void HandleInfo()
 {
   server.send(200, "text/html", GetPageInfo());
+  if(server.arg("sectionDelay").length() != 0) {
+    sectionDelay = server.arg("sectionDelay").toInt();
+  }
 }
 void handleCredentials()
 {

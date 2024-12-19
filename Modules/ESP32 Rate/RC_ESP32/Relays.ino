@@ -33,6 +33,9 @@ void CheckRelays()
     }
     else if (Sensor[0].FlowEnabled || Sensor[1].FlowEnabled)
     {
+      //
+      //sectionDelay
+
         // normal relay control
         NewLo |= RelayLo;
         NewHi |= RelayHi;
@@ -176,6 +179,8 @@ void CheckRelays()
                     {
                         // on
                         PWMServoDriver.setPWM(i, 4096, 0);
+                        sectionTimer = millis();
+                        sectionTimer += sectionDelay;
                     }
                     else
                     {
@@ -183,6 +188,10 @@ void CheckRelays()
                         PWMServoDriver.setPWM(i, 0, 4096);
                     }
                     RelayStatus[i] = BitState;
+                }
+                if(millis() >= sectionTimer) { //Force Off
+                  // off
+                  PWMServoDriver.setPWM(i, 0, 4096);
                 }
             }
         }
@@ -231,6 +240,8 @@ void CheckRelays()
                         // on  
                         PWMServoDriver.setPWM(IOpin, 0, 4095);
                         PWMServoDriver.setPWM(IOpin + 1, 0, 0);
+                        sectionTimer = millis();
+                        sectionTimer += sectionDelay;
                     }
                     else
                     {
@@ -239,6 +250,11 @@ void CheckRelays()
                         PWMServoDriver.setPWM(IOpin + 1, 0, 4095);
                     }
                     RelayStatus[i] = BitState;
+                }
+                if(millis() >= sectionTimer) { // FORCE OFF
+                  // off
+                  PWMServoDriver.setPWM(IOpin, 0, 0);
+                  PWMServoDriver.setPWM(IOpin + 1, 0, 4095);
                 }
             }
         }

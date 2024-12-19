@@ -9,7 +9,7 @@ String GetPageInfo()
 	st += "\n";
 	st += "\n";
 
-  st += "\nKeresett a feri!";
+  st += "\n";
   st += "\n<table>";
   st += "\n  <tr>";
   st += "\n    <th>Paraméter</th>";
@@ -46,6 +46,12 @@ String GetPageInfo()
   st += "\n  <tr>";
   st += "\n<td>Összes pulzusszám szenzor 0</td><td>";
   st += Sensor[0].TotalPulses;
+  st += "\n</td><td>Hasznos ha az átfolyásmérőt akarjuk ellenőrizni. </td> ";
+  st += "\n  </tr>";
+  st += "\n";
+  st += "\n  <tr>";
+  st += "\n<td>Összes pulzusszám szenzor 1</td><td>";
+  st += Sensor[1].TotalPulses;
   st += "\n</td><td>Hasznos ha az átfolyásmérőt akarjuk ellenőrizni. </td> ";
   st += "\n  </tr>";
   st += "\n";
@@ -97,17 +103,17 @@ String GetPageInfo()
   st += "\n</td><td>0 / 1</td> ";
   st += "\n  </tr>";
   st += "\n";
-/*
-  st += "\n<tr><td>Cytronhoz :)</td></tr>";
+
+  st += "\n<tr><td><strong>Kapcsold vissza ki a szakaszt Ennyi másodperc után!</strong></td></tr>";
   st += "\n";
-  st += "\n<tr><td>PWM1</td>";
+  st += "\n<tr><td>sectionDelay</td>";
   st += "\n<td>";
-  st += Sensor[1].PWM;
-  st += "\n<input type='range' id='pwm1' name='pwm1' min='-255' max='255' value='";
-  st += Sensor[1].PWM;
-  st += "\n'/></td><td>húzd mínuszba a másik irányhoz :) 70 alatt ESP sleep!! </td>";
+  st += sectionDelay;
+  st += "/10 s\n<input type='range' id='sectionDelay' name='sectionDelay' min='0' max='100' step=1 value='";
+  st += sectionDelay;
+  st += "\n'/></td><td>0-nál nem csinál semmit! </td>";
   st += "\n  </tr>";
-*/
+
 
   st += "\n<tr><td>Amper Cytron: </td>";
   st += "\n";
