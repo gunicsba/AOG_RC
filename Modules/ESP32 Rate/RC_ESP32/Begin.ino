@@ -183,6 +183,8 @@ void DoSetup()
 		ledcSetup(i * 2 + 1, 500, 8);
 		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
 	}
+  pinMode(13, OUTPUT); //Cytron
+  digitalWrite(13,HIGH);
 
   Serial.println("Relays setup ");
 
@@ -475,8 +477,8 @@ void LoadDefaults()
 	Sensor[0].IN2 = 5;
 
 	Sensor[1].FlowPin = 47;
-	Sensor[1].IN1 = 15;
-	Sensor[1].IN2 = 7;
+	Sensor[1].IN1 = 7;
+	Sensor[1].IN2 = 15;
 
 	// default pid
 	Sensor[0].KP = 5;

@@ -32,8 +32,8 @@
 #include "driver/temp_sensor.h"
 
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
-# define InoDescription "RC_ESP32 :  24-Mar-2024"
-const uint16_t InoID = 24034;	// change to send defaults to eeprom, ddmmy, no leading 0
+# define InoDescription "RC_ESP32 :  29-Dec-2024"
+const uint16_t InoID = 29124;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 
@@ -57,7 +57,7 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 struct ModuleConfig
 {
 	uint8_t ID = 0;
-	uint8_t SensorCount = 1;        // up to 2 sensors, if 0 rate control will be disabled
+	uint8_t SensorCount = 2;        // up to 2 sensors, if 0 rate control will be disabled
 	uint8_t RelayOnSignal = 0;	    // value that turns on relays
 	uint8_t FlowOnDirection = 0;	// sets on value for flow valve or sets motor direction
 	uint8_t IP0 = 192;
@@ -70,7 +70,7 @@ struct ModuleConfig
 									//, 5 - PCA9685 single , 6 - PCA9685 paired, 7 - PCF8574
 	char APname[ModStringLengths] = "RateModule";
 	char APpassword[ModStringLengths] = "111222333";
-	uint8_t WifiMode = 1;			// 0 AP mode, 1 Station + AP
+	uint8_t WifiMode = 0;			// 0 AP mode, 1 Station + AP
 	char SSID[ModStringLengths] = "Tractor";		// name of network ESP32 connects to
 	char Password[ModStringLengths] = "111222333";
 };
