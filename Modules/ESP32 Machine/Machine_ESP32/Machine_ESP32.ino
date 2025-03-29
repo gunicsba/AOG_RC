@@ -163,7 +163,7 @@ void loop()
 
             if (watchdogTimer > 20)
             {
-                if (aogConfig.isRelayActiveHigh) {
+                if (!aogConfig.isRelayActiveHigh) {
                     relayLo = 255;
                     relayHi = 255;
                 }
