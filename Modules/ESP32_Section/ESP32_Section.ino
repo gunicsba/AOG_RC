@@ -45,7 +45,7 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 #define Current1Pin 6 //CURRENT_SECTIONS
 #define Current2Pin 14 //CURRENT_CYTRON
 
-#define activeON true
+#define activeON false
 
 struct ModuleConfig
 {
