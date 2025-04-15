@@ -47,6 +47,8 @@ void CheckRelays()
     // power relays, always on
     NewLo |= PowerRelayLo;
     NewHi |= PowerRelayHi;
+    //Cytron
+    if(Sensor[1].ControlType == 2) digitalWrite(13,bitRead(NewLo,7)); //Árpádnak
 
     switch (MDL.RelayControl)
     {
