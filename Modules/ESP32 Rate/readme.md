@@ -7,3 +7,5 @@ To update the ESP32 over-the-air open a browser web page to (access point IP)/up
 
 How to Flash?
 esptool --chip esp32s3 --port "COM8" --baud 460800  --before default_reset --after hard_reset write_flash  -z --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 RC_ESP32.ino.bootloader.bin 0x8000 RC_ESP32.ino.partitions.bin 0xe000 boot_app0.bin 0x10000 RC_ESP32.ino.bin
+
+Syngenta version will turn OFF section 1 after a few seconds to simulate the grain hopper for their plot planter.
