@@ -156,7 +156,7 @@ bool PCA9685_found = false;
 Adafruit_PWMServoDriver PWMServoDriverExt = Adafruit_PWMServoDriver(PCAExtaddress);
 bool PCA9685Ext_found = false;
 
-int sectionDelay = 4000;
+int sectionDelay = 2000;
 uint32_t sectionTimer = millis();
 
 Adafruit_MCP23X17 MCP;
