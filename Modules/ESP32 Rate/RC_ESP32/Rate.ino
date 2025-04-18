@@ -220,4 +220,7 @@ void GetUPMflow(int ID)
 	{
 		Sensor[ID].UPM = 0;
 	}
+  if(disableFlow && bitRead(RelayLo,8)){
+    Sensor[ID].UPM = 0;
+  }
 }

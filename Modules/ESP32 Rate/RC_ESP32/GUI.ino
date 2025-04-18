@@ -46,6 +46,17 @@ void handleCredentials()
 
 void Cytron() {
 
+  bool newState = server.arg("disableFlow") == "on";
+  if(disableFlow != newState) {
+    disableFlow = newState;
+    SaveData();
+  }
+  newState = server.arg("disableMotor") == "on";
+  if(disableMotor != newState) {
+    disableMotor = newState;
+    SaveData();
+  }
+  
   HandleInfo();
 
 }

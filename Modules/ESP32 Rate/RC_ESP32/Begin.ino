@@ -432,6 +432,9 @@ void LoadData()
 	{
 		// load stored data
 		Serial.println("Loading stored settings.");
+    EEPROM.get(10,disableMotor);
+    EEPROM.get(11,disableFlow);
+
 		EEPROM.get(110, MDL);
 
 		for (int i = 0; i < MaxProductCount; i++)
@@ -464,6 +467,8 @@ void SaveData()
 	{
 		EEPROM.put(300 + i * 80, Sensor[i]);
 	}
+  EEPROM.put(10,disableMotor);
+  EEPROM.put(11,disableFlow);
 	EEPROM.commit();
 }
 

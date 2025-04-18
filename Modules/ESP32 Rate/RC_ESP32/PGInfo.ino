@@ -141,6 +141,26 @@ String GetPageInfo()
   st += "\n</td>";
   st += "\n</tr>";
 
+  st += "\n<tr><td>Disable Motor drive based on 8th relay (Árpád)</td>";
+  st += "\n<td></td>";
+  st += "\n<td>";
+  st += "\n\n";
+  st += "<input type='checkbox' id='disableMotor' name='disableMotor' ";
+  st += disableMotor ? "checked" : "";
+  st += ">";
+  st += "\n</td>";
+  st += "\n</tr>";
+
+
+  st += "\n<tr><td>Disable Flow value based on 8th relay (Baranyi)</td>";
+  st += "\n<td></td>";
+  st += "\n<td>";
+  st += "\n\n";
+  st += "<input type='checkbox' id='disableFlow' name='disableFlow' ";
+  st += disableFlow ? "checked" : "";
+  st += ">";
+  st += "\n</td>";
+  st += "\n</tr>";
 
   st += "\n</table>";
   st += "\n";

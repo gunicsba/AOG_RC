@@ -124,6 +124,9 @@ IPAddress AP_Subnet(255, 255, 255, 0);
 WiFiClient client;
 WebServer server(80);
 
+bool disableMotor = false;
+bool disableFlow = false;
+
 // control page
 bool WifiMasterOn = false;
 bool Button[16];
