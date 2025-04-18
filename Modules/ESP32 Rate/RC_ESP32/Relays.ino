@@ -47,8 +47,8 @@ void CheckRelays()
     // power relays, always on
     NewLo |= PowerRelayLo;
     NewHi |= PowerRelayHi;
-    //Cytron
-    if(Sensor[1].ControlType == 2) digitalWrite(13,bitRead(NewLo,7)); //Árpádnak
+    //Disable Cytron if master (8th) "relay" is OFF enable if ON
+//    if(Sensor[1].ControlType == 2) digitalWrite(13,bitRead(NewLo,7)); //Árpádnak
 
     switch (MDL.RelayControl)
     {
