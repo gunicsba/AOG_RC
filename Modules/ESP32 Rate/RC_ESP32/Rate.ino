@@ -214,7 +214,9 @@ void GetUPMflow(int ID)
 	// units per minute
 	if (Sensor[ID].MeterCal > 0)
 	{
-		Sensor[ID].UPM = (float)Oave[ID] / (float)Sensor[ID].MeterCal;
+    Sensor[ID].UPM = Sensor[ID].UPM * 0.8;
+    Sensor[ID].UPM += ( (float)Oave[ID] / (float)Sensor[ID].MeterCal ) * 0.2;
+//		Sensor[ID].UPM = (float)Oave[ID] / (float)Sensor[ID].MeterCal;
 	}
 	else
 	{
