@@ -26,8 +26,8 @@
 
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
 # define InoDescription "Machine_ESP32 :  24-Mar-2024"
-const uint16_t InoID = 24034;	// change to send defaults to eeprom, ddmmy, no leading 0
-const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
+const uint16_t InoID = 10065;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint8_t InoType = 5;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 
 #define MaxReadBuffer 100	// bytes
@@ -45,7 +45,7 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 #define Current1Pin 6 //CURRENT_SECTIONS
 #define Current2Pin 14 //CURRENT_CYTRON
 
-#define activeON false
+#define activeON true
 
 struct ModuleConfig
 {
@@ -165,6 +165,7 @@ void loop()
 
             if (watchdogTimer > 20)
             {
+                Serial.println("Watchdog triggered RelayActive!");
                 if (activeON == aogConfig.isRelayActiveHigh) { 
                     relayLo = 255;
                     relayHi = 255;

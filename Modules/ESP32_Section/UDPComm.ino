@@ -83,15 +83,15 @@ void ReceiveAGIO()
                         break;
                     }
                     case 236:
-                    {
+                    { 
                         for (uint8_t i = 0; i < 24; i++)
                         {
                           pin[i] = Data[i + 5];
                         }
-
                         //save in EEPROM and restart
                         EEPROM.put(20, pin);
                         EEPROM.commit();
+                        ESP.restart();
                         break;
                     }
                     case 238:

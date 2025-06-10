@@ -1,7 +1,6 @@
 
 void CheckRelays()
 {
-
       //Load the current pgn relay state - Sections
         for (uint8_t i = 0; i < 8; i++)
         {
@@ -27,8 +26,8 @@ void CheckRelays()
         int IOpin;
         if (PCA9685_found)
         {
-          
             // 2 pins used for each valve, powered on and off, 8 sections
+            bool anyActive = false;
             for (int i = 0; i < 12; i++)
             {
               IOpin = i;
@@ -37,6 +36,7 @@ void CheckRelays()
                     {
                         // on  
                         PWMServoDriver.setPWM(IOpin, 0, 4095); //on
+                        anyActive = true;
                     }
                     else
                     {
@@ -45,6 +45,18 @@ void CheckRelays()
                     }
               }
             }
+            #ifdef activeON
+              if(anyActive && !pin[11])  // to control the master switch with the 12th output
+              {
+                // on  
+                PWMServoDriver.setPWM(11, 0, 4095); //on
+              }
+              else
+              {
+                // off
+                PWMServoDriver.setPWM(11, 0, 0); //off
+              }
+            #endif
         }
         if (PCA9685Ext_found)
         {
