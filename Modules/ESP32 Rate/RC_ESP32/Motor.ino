@@ -3,6 +3,11 @@ void AdjustFlow()
 {
     for (int i = 0; i < MDL.SensorCount; i++)
     {
+        if(b9threlay && i == 1) 
+        {
+          return;
+        }
+
         switch (Sensor[i].ControlType)
         {
         case 0:
@@ -48,6 +53,7 @@ void AdjustFlow()
 
 void SetPWM(byte ID, double PWM)
 {
+
     if (MDL.FlowOnDirection == 0) PWM *= -1;    // flow on low
 
     if (PWM < 0)

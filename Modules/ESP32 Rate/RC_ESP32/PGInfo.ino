@@ -162,6 +162,16 @@ String GetPageInfo()
   st += "\n</td>";
   st += "\n</tr>";
 
+  st += "\n<tr><td>9th relay controls F2 (Atozz)</td>";
+  st += "\n<td></td>";
+  st += "\n<td>";
+  st += "\n\n";
+  st += "<input type='checkbox' id='b9threlay' name='b9threlay' ";
+  st += b9threlay ? "checked" : "";
+  st += ">";
+  st += "\n</td>";
+  st += "\n</tr>";
+
   st += "\n</table>";
   st += "\n";
   st += "\n<input class='bar' name='foo' type=submit formaction='/Cytron' value='Frissíts!'>";

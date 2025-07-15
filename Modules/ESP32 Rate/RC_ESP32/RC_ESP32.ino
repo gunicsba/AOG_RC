@@ -126,6 +126,7 @@ WebServer server(80);
 
 bool disableMotor = false;
 bool disableFlow = false;
+bool b9threlay = false;
 
 // control page
 bool WifiMasterOn = false;

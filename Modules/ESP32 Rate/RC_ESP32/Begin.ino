@@ -434,6 +434,7 @@ void LoadData()
 		Serial.println("Loading stored settings.");
     EEPROM.get(10,disableMotor);
     EEPROM.get(11,disableFlow);
+    EEPROM.get(12,b9threlay);
 
 		EEPROM.get(110, MDL);
 
@@ -469,6 +470,7 @@ void SaveData()
 	}
   EEPROM.put(10,disableMotor);
   EEPROM.put(11,disableFlow);
+  EEPROM.put(12,b9threlay);
 	EEPROM.commit();
 }
 

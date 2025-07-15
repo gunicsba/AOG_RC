@@ -56,6 +56,11 @@ void Cytron() {
     disableMotor = newState;
     SaveData();
   }
+  newState = server.arg("b9threlay") == "on";
+  if(b9threlay != newState) {
+    b9threlay = newState;
+    SaveData();
+  }
   
   HandleInfo();
 

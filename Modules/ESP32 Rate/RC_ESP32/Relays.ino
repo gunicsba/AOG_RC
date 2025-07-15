@@ -243,6 +243,9 @@ void CheckRelays()
                     RelayStatus[i] = BitState;
                 }
             }
+            if(b9threlay) {
+              SetPWM(1,bitRead(NewHi,0) ? 255 : -255);
+            }
         }
         break;
 
