@@ -39,7 +39,12 @@ void AdjustFlow()
             // motor control
             if (Sensor[i].FlowEnabled)
             {
-                SetPWM(i, Sensor[i].PWM);
+                if(disableMotor && Sensor[1].ControlType == 2 && !bitRead(RelayLo,7)) {
+                  SetPWM(i, 0);  
+                } else {
+                  SetPWM(i, Sensor[i].PWM);
+                }
+                
             }
             else
             {
