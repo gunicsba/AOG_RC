@@ -375,6 +375,7 @@ void ParseData(byte Data[], uint16_t len)
                 MDL.IP1 = Data[3];
                 MDL.IP2 = Data[4];
 
+                LoadDefaults();
                 SaveData();
                 esp_restart();
             }
