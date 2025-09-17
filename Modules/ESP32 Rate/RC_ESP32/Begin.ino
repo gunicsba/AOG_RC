@@ -484,8 +484,8 @@ void LoadDefaults()
 	Sensor[0].IN2 = 5;
 
 	Sensor[1].FlowPin = 47;
-	Sensor[1].IN1 = 7;
-	Sensor[1].IN2 = 15;
+	Sensor[1].IN1 = 9;
+	Sensor[1].IN2 = 10;
 
 	// default pid
 	Sensor[0].KP = 5;
