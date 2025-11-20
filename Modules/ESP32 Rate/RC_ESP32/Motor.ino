@@ -3,6 +3,13 @@ void AdjustFlow()
 {
     for (int i = 0; i < MDL.SensorCount; i++)
     {
+        // Check if flow is disabled
+        if (disableFlow)
+        {
+            SetPWM(i, 0);
+            continue;
+        }
+
         switch (Sensor[i].ControlType)
         {
         case 0:
@@ -30,7 +37,11 @@ void AdjustFlow()
         case 2:
         case 4:
             // motor control
-            if (Sensor[i].FlowEnabled)
+            if (disableMotor)
+            {
+                SetPWM(i, 0);
+            }
+            else if (Sensor[i].FlowEnabled)
             {
                 SetPWM(i, Sensor[i].PWM);
             }
