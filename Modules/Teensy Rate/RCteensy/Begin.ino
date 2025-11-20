@@ -1,13 +1,7 @@
 
 void DoSetup()
 {
-	uint8_t ErrorCount;
-	int ADS[] = { 0x48,0x49,0x4A,0x4B };	// ADS1115 addresses
-
-	//watchdog timer
-	WDT_timings_t config;
-	config.timeout = 60;	// seconds
-	wdt.begin(config);
+	uint8_t ErrorCount = 0;
 
 	Sensor[0].FlowEnabled = false;
 	Sensor[1].FlowEnabled = false;
@@ -17,39 +11,61 @@ void DoSetup()
 	Serial.println("");
 	Serial.println("");
 	Serial.println("");
-	Serial.println(InoDescription);
-	Serial.println("");
 
 	// eeprom
 	LoadData();
-
-	if (MDL.SensorCount > MaxProductCount) MDL.SensorCount = MaxProductCount;
+	LoadNetworks();
 
 	Serial.println("");
+	Serial.println(InoDescription);
+
+	// version
+	uint16_t yr = InoID % 10 + 2020;
+	uint16_t rest = InoID / 10;
+	uint8_t mn = rest % 100;
+	uint16_t dy = rest / 100;
+
+	String fwVer;
+	if (mn <= 12 && dy <= 31)
+	{
+		fwVer = "Firmware Version: v";
+		fwVer += String(yr);
+		fwVer += ".";
+		if (mn < 10) fwVer += "0";
+		fwVer += String(mn);
+		fwVer += ".";
+		if (dy < 10) fwVer += "0";
+		fwVer += String(dy);
+	}
+	else
+	{
+		fwVer = "Firmware Version: invalid";
+	}
+	Serial.println(fwVer);
+
 	Serial.print("Module ID: ");
 	Serial.println(MDL.ID);
-	Serial.print("Module Version: ");
-	Serial.println(InoID);
 	Serial.println("");
+
+	if (MDL.WorkPin < NC) pinMode(MDL.WorkPin, INPUT_PULLUP);
+	if (MDL.SensorCount > MaxProductCount) MDL.SensorCount = MaxProductCount;
 
 	// I2C
 	Wire.begin();			// I2C on pins SCL 19, SDA 18
 	Wire.setClock(400000);	//Increase I2C data rate to 400kHz
 
 	// ADS1115
-	for (int i = 0; i < 4; i++)
+	ADSfound = false;
+	if (MDL.ADS1115Enabled)
 	{
-		ADS1115_Address = ADS[i];
 		Serial.print("Starting ADS1115 at address ");
-		Serial.print(ADS1115_Address);
-		ErrorCount = 0;
+		Serial.println(ADS1115_Address);
 		while (!ADSfound)
 		{
 			Wire.beginTransmission(ADS1115_Address);
 			Wire.write(0b00000000);	//Point to Conversion register
 			Wire.endTransmission();
-			Wire.requestFrom(ADS1115_Address, 2);
-			ADSfound = Wire.available();
+			ADSfound = (Wire.requestFrom(ADS1115_Address, 2) == 2);
 			Serial.print(".");
 			delay(500);
 			if (ErrorCount++ > 10) break;
@@ -57,28 +73,25 @@ void DoSetup()
 		Serial.println("");
 		if (ADSfound)
 		{
-			Serial.print("ADS1115 connected at address ");
-			Serial.println(ADS1115_Address);
+			Serial.println("ADS1115 found.");
 			Serial.println("");
-			break;
 		}
 		else
 		{
-			Serial.print("ADS1115 not found.");
+			Serial.println("ADS1115 not found.");
+			Serial.println("ADS1115 disabled.");
 			Serial.println("");
 		}
 	}
-	if (!ADSfound)
-	{
-		Serial.println("ADS1115 disabled.");
-		Serial.println("");
-	}
+
+	// analog pins
+	analogReadResolution(12);
 
 	// ethernet 
 	Serial.println("Starting Ethernet ...");
-	MDL.IP3 = MDL.ID + 50;
-	IPAddress LocalIP(MDL.IP0, MDL.IP1, MDL.IP2, MDL.IP3);
-	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDL.IP3 };
+	MDLnetwork.IP3 = MDL.ID + 50;
+	IPAddress LocalIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, MDLnetwork.IP3);
+	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDLnetwork.IP3 };
 
 	Ethernet.begin(LocalMac, 0);
 	Ethernet.setLocalIP(LocalIP);
@@ -94,14 +107,13 @@ void DoSetup()
 	}
 	Serial.print("IP Address: ");
 	Serial.println(Ethernet.localIP());
-	DestinationIP = IPAddress(MDL.IP0, MDL.IP1, MDL.IP2, 255);	// update from saved data
-	Serial.println("");
+	DestinationIP = IPAddress(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);	// update from saved data
 
 	// UDP
 	UDPcomm.begin(ListeningPort);
 
-	// AGIO
-	AGIOcomm.begin(ListeningPortAGIO);
+	// update
+	UpdateComm.begin(UpdateReceivePort);
 
 	// sensors
 	for (int i = 0; i < MDL.SensorCount; i++)
@@ -119,37 +131,11 @@ void DoSetup()
 			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, FALLING);
 			break;
 		}
-	}
 
-	//ESP8266 serial port
-	switch (MDL.ESPserialPort)
-	{
-	case 1:
-		SerialESP = &Serial1;
-		break;
-	case 2:
-		SerialESP = &Serial2;
-		break;
-	case 3:
-		SerialESP = &Serial3;
-		break;
-	case 4:
-		SerialESP = &Serial4;
-		break;
-	case 5:
-		SerialESP = &Serial5;
-		break;
-	case 6:
-		SerialESP = &Serial6;
-		break;
-	case 7:
-		SerialESP = &Serial7;
-		break;
-	default:
-		SerialESP = &Serial8;
-		break;
+		// pwm frequency change from default 4482 Hz to 490 Hz, required for some valves to work
+		analogWriteFrequency(Sensor[i].PWMPin, 490);
 	}
-	SerialESP->begin(38400);
+	analogWriteResolution(PWM_BITS);
 
 	// Relays
 	switch (MDL.RelayControl)
@@ -158,9 +144,9 @@ void DoSetup()
 		// Relay GPIO Pins
 		for (int i = 0; i < 16; i++)
 		{
-			if (MDL.RelayPins[i] < NC)
+			if (MDL.RelayControlPins[i] < NC)
 			{
-				pinMode(MDL.RelayPins[i], OUTPUT);
+				pinMode(MDL.RelayControlPins[i], OUTPUT);
 			}
 		}
 		break;
@@ -199,30 +185,53 @@ void DoSetup()
 		break;
 
 	case 4:
-		// MCP23017 I/O expander on default address 0x20
+		// MCP23017 I/O expander on 0x20, 0x21
+
 		Serial.println("");
 		Serial.println("Starting MCP23017 ...");
+
 		ErrorCount = 0;
+		MCP23017address = 0x21;
 		while (!MCP23017_found)
 		{
+			// RC12-3
 			Serial.print(".");
-			Wire.beginTransmission(0x20);
+			Wire.beginTransmission(0x21);
 			MCP23017_found = (Wire.endTransmission() == 0);
 			ErrorCount++;
 			delay(500);
 			if (ErrorCount > 5) break;
 		}
 
+		if (!MCP23017_found)
+		{
+			ErrorCount = 0;
+			MCP23017address = 0x20;
+			while (!MCP23017_found)
+			{
+				Serial.print(".");
+				Wire.beginTransmission(MCP23017address);
+				MCP23017_found = (Wire.endTransmission() == 0);
+				ErrorCount++;
+				delay(500);
+				if (ErrorCount > 5) break;
+			}
+		}
+
 		Serial.println("");
 		if (MCP23017_found)
 		{
-			Serial.println("MCP23017 found.");
-			MCP.begin_I2C();
+			Wire.beginTransmission(MCP23017address);
+			Wire.write(0x00); // IODIRA register
+			Wire.write(0x00); // set all of port A to outputs
+			Wire.endTransmission();
 
-			for (int i = 0; i < 16; i++)
-			{
-				MCP.pinMode(MDL.RelayPins[i], OUTPUT);
-			}
+			Wire.beginTransmission(MCP23017address);
+			Wire.write(0x01); // IODIRB register
+			Wire.write(0x00); // set all of port B to outputs
+			Wire.endTransmission();
+
+			Serial.println("MCP23017 found.");
 		}
 		else
 		{
@@ -234,9 +243,56 @@ void DoSetup()
 	pinMode(LED_BUILTIN, OUTPUT);
 
 	Serial.println("");
+	Serial.print("Sensors enabled: ");
+	Serial.println(MDL.SensorCount);
+	Serial.println("");
+	Serial.println("Sensor 1: ");
+	Serial.print("Enabled: ");
+	Serial.print("Flow Pin: ");
+	Serial.println(Sensor[0].FlowPin);
+	Serial.print("DIR Pin: ");
+	Serial.println(Sensor[0].DirPin);
+	Serial.print("PWM Pin: ");
+	Serial.println(Sensor[0].PWMPin);
+
+	Serial.println("");
+	Serial.println("Sensor 2: ");
+	Serial.print("Flow Pin: ");
+	Serial.println(Sensor[1].FlowPin);
+	Serial.print("DIR Pin: ");
+	Serial.println(Sensor[1].DirPin);
+	Serial.print("PWM Pin: ");
+	Serial.println(Sensor[1].PWMPin);
+
+	Serial.println("");
+	Serial.print("Work Switch Pin: ");
+	Serial.println(MDL.WorkPin);
+	Serial.print("Pressure Pin: ");
+	Serial.println(MDL.PressurePin);
+
+	Serial.println("");
+	Serial.print("ADS1115 enabled: ");
+	if (ADSfound)
+	{
+		Serial.println("true");
+	}
+	else
+	{
+		Serial.println("false");
+	}
+
+	Serial.println("");
 	Serial.println("Finished setup.");
 	Serial.println("");
 }
+
+// eeprom map:
+// ID					0-1
+// module type			2
+// module data			23-147
+// network				168-232
+// sensor 1				253-356
+// sensor 2				377-480
 
 void LoadData()
 {
@@ -244,26 +300,23 @@ void LoadData()
 	int16_t StoredID;
 	int8_t StoredType;
 	EEPROM.get(0, StoredID);
-	EEPROM.get(4, StoredType);
+	EEPROM.get(2, StoredType);
 	if (StoredID == InoID && StoredType == InoType)
 	{
 		// load stored data
 		Serial.println("Loading stored settings.");
-		EEPROM.get(110, MDL);
+		EEPROM.get(23, MDL);
 
 		for (int i = 0; i < MaxProductCount; i++)
 		{
-			EEPROM.get(200 + i * 80, Sensor[i]);
+			EEPROM.get(253 + i * 124, Sensor[i]);
 		}
 		IsValid = ValidData();
-		if (!IsValid)
-		{
-			Serial.println("Stored settings not valid.");
-		}
 	}
 
 	if (!IsValid)
 	{
+		Serial.println("Stored settings not valid.");
 		LoadDefaults();
 		SaveData();
 	}
@@ -273,12 +326,12 @@ void SaveData()
 {
 	Serial.println("Updating stored settings.");
 	EEPROM.put(0, InoID);
-	EEPROM.put(4, InoType);
-	EEPROM.put(110, MDL);
+	EEPROM.put(2, InoType);
+	EEPROM.put(23, MDL);
 
 	for (int i = 0; i < MaxProductCount; i++)
 	{
-		EEPROM.put(200 + i * 80, Sensor[i]);
+		EEPROM.put(253 + i * 124, Sensor[i]);
 	}
 }
 
@@ -286,7 +339,7 @@ void LoadDefaults()
 {
 	Serial.println("Loading default settings.");
 
-	// default flow pins
+	// RC11-2
 	Sensor[0].FlowPin = 28;
 	Sensor[0].DirPin = 37;
 	Sensor[0].PWMPin = 36;
@@ -295,38 +348,63 @@ void LoadDefaults()
 	Sensor[1].DirPin = 14;
 	Sensor[1].PWMPin = 15;
 
-	// default pid
-	Sensor[0].KP = 5;
-	Sensor[0].KI = 0;
-	Sensor[0].KD = 0;
-	Sensor[0].MinPWM = 5;
-	Sensor[0].MaxPWM = 50;
-	Sensor[0].Debounce = 3;
-
-	Sensor[1].KP = 5;
-	Sensor[1].KI = 0;
-	Sensor[1].KD = 0;
-	Sensor[1].MinPWM = 5;
-	Sensor[1].MaxPWM = 50;
-	Sensor[1].Debounce = 3;
+	// default control settings
+	for (int i = 0; i < 2; i++)
+	{
+		Sensor[i].MaxPWM = 255;
+		Sensor[i].MinPWM = 0;
+		Sensor[i].Kp = 0.0003;	// gain 35
+		Sensor[i].Ki = 0.00123;	// integral 5
+		Sensor[i].Deadband = 0.015;
+		Sensor[i].BrakePoint = 0.35;
+		Sensor[i].PIDslowAdjust = 0.3;
+		Sensor[i].SlewRate = 15;
+		Sensor[i].MaxIntegral = 0.1;
+		Sensor[i].TimedMinStart = 0.03;
+		Sensor[i].TimedAdjust = 80;
+		Sensor[i].TimedPause = 400;
+		Sensor[i].PIDtime = 100;
+		Sensor[i].PulseMin = 250;		// 4000 Hz
+		Sensor[i].PulseMax = 1000000;	// 1 Hz
+		Sensor[i].PulseSampleSize = 12;
+		Sensor[i].AutoOn = true;
+	}
 
 	// relay pins
 	for (int i = 0; i < 16; i++)
 	{
-		MDL.RelayPins[i] = NC;
+		MDL.RelayControlPins[i] = DefaultRelayPins[i];
 	}
+
+	// module settings
+	MDL.ID = 0;
+	MDL.SensorCount = 1;
+	MDL.InvertRelay = true;
+	MDL.InvertFlow = true;
+	MDL.RelayControl = 1;
+	MDL.WorkPin = 30;
+	MDL.WorkPinIsMomentary = false;
+	MDL.Is3Wire = true;
+	MDL.ADS1115Enabled = false;
+	MDL.PressurePin = 40;
 }
 
 bool ValidData()
 {
 	bool Result = true;
 
-	for (int i = 0; i < MDL.SensorCount; i++)
+	if (MDL.WorkPin > 41 && MDL.WorkPin != NC) Result = false;
+	if (MDL.PressurePin > 41 && MDL.PressurePin != NC) Result = false;
+
+	if (Result)
 	{
-		if ((Sensor[i].FlowPin > 41) || (Sensor[i].DirPin > 41) || (Sensor[i].PWMPin > 41))
+		for (int i = 0; i < MDL.SensorCount; i++)
 		{
-			Result = false;
-			break;
+			if ((Sensor[i].FlowPin > 41) || (Sensor[i].DirPin > 41) || (Sensor[i].PWMPin > 41))
+			{
+				Result = false;
+				break;
+			}
 		}
 	}
 
@@ -335,14 +413,44 @@ bool ValidData()
 		// check GPIOs for relays
 		for (int i = 0; i < 16; i++)
 		{
-			if (MDL.RelayPins[i] > 41 && MDL.RelayPins[i] != NC)
+			if (MDL.RelayControlPins[i] > 41 && MDL.RelayControlPins[i] != NC)
 			{
 				Result = false;
 				break;
 			}
 		}
 	}
+
 	GoodPins = Result;
 	return Result;
+}
+
+void LoadNetworks()
+{
+	ModuleNetwork tmp;
+	EEPROM.get(168, tmp);
+	if (tmp.Identifier == 9876)
+	{
+		MDLnetwork = tmp;
+	}
+	else
+	{
+		// load network defaults
+		MDLnetwork.Identifier = 9876;
+		MDLnetwork.IP0 = 192;
+		MDLnetwork.IP1 = 168;
+		MDLnetwork.IP2 = 1;
+		MDLnetwork.IP3 = 50;
+		MDLnetwork.WifiModeUseStation = false;
+		strcpy(MDLnetwork.SSID, "Tractor");
+		strcpy(MDLnetwork.Password, "111222333");
+
+		SaveNetworks();
+	}
+}
+
+void SaveNetworks()
+{
+	EEPROM.put(168, MDLnetwork);
 }
 

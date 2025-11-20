@@ -1,94 +1,8 @@
 
-byte SerialMSB;
-byte SerialLSB;
-unsigned int SerialPGN;
-byte SerialPGNlength;
-byte SerialReceive[35];
-bool PGNfound;
-
-void ReceiveSerial()
+void ReceiveUDPwired(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_port, byte* data, uint16_t len)
 {
-	if (Serial.available())
-	{
-		if (Serial.available() > 50)
-		{
-			// clear buffer and reset pgn
-			while (Serial.available())
-			{
-				Serial.read();
-			}
-			SerialPGN = 0;
-			PGNfound = false;
-		}
-
-		if (PGNfound)
-		{
-			if (Serial.available() > SerialPGNlength - 3)
-			{
-				for (int i = 2; i < SerialPGNlength; i++)
-				{
-					SerialReceive[i] = Serial.read();
-				}
-				ReadPGNs(SerialReceive, SerialPGNlength);
-
-				// reset pgn
-				SerialPGN = 0;
-				PGNfound = false;
-			}
-		}
-		else
-		{
-			switch (SerialPGN)
-			{
-			case 32500:
-				SerialPGNlength = 14;
-				PGNfound = true;
-				break;
-
-			case 32501:
-				SerialPGNlength = 10;
-				PGNfound = true;
-				break;
-
-			case 32502:
-				SerialPGNlength = 19;
-				PGNfound = true;
-				break;
-
-			case 32503:
-				SerialPGNlength = 6;
-				PGNfound = true;
-				break;
-
-			case 32700:
-				SerialPGNlength = 31;
-				PGNfound = true;
-				break;
-
-			default:
-				// find pgn
-				SerialMSB = Serial.read();
-				SerialPGN = SerialMSB << 8 | SerialLSB;
-
-				SerialReceive[0] = SerialLSB;
-				SerialReceive[1] = SerialMSB;
-
-				SerialLSB = SerialMSB;
-				break;
-			}
-		}
-	}
-}
-
-void ReceiveUDPwired(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_port, byte* Data, uint16_t len)
-{
-	ReadPGNs(Data, len);
-}
-
-void ReadPGNs(byte Data[], uint16_t len)
-{
-	byte PGNlength;
-	uint16_t PGN = Data[1] << 8 | Data[0];
+	uint8_t PGNlength;
+	uint16_t PGN = data[1] << 8 | data[0];
 
 	switch (PGN)
 	{
@@ -107,9 +21,9 @@ void ReadPGNs(byte Data[], uint16_t len)
 		//	        - bit 0		    reset acc.Quantity
 		//	        - bit 1,2,3		control type 0-4
 		//	        - bit 4		    MasterOn
-		//          - bit 5         0 - time for one pulse, 1 - average time for multiple pulses
+		//          - bit 5         -
 		//          - bit 6         AutoOn
-		//          - bit 7         -
+		//          - bit 7         calibration on
 		//10    manual pwm Lo
 		//11    manual pwm Hi
 		//12    -
@@ -119,23 +33,23 @@ void ReadPGNs(byte Data[], uint16_t len)
 
 		if (len > PGNlength - 1)
 		{
-			if (GoodCRC(Data, PGNlength))
+			if (GoodCRC(data, PGNlength))
 			{
-				if (ParseModID(Data[2]) == MDL.ID)
+				if (ParseModID(data[2]) == MDL.ID)
 				{
-					byte SensorID = ParseSenID(Data[2]);
+					byte SensorID = ParseSenID(data[2]);
 					if (SensorID < MDL.SensorCount)
 					{
 						// rate setting, 1000 times actual
-						uint32_t RateSet = Data[3] | (uint32_t)Data[4] << 8 | (uint32_t)Data[5] << 16;
+						uint32_t RateSet = data[3] | (uint32_t)data[4] << 8 | (uint32_t)data[5] << 16;
 						Sensor[SensorID].TargetUPM = (float)(RateSet * 0.001);
 
 						// Meter Cal, 1000 times actual
-						uint32_t Temp = Data[6] | (uint32_t)Data[7] << 8 | (uint32_t)Data[8] << 16;
+						uint32_t Temp = data[6] | (uint32_t)data[7] << 8 | (uint32_t)data[8] << 16;
 						Sensor[SensorID].MeterCal = Temp * 0.001;
 
 						// command byte
-						byte InCommand = Data[9];
+						byte InCommand = data[9];
 						if ((InCommand & 1) == 1) Sensor[SensorID].TotalPulses = 0;	// reset accumulated count
 
 						Sensor[SensorID].ControlType = 0;
@@ -145,11 +59,11 @@ void ReadPGNs(byte Data[], uint16_t len)
 
 						MasterOn = ((InCommand & 16) == 16);
 
-						Sensor[SensorID].UseMultiPulses = ((InCommand & 32) == 32);
+						Sensor[SensorID].AutoOn = ((InCommand & 64) == 64);
 
-						AutoOn = ((InCommand & 64) == 64);
+						CalibrationOn[SensorID] = ((InCommand & 128) == 128);
 
-						int16_t tmp = Data[10] | Data[11] << 8;
+						int16_t tmp = data[10] | data[11] << 8;
 						Sensor[SensorID].ManualAdjust = tmp;
 
 						Sensor[SensorID].CommTime = millis();
@@ -176,65 +90,89 @@ void ReadPGNs(byte Data[], uint16_t len)
 
 		if (len > PGNlength - 1)
 		{
-			if (GoodCRC(Data, PGNlength))
+			if (GoodCRC(data, PGNlength))
 			{
-				if (ParseModID(Data[2]) == MDL.ID)
+				if (ParseModID(data[2]) == MDL.ID)
 				{
-					RelayLo = Data[3];
-					RelayHi = Data[4];
-					PowerRelayLo = Data[5];
-					PowerRelayHi = Data[6];
-					InvertedLo = Data[7];
-					InvertedHi = Data[8];
+					RelayLo = data[3];
+					RelayHi = data[4];
+					PowerRelayLo = data[5];
+					PowerRelayHi = data[6];
+					InvertedLo = data[7];
+					InvertedHi = data[8];
 				}
 			}
 		}
 		break;
 
 	case 32502:
-		// PGN32502, PID from RC to module
+		// PGN32502, Control settings from RC to module
 		// 0    246
 		// 1    126
 		// 2    Mod/Sen ID     0-15/0-15
-		// 3    KP 0    X 10000
-		// 4    KP 1
-		// 5    KP 2
-		// 6    KP 3
-		// 7    KI 0
-		// 8    KI 1
-		// 9    KI 2
-		// 10   KI 3
-		// 11   KD 0
-		// 12   KD 1
-		// 13   KD 2
-		// 14   KD 3
-		// 15   MinPWM
-		// 16   MaxPWM
-		// 17   -
-		// 18   CRC
+		// 3    MaxPWM
+		// 4    MinPWM
+		// 5    Kp
+		// 6    Ki
+		// 7    Deadband        %       actual X 10
+		// 8    Brakepoint      %
+		// 9    PIDslowAdjust   %
+		// 10   Slew Rate
+		// 11   Max Integral      actual X 10
+		// 12   -
+		// 13   TimedMinStart
+		// 14   TimedAdjust Lo
+		// 15   TimedAdjust Hi
+		// 16   TimedPause Lo
+		// 17   TimedPause Hi
+		// 18   PIDtime
+		// 19   PulseMinHz              actual X 10
+		// 20   PulseMaxHz Lo
+		// 21   PulseMaxHz Hi
+		// 22   PulseSampleSize
+		// 23   CRC
 
-		PGNlength = 19;
+		PGNlength = 24;
 
 		if (len > PGNlength - 1)
 		{
-			if (GoodCRC(Data, PGNlength))
+			if (GoodCRC(data, PGNlength))
 			{
-				if (ParseModID(Data[2]) == MDL.ID)
+				if (ParseModID(data[2]) == MDL.ID)
 				{
-					byte SensorID = ParseSenID(Data[2]);
+					byte SensorID = ParseSenID(data[2]);
 					if (SensorID < MDL.SensorCount)
 					{
-						uint32_t tmp = Data[3] | (uint32_t)Data[4] << 8 | (uint32_t)Data[5] << 16 | (uint32_t)Data[6] << 24;
-						Sensor[SensorID].KP = (float)(tmp * 0.0001);
+						Sensor[SensorID].MaxPWM = (float)(255.0 * data[3] / 100.0);
+						Sensor[SensorID].MinPWM = (float)(255.0 * data[4] / 100.0);
 
-						tmp = Data[7] | (uint32_t)Data[8] << 8 | (uint32_t)Data[9] << 16 | (uint32_t)Data[10] << 24;
-						Sensor[SensorID].KI = (float)(tmp * 0.0001);
+						// 1.1 ^ (gain scroll bar value - 120) gives a scale range of 0.00001 to 0.1486
+						Sensor[SensorID].Kp = pow(1.1, data[5] - 120);
 
-						tmp = Data[11] | (uint32_t)Data[12] << 8 | (uint32_t)Data[13] << 16 | (uint32_t)Data[14] << 24;
-						Sensor[SensorID].KD = (float)(tmp * 0.0001);
+						if (data[6] > 0)
+						{
+							Sensor[SensorID].Ki = pow(1.06, data[6] - 120);
+						}
+						else
+						{
+							Sensor[SensorID].Ki = 0;
+						}
 
-						Sensor[SensorID].MinPWM = Data[15];
-						Sensor[SensorID].MaxPWM = Data[16];
+						Sensor[SensorID].Deadband = data[7] / 1000.0;
+						Sensor[SensorID].BrakePoint = data[8] / 100.0;
+						Sensor[SensorID].PIDslowAdjust = data[9] / 100.0;
+						Sensor[SensorID].SlewRate = data[10];
+						Sensor[SensorID].MaxIntegral = data[11] / 10.0;
+						Sensor[SensorID].TimedMinStart = data[13] / 100.0;
+						Sensor[SensorID].TimedAdjust = data[14] | data[15] << 8;
+						Sensor[SensorID].TimedPause = data[16] | data[17] << 8;
+						Sensor[SensorID].PIDtime = data[18];
+						Sensor[SensorID].PulseMax = 10000000 / data[19];	//Hz * 10 to micros, minimum Hz - maximum pulse time
+						uint32_t tmp = data[20] | data[21] << 8;
+						Sensor[SensorID].PulseMin = 1000000 / tmp;
+						Sensor[SensorID].PulseSampleSize = data[22];
+
+						SaveData();
 					}
 				}
 			}
@@ -254,13 +192,13 @@ void ReadPGNs(byte Data[], uint16_t len)
 
 		if (len > PGNlength - 1)
 		{
-			if (GoodCRC(Data, PGNlength))
+			if (GoodCRC(data, PGNlength))
 			{
-				MDL.IP0 = Data[2];
-				MDL.IP1 = Data[3];
-				MDL.IP2 = Data[4];
+				MDLnetwork.IP0 = data[2];
+				MDLnetwork.IP1 = data[3];
+				MDLnetwork.IP2 = data[4];
 
-				SaveData();
+				SaveNetworks();
 
 				// restart
 				resetFunc();
@@ -269,51 +207,63 @@ void ReadPGNs(byte Data[], uint16_t len)
 		break;
 
 	case 32700:
-		// PGN32700, module config
-		// 0        188
-		// 1        127
-		// 2        ID
-		// 3        Sensor count
-		// 4        Commands
-		//          - Relay on high
-		//          - Flow on high
-		// 5        Relay control type  0 - no relays, 1 - PCA9685, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - Teensy GPIO
-		// 6        wifi module serial port
-		// 7        Sensor 0, flow pin
-		// 8        Sensor 0, dir pin
-		// 9        Sensor 0, pwm pin
-		// 10       Sensor 1, flow pin
-		// 11       Sensor 1, dir pin
-		// 12       Sensor 1, pwm pin
-		// 13-28    Relay pins 0-15\
-        // 29		-
-		// 30       CRC
+		// module config
+		//0     HeaderLo    188
+		//1     HeaderHi    127
+		//2     Module ID   0-15
+		//3	    sensor count
+		//4     commands
+		//      bit 0 - Relay on high
+		//      bit 1 - Flow on high
+		//      bit 2 - client mode
+		//      bit 3 - work pin is momentary
+		//      bit 4 - Is3Wire valve
+		//5	    relay control type   0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017
+		//                           , 5 - PCA9685, 6 - PCF8574
+		//6	    wifi module serial port
+		//7	    Sensor 0, Flow pin
+		//8     Sensor 0, Dir pin
+		//9     Sensor 0, PWM pin
+		//10    Sensor 1, Flow pin
+		//11    Sensor 1, Dir pin
+		//12    Sensor 1, PWM pin
+		//13    Relay pins 0-15, bytes 13-28
+		//29    work pin
+		//30    pressure pin
+		//31    -
+		//32    CRC
 
-		PGNlength = 31;
+		PGNlength = 33;
 
 		if (len > PGNlength - 1)
 		{
-			if (GoodCRC(Data, PGNlength))
+			if (GoodCRC(data, PGNlength))
 			{
-				MDL.ID = Data[2];
-				MDL.SensorCount = Data[3];
+				MDL.ID = data[2];
+				MDL.SensorCount = data[3];
 
-				byte tmp = Data[4];
-				if ((tmp & 1) == 1) MDL.RelayOnSignal = 1; else MDL.RelayOnSignal = 0;
-				if ((tmp & 2) == 2) MDL.FlowOnDirection = 1; else MDL.FlowOnDirection = 0;
+				byte tmp = data[4];
+				MDL.InvertRelay = ((tmp & 1) == 1);
+				MDL.InvertFlow = ((tmp & 2) == 2);
+				MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
+				MDL.Is3Wire = ((tmp & 16) == 16);
+				MDL.ADS1115Enabled = ((tmp & 32) == 32);
 
-				MDL.RelayControl = Data[5];
-				Sensor[0].FlowPin = Data[7];
-				Sensor[0].DirPin = Data[8];
-				Sensor[0].PWMPin = Data[9];
-				Sensor[1].FlowPin = Data[10];
-				Sensor[1].DirPin = Data[11];
-				Sensor[1].PWMPin = Data[12];
+				MDL.RelayControl = data[5];
+				Sensor[0].FlowPin = data[7];
+				Sensor[0].DirPin = data[8];
+				Sensor[0].PWMPin = data[9];
+				Sensor[1].FlowPin = data[10];
+				Sensor[1].DirPin = data[11];
+				Sensor[1].PWMPin = data[12];
 
 				for (int i = 0; i < 16; i++)
 				{
-					MDL.RelayPins[i] = Data[13 + i];
+					MDL.RelayControlPins[i] = data[13 + i];
 				}
+
+				MDL.WorkPin = data[29];
+				MDL.PressurePin = data[30];
 
 				SaveData();
 
@@ -325,31 +275,3 @@ void ReadPGNs(byte Data[], uint16_t len)
 	}
 }
 
-void ReceiveAGIO(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_port, byte* Data, uint16_t len)
-{
-	if (EthernetConnected())
-	{
-		if (len)
-		{
-			if ((Data[0] == 128) && (Data[1] == 129) && (Data[2] == 127))  // 127 is source, AGIO
-			{
-				switch (Data[3])
-				{
-				case 201:
-					if ((Data[4] == 5) && (Data[5] == 201) && (Data[6] == 201))
-					{
-						MDL.IP0 = Data[7];
-						MDL.IP1 = Data[8];
-						MDL.IP2 = Data[9];
-
-						SaveData();
-
-						// restart 
-						resetFunc();
-					}
-					break;
-				}
-			}
-		}
-	}
-}

@@ -12,46 +12,18 @@ void CheckRelays()
     uint8_t NewLo = 0;
     uint8_t NewHi = 0;
 
-    if (WifiSwitchesEnabled)
+    if ((millis() - Sensor[0].CommTime < 4000) || (millis() - Sensor[1].CommTime < 4000))
     {
-        // wifi relay control
-        // controls by relay # not section #
-        if (millis() - WifiSwitchesTimer > 30000)   // 30 second timer
-        {
-            // wifi switches have timed out
-            WifiSwitchesEnabled = false;
-        }
-        else
-        {
-            if (WifiSwitches[2])
-            {
-                // wifi master on
-                NewLo = WifiSwitches[3];
-                NewHi = WifiSwitches[4];
-            }
-            else
-            {
-                // wifi master off
-                WifiSwitchesEnabled = false;
-            }
-        }
-    }
-    else if (Sensor[0].FlowEnabled || Sensor[1].FlowEnabled)
-    {
-        // normal relay control
-        NewLo |= RelayLo;
-        NewHi |= RelayHi;
+        NewLo = RelayLo;
+        NewHi = RelayHi;
     }
     else
     {
-        // inverted relays, 1 is off
-        NewLo |= InvertedLo;
-        NewHi |= InvertedHi;
+        // connection lost, enable power and inverted relays
+        // for valves that require power to close
+        NewLo = PowerRelayLo | InvertedLo;
+        NewHi = PowerRelayHi | InvertedHi;
     }
-
-    // power relays, always on
-    NewLo |= PowerRelayLo;
-    NewHi |= PowerRelayHi;
 
     switch (MDL.RelayControl)
     {
@@ -62,9 +34,9 @@ void CheckRelays()
             if (j < 1) Rlys = NewLo; else Rlys = NewHi;
             for (int i = 0; i < 8; i++)
             {
-                if (MDL.RelayPins[i + j * 8] < NC) // check if relay is enabled
+                if (MDL.RelayControlPins[i + j * 8] < NC) // check if relay is enabled
                 {
-                    if (bitRead(Rlys, i)) digitalWrite(MDL.RelayPins[i + j * 8], MDL.RelayOnSignal); else digitalWrite(MDL.RelayPins[i + j * 8], !MDL.RelayOnSignal);
+                    if (bitRead(Rlys, i)) digitalWrite(MDL.RelayControlPins[i + j * 8], MDL.InvertRelay); else digitalWrite(MDL.RelayControlPins[i + j * 8], !MDL.InvertRelay);
                 }
             }
         }
@@ -134,28 +106,46 @@ void CheckRelays()
         break;
 
     case 4:
-        // MCP23017
+        // MCP23017 control pins, example { 8,9,10,11,12,13,14,15,7,6,5,4,3,2,1,0 }
+
         if (MCP23017_found)
         {
-            for (int j = 0; j < 2; j++)
+            uint8_t mcpOutA = 0;
+            uint8_t mcpOutB = 0;
+            uint8_t Relay;
+            uint8_t RelayBanks[] = { NewLo, NewHi };
+
+            for (int bit = 0; bit < 8; bit++)
             {
-                if (j < 1) Rlys = NewLo; else Rlys = NewHi;
-                for (int i = 0; i < 8; i++)
+                for (int bank = 0; bank < 2; bank++)
                 {
-                    IOpin = MDL.RelayPins[i + j * 8];
-                    if (IOpin < 16)
+                    Relay = bit + bank * 8;
+                    if ((RelayBanks[bank] & (1 << bit)) == (1 << bit))
                     {
-                        if (bitRead(Rlys, i))
+                        if (MDL.RelayControlPins[Relay] < 8)
                         {
-                            MCP.digitalWrite(IOpin, MDL.RelayOnSignal);
+                            mcpOutA |= (1 << MDL.RelayControlPins[Relay]);
                         }
                         else
                         {
-                            MCP.digitalWrite(IOpin, !MDL.RelayOnSignal);
+                            mcpOutB |= (1 << (MDL.RelayControlPins[Relay] - 8));
                         }
                     }
                 }
             }
+
+            if (MDL.InvertRelay)
+            {
+                mcpOutA = (uint8_t)~mcpOutA;
+                mcpOutB = (uint8_t)~mcpOutB;
+            }
+
+            // Now send the output bytes.
+            Wire.beginTransmission(MCP23017address);
+            Wire.write(0x12);         // Starting register address (GPIOA)
+            Wire.write(mcpOutA);      // GPA value
+            Wire.write(mcpOutB);      // GPB value
+            Wire.endTransmission();
         }
         break;
     }

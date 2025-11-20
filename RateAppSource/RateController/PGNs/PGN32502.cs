@@ -1,120 +1,76 @@
-﻿using System;
+﻿using RateController.Classes;
 
 namespace RateController
 {
     public class PGN32502
     {
-        // PGN32502, PID from RC to module
+        // PGN32502, Control settings from RC to module
         // 0    246
         // 1    126
         // 2    Mod/Sen ID     0-15/0-15
-        // 3    KP 0    X 10000
-        // 4    KP 1
-        // 5    KP 2
-        // 6    KP 3
-        // 7    KI 0
-        // 8    KI 1
-        // 9    KI 2
-        // 10   KI 3
-        // 11   KD 0
-        // 12   KD 1
-        // 13   KD 2
-        // 14   KD 3
-        // 15   MinPWM
-        // 16   MaxPWM
-        // 17   -
-        // 18   CRC
+        // 3    MaxPWM
+        // 4    MinPWM
+        // 5    Kp
+        // 6    Ki
+        // 7    Deadband        %       actual X 10
+        // 8    Brakepoint      %
+        // 9    PIDslowAdjust   %
+        // 10   Slew Rate
+        // 11   Max Integral      actual X 10
+        // 12   -
+        // 13   TimedMinStart
+        // 14   TimedAdjust Lo
+        // 15   TimedAdjust Hi
+        // 16   TimedPause Lo
+        // 17   TimedPause Hi
+        // 18   PIDtime
+        // 19   PulseMinHz              actual X 10
+        // 20   PulseMaxHz Lo
+        // 21   PulseMaxHz Hi
+        // 22   PulseSampleSize
+        // 23   CRC
 
-        private const byte cByteCount = 19;
+        private const byte cByteCount = 24;
         private const byte HeaderHi = 126;
         private const byte HeaderLo = 246;
         private readonly clsProduct Prod;
-        private double cKD;
-        private double cKI;
-        private double cKP;
-        private byte cMaxPWM;
-        private byte cMinPWM;
-
-        private UInt32 Temp;
 
         public PGN32502(clsProduct CalledFrom)
         {
             Prod = CalledFrom;
-
-            cMinPWM = 0;
-            cMaxPWM = 0;
-            cKP = 1;
-            cKI = 0;
-            cKD = 0;
-        }
-
-        public double KD
-        {
-            get { return cKD; }
-            set { cKD = value; }
-        }
-
-        public double KI
-        {
-            get { return cKI; }
-            set { cKI = value; }
-        }
-
-        public double KP
-        {
-            get { return cKP; }
-            set { cKP = value; }
-        }
-
-        public byte MaxPWM
-        {
-            get { return cMaxPWM; }
-            set { cMaxPWM = value; }
-        }
-
-        public byte MinPWM
-        {
-            get { return cMinPWM; }
-            set { cMinPWM = value; }
         }
 
         public void Send()
         {
+            clsSensor Sen = Prod.RateSensor;
             byte[] Data = new byte[cByteCount];
             Data[0] = HeaderLo;
             Data[1] = HeaderHi;
             Data[2] = Prod.mf.Tls.BuildModSenID((byte)Prod.ModuleID, Prod.SensorID);
 
-            // KP
-            Temp = (uint)(cKP * 10000);
-            Data[3] = (byte)Temp;
-            Data[4] = (byte)((UInt32)Temp >> 8);
-            Data[5] = (byte)((UInt32)Temp >> 16);
-            Data[6] = (byte)((UInt32)Temp >> 24);
+            Data[3] = Sen.MaxPWM;
+            Data[4] = Sen.MinPWM;
+            Data[5] = Sen.KP;
+            Data[6] = Sen.KI;
+            Data[7] = Sen.DeadBand;
+            Data[8] = Sen.BrakePoint;
+            Data[9] = Sen.PIDslowAdjust;
+            Data[10] = Sen.SlewRate;
+            Data[11] = Sen.MaxIntegral;
+            Data[12] = 0;
+            Data[13] = Sen.TimedMinStart;
+            Data[14] = (byte)Sen.TimedAdjust;
+            Data[15] = (byte)(Sen.TimedAdjust >> 8);
+            Data[16] = (byte)Sen.TimedPause;
+            Data[17] = (byte)(Sen.TimedPause >> 8);
+            Data[18] = Sen.PIDtime;
+            Data[19] = Sen.PulseMinHz;
+            Data[20] = (byte)(Sen.PulseMaxHz);
+            Data[21] = (byte)(Sen.PulseMaxHz >> 8);
+            Data[22] = Sen.PulseSampleSize;
 
-            // KI
-            Temp = (uint)(cKI * 10000);
-            Data[7] = (byte)Temp;
-            Data[8] = (byte)((UInt32)Temp >> 8);
-            Data[9] = (byte)((UInt32)Temp >> 16);
-            Data[10] = (byte)((UInt32)Temp >> 24);
+            Data[23] = Prod.mf.Tls.CRC(Data, cByteCount - 1);
 
-            // KD
-            Temp = (uint)(cKD * 10000);
-            Data[11] = (byte)Temp;
-            Data[12] = (byte)((UInt32)Temp >> 8);
-            Data[13] = (byte)((UInt32)Temp >> 16);
-            Data[14] = (byte)((UInt32)Temp >> 24);
-
-            Data[15] = MinPWM;
-            Data[16] = MaxPWM;
-
-            Data[17] = 0;
-
-            // CRC
-            Data[18] = Prod.mf.Tls.CRC(Data, cByteCount - 1);
-
-            Prod.mf.SendSerial(Data);
             Prod.mf.UDPmodules.SendUDPMessage(Data);
         }
     }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RateController.Classes;
+using System;
 
 namespace RateController
 {
@@ -18,6 +19,11 @@ namespace RateController
             mf = CallingFrom;
             cID = ID;
             Name = "Zone" + ID.ToString();
+        }
+
+        public bool Enabled
+        {
+            get { return (SecEnd > 0 && SecStart > 0 && cWidth > 0); }
         }
 
         public int End
@@ -54,7 +60,7 @@ namespace RateController
             get { return cSwitchID; }
             set
             {
-                if (value >= 0 && value < mf.MaxSwitches)
+                if (value >= 0 && value < Props.MaxSwitches)
                 {
                     if (cSwitchID != value)
                     {
@@ -64,7 +70,7 @@ namespace RateController
                 }
                 else
                 {
-                    throw new ArgumentException("Must be between 0 and " + (mf.MaxSwitches - 1).ToString());
+                    throw new ArgumentException("Must be between 0 and " + (Props.MaxSwitches - 1).ToString());
                 }
             }
         }
@@ -111,10 +117,10 @@ namespace RateController
 
         public void Load()
         {
-            float.TryParse(mf.Tls.LoadProperty(Name + "_width"), out cWidth);
-            int.TryParse(mf.Tls.LoadProperty(Name + "_SwitchID"), out cSwitchID);
-            int.TryParse(mf.Tls.LoadProperty(Name + "_Start"), out SecStart);
-            int.TryParse(mf.Tls.LoadProperty(Name + "_End"), out SecEnd);
+            float.TryParse(Props.GetProp(Name + "_width"), out cWidth);
+            int.TryParse(Props.GetProp(Name + "_SwitchID"), out cSwitchID);
+            int.TryParse(Props.GetProp(Name + "_Start"), out SecStart);
+            int.TryParse(Props.GetProp(Name + "_End"), out SecEnd);
         }
 
         public void Save()
@@ -123,10 +129,10 @@ namespace RateController
             {
                 if (IsValid())
                 {
-                    mf.Tls.SaveProperty(Name + "_width", cWidth.ToString());
-                    mf.Tls.SaveProperty(Name + "_SwitchID", cSwitchID.ToString());
-                    mf.Tls.SaveProperty(Name + "_Start", SecStart.ToString());
-                    mf.Tls.SaveProperty(Name + "_End", SecEnd.ToString());
+                    Props.SetProp(Name + "_width", cWidth.ToString());
+                    Props.SetProp(Name + "_SwitchID", cSwitchID.ToString());
+                    Props.SetProp(Name + "_Start", SecStart.ToString());
+                    Props.SetProp(Name + "_End", SecEnd.ToString());
                     cEdited = false;
                 }
                 else

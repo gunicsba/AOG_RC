@@ -1,6 +1,6 @@
-﻿using System;
+﻿using RateController.Classes;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace RateController
 {
@@ -22,7 +22,7 @@ namespace RateController
             double AlarmSetPoint;
             bool cAlarmOn = false;
 
-            for (int i = 0; i < mf.MaxProducts; i++)
+            for (int i = 0; i < Props.MaxProducts; i++)
             {
                 if ((cProducts[i].WorkRate() > 0) && (cProducts[i].UseOffRateAlarm))
                 {
@@ -54,9 +54,9 @@ namespace RateController
                 if (cProducts.Count > 0)
                 {
                     // returns true if at least one module is connected
-                    for (int i = 0; i < mf.MaxProducts; i++)
+                    for (int i = 0; i < Props.MaxProducts; i++)
                     {
-                        if (cProducts[i].ArduinoModule.Connected())
+                        if (cProducts[i].RateSensorData.Connected())
                         {
                             Result = true;
                             break;
@@ -66,7 +66,7 @@ namespace RateController
             }
             catch (Exception ex)
             {
-                mf.Tls.WriteErrorLog("clsProducts/Connected: " + ex.Message);
+                Props.WriteErrorLog("clsProducts/Connected: " + ex.Message);
             }
             return Result;
         }
@@ -83,68 +83,82 @@ namespace RateController
             return cProducts[IDX];
         }
 
-        public void Load()
+        public void Load(bool Reset = false)
         {
             cProducts.Clear();
-            for (int i = 0; i < mf.MaxProducts; i++)
+
+            for (int i = 0; i < Props.MaxProducts; i++)
             {
                 clsProduct Prod = new clsProduct(mf, i);
                 cProducts.Add(Prod);
                 Prod.Load();
             }
 
-            for (int i = 0; i < mf.MaxProducts; i++)
+            for (int i = 0; i < Props.MaxProducts; i++)
             {
-                clsProduct Prod = cProducts[i];
-                if (Prod.IsNew())
+                clsProduct Prd = cProducts[i];
+                if (Prd.IsNew() || Reset)
                 {
-                    // set initial module ID
-                    for (int j = 0; j < 255; j++)
-                    {
-                        if (UniqueModSen(j, Prod.SensorID, Prod.ID))
-                        {
-                            Prod.ModuleID = j;
-                            break;
-                        }
-                    }
-                    Prod.PIDkp = 1;
-                    Prod.PIDki = 0;
-                    Prod.PIDkd = 0;
-                    Prod.PIDmax = 100;
-                    Prod.PIDmin = 5;
-                    Prod.ProductName = "P" + (i + 1).ToString();
-                    Prod.Save();
+                    Prd.ProductName = "Product  " + (char)(65 + i);
+                    Prd.ControlType = ControlTypeEnum.Valve;
+                    Prd.QuantityDescription = "Gallons";
+                    Prd.CoverageUnits = 0;
+                    Prd.MeterCal = 1;
+                    Prd.EnableProdDensity = false;
+                    Prd.ProdDensity = 0;
+                    Prd.RateSet = 1;
+                    Prd.RateAlt = 100;
+                    Prd.TankSize = 1000;
+                    Prd.TankStart = 1000;
+                    Prd.LoadSensor(i / 2, (byte)(i % 2));
+                    Prd.OnScreen = true;
+                    Prd.AppMode = ApplicationMode.ControlledUPM;
+                    Prd.OffRateSetting = 0;
+                    Prd.MinUPM = 0;
+                    Prd.BumpButtons = false;
+                    Prd.CountsRev = 1;
+                    Prd.Save();
+
+                    Props.DefaultProduct = 0;
                 }
             }
         }
 
-
-        public string ProductComm(int Port)
+        public bool ProductsAreOn()
         {
-            string Result = "";
-            if (Port >= 0 && Port < 3)
+            bool Result = false;
+            for (int i = 0; i < Props.MaxProducts; i++)
             {
-                for (int i = 0; i < cProducts.Count; i++)
+                if (cProducts[i].ProductOn())
                 {
-                    if (cProducts[i].SerialPort == Port)
-                    {
-                        Result = cProducts[i].ProductName;
-                        break;
-                    }
+                    Result = true;
+                    break;
                 }
             }
             return Result;
         }
 
-        public int ProductID(int ModuleID)
+        public double[] ProductAppliedRates()
         {
-            int Result = -1;
-            for (int i = 0; i < cProducts.Count; i++)
+            double[] Result = new double[Props.MaxProducts - 2];
+            for (int i = 0; i < Props.MaxProducts - 2; i++)
             {
-                if (cProducts[i].ModuleID == ModuleID)
+                if (cProducts[i].RateSensorData.Connected())
                 {
-                    Result = i;
-                    break;
+                    Result[i] = cProducts[i].CurrentRate();
+                }
+            }
+            return Result;
+        }
+
+        public double[] ProductTargetRates()
+        {
+            double[] Result = new double[Props.MaxProducts - 2];
+            for (int i = 0; i < Props.MaxProducts - 2; i++)
+            {
+                if (cProducts[i].RateSensorData.Connected())
+                {
+                    Result[i] = cProducts[i].TargetRate();
                 }
             }
             return Result;
@@ -167,34 +181,20 @@ namespace RateController
             }
         }
 
-        public void SaveComm(string ProdName, int Port)
+        public void Save()
         {
-            if (Port >= 0 && Port < 3)
+            for (int i = 0; i < Props.MaxProducts; i++)
             {
-                if (ProdName == "-")
+                cProducts[i].Update();
+            }
+
+            if ((DateTime.Now - LastSave).TotalSeconds > 60)
+            {
+                for (int i = 0; i < Props.MaxProducts; i++)
                 {
-                    // remove 'Port' from all product serial ports
-                    for (int i = 0; i < cProducts.Count; i++)
-                    {
-                        if (cProducts[i].SerialPort == Port)
-                        {
-                            cProducts[i].SerialPort = -1;
-                            cProducts[i].Save();
-                        }
-                    }
+                    cProducts[i].Save();
                 }
-                else
-                {
-                    for (int i = 0; i < cProducts.Count; i++)
-                    {
-                        if (cProducts[i].ProductName == ProdName)
-                        {
-                            cProducts[i].SerialPort = Port;
-                            cProducts[i].Save();
-                            break;
-                        }
-                    }
-                }
+                LastSave = DateTime.Now;
             }
         }
 
@@ -213,28 +213,11 @@ namespace RateController
             return Result;
         }
 
-        public void Update()
-        {
-            for (int i = 0; i < mf.MaxProducts; i++)
-            {
-                cProducts[i].Update();
-            }
-
-            if ((DateTime.Now - LastSave).TotalSeconds > 60)
-            {
-                for (int i = 0; i < mf.MaxProducts; i++)
-                {
-                    cProducts[i].Save();
-                }
-                LastSave = DateTime.Now;
-            }
-        }
-
-        public void UpdatePID()
+        public void UpdateSensorSettings()
         {
             for (int i = 0; i < cProducts.Count; i++)
             {
-                if (cProducts[i].ArduinoModule.Connected()) cProducts[i].SendPID();
+                if (cProducts[i].RateSensorData.Connected()) cProducts[i].SendSensorSettings();
             }
         }
 

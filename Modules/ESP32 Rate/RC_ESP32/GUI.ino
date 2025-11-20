@@ -24,20 +24,29 @@ void HandlePage2()
 
 void handleCredentials()
 {
-	int NewID;
-	int Interval;
+	bool OldMode = MDLnetwork.WifiModeUseStation;
+	String OldSSID = String(MDLnetwork.SSID);
+	String OldPassword = String(MDLnetwork.Password);
 
-	server.arg("prop1").toCharArray(MDL.SSID, sizeof(MDL.SSID) - 1);
-	server.arg("prop2").toCharArray(MDL.Password, sizeof(MDL.Password) - 1);
-	MDL.WifiMode = 1;
+	String newSSID = server.arg("prop1");
+	newSSID.trim();  
+	String newPassword = server.arg("prop2");
+	newPassword.trim();
+
+	newSSID.toCharArray(MDLnetwork.SSID, sizeof(MDLnetwork.SSID));
+	newPassword.toCharArray(MDLnetwork.Password, sizeof(MDLnetwork.Password));
+	MDLnetwork.WifiModeUseStation = server.hasArg("connect");
 
 	server.send(200, "text/html", GetPage0());
 
-	SaveData();
-
-	delay(3000);
-
-	ESP.restart();
+	if (MDLnetwork.WifiModeUseStation != OldMode ||
+		String(MDLnetwork.SSID) != OldSSID ||
+		String(MDLnetwork.Password) != OldPassword)
+	{
+		SaveNetworks();
+		delay(3000);
+		ESP.restart();
+	}
 }
 
 void ButtonPressed()
@@ -59,5 +68,7 @@ void ButtonPressed()
 		}
 	}
 }
+
+
 
 

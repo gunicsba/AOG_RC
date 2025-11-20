@@ -31,22 +31,18 @@ void CheckRelays()
             }
         }
     }
-    else if (Sensor[0].FlowEnabled || Sensor[1].FlowEnabled)
+    else if ((millis() - Sensor[0].CommTime < 4000) || (millis() - Sensor[1].CommTime < 4000))
     {
-        // normal relay control
-        NewLo |= RelayLo;
-        NewHi |= RelayHi;
+        NewLo = RelayLo;
+        NewHi = RelayHi;
     }
     else
     {
-        // inverted relays, 1 is off
-        NewLo |= InvertedLo;
-        NewHi |= InvertedHi;
+        // connection lost, enable power and inverted relays
+        // for valves that require power to close
+        NewLo = PowerRelayLo | InvertedLo;
+        NewHi = PowerRelayHi | InvertedHi;
     }
-
-    // power relays, always on
-    NewLo |= PowerRelayLo;
-    NewHi |= PowerRelayHi;
 
     switch (MDL.RelayControl)
     {
@@ -57,9 +53,9 @@ void CheckRelays()
             if (j < 1) Rlys = NewLo; else Rlys = NewHi;
             for (int i = 0; i < 8; i++)
             {
-                if (MDL.RelayPins[i + j * 8] < NC) // check if relay is enabled
+                if (MDL.RelayControlPins[i + j * 8] < NC) // check if relay is enabled
                 {
-                    if (bitRead(Rlys, i)) digitalWrite(MDL.RelayPins[i + j * 8], MDL.RelayOnSignal); else digitalWrite(MDL.RelayPins[i + j * 8], !MDL.RelayOnSignal);
+                    if (bitRead(Rlys, i)) digitalWrite(MDL.RelayControlPins[i + j * 8], MDL.InvertRelay); else digitalWrite(MDL.RelayControlPins[i + j * 8], !MDL.InvertRelay);
                 }
             }
         }
@@ -129,102 +125,113 @@ void CheckRelays()
         break;
 
     case 4:
-        // MCP23017
+        // MCP23017 control pins, example { 8,9,10,11,12,13,14,15,7,6,5,4,3,2,1,0 }
+
         if (MCP23017_found)
         {
-            for (int j = 0; j < 2; j++)
+            uint8_t mcpOutA = 0;
+            uint8_t mcpOutB = 0;
+            uint8_t Relay;
+            uint8_t RelayBanks[] = { NewLo, NewHi };
+
+            for (int bit = 0; bit < 8; bit++)
             {
-                if (j < 1) Rlys = NewLo; else Rlys = NewHi;
-                for (int i = 0; i < 8; i++)
+                for (int bank = 0; bank < 2; bank++)
                 {
-                    IOpin = MDL.RelayPins[i + j * 8];
-                    if (IOpin < 16)
+                    Relay = bit + bank * 8;
+                    if ((RelayBanks[bank] & (1 << bit)) == (1 << bit))
                     {
-                        if (bitRead(Rlys, i))
+                        if (MDL.RelayControlPins[Relay] < 8)
                         {
-                            MCP.digitalWrite(IOpin, MDL.RelayOnSignal);
+                            mcpOutA |= (1 << MDL.RelayControlPins[Relay]);
                         }
                         else
                         {
-                            MCP.digitalWrite(IOpin, !MDL.RelayOnSignal);
+                            mcpOutB |= (1 << (MDL.RelayControlPins[Relay] - 8));
                         }
                     }
                 }
             }
+
+            if (MDL.InvertRelay)
+            {
+                mcpOutA = (uint8_t)~mcpOutA;
+                mcpOutB = (uint8_t)~mcpOutB;
+            }
+
+            // Now send the output bytes.
+            Wire.beginTransmission(MCP23017address);
+            Wire.write(0x12);         // Starting register address (GPIOA)
+            Wire.write(mcpOutA);      // GPA value
+            Wire.write(mcpOutB);      // GPB value
+            Wire.endTransmission();
         }
         break;
 
     case 5:
-        // PCA9685 single
+        // PCA9685
         if (PCA9685_found)
         {
-            // 1 pin for each valve, powered on only, 16 sections
-            for (int i = 0; i < 16; i++)
+            if (MDL.Is3Wire)
             {
-                if (i < 8)
+                // 1 pin for each valve, powered on only, 8 sections, 1 drv for each section, use IN1
+                for (int i = 0; i < 8; i++)
                 {
                     BitState = bitRead(NewLo, i);
-                }
-                else
-                {
-                    BitState = bitRead(NewHi, i - 8);
-                }
 
-                if (RelayStatus[i] != BitState)
+                    if (RelayStatus[i] != BitState)
+                    {
+                        IOpin = (1 + i) * 2 - 1;
+                        if (BitState)
+                        {
+                            // on
+                            PWMServoDriver.setPWM(IOpin, 4096, 0);
+                        }
+                        else
+                        {
+                            // off
+                            PWMServoDriver.setPWM(IOpin, 0, 4096);
+                        }
+                        RelayStatus[i] = BitState;
+                    }
+                }
+            }
+            else
+            {
+                // 2 pins used for each valve, powered on and off, 8 sections
+                for (int i = 0; i < 8; i++)
                 {
-                    if (BitState)
+                    BitState = bitRead(NewLo, i);
+
+                    if (RelayStatus[i] != BitState)
                     {
-                        // on
-                        PWMServoDriver.setPWM(i, 4096, 0);
+                        IOpin = i * 2;
+                        if (BitState)
+                        {
+                            // on  
+                            PWMServoDriver.setPWM(IOpin, 4096, 0);
+                            PWMServoDriver.setPWM(IOpin + 1, 0, 4096);
+                        }
+                        else
+                        {
+                            // off
+                            PWMServoDriver.setPWM(IOpin, 0, 4096);
+                            PWMServoDriver.setPWM(IOpin + 1, 4096, 0);
+                        }
+                        RelayStatus[i] = BitState;
                     }
-                    else
-                    {
-                        // off
-                        PWMServoDriver.setPWM(i, 0, 4096);
-                    }
-                    RelayStatus[i] = BitState;
                 }
             }
         }
         break;
 
     case 6:
-        // PCA9685 paired
-        if (PCA9685_found)
-        {
-            // 2 pins used for each valve, powered on and off, 8 sections
-            for (int i = 0; i < 8; i++)
-            {
-                BitState = bitRead(NewLo, i);
-
-                if (RelayStatus[i] != BitState)
-                {
-                    IOpin = i * 2;
-                    if (BitState)
-                    {
-                        // on  
-                        PWMServoDriver.setPWM(IOpin, 4096, 0);
-                        PWMServoDriver.setPWM(IOpin + 1, 0, 4096);
-                    }
-                    else
-                    {
-                        // off
-                        PWMServoDriver.setPWM(IOpin, 0, 4096);
-                        PWMServoDriver.setPWM(IOpin + 1, 4096, 0);
-                    }
-                    RelayStatus[i] = BitState;
-                }
-            }
-        }
-        break;
-
-    case 7:
         // PCF8574
         if (PCF_found)
         {
             for (int i = 0; i < 8; i++)
             {
-                if (bitRead(NewLo, i)) PCF.write(i, MDL.RelayOnSignal); else PCF.write(i, !MDL.RelayOnSignal);
+                if (bitRead(NewLo, i)) PCF.write(i, MDL.InvertRelay); else PCF.write(i, !MDL.InvertRelay);
             }
         }
         break;

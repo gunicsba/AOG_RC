@@ -40,6 +40,7 @@ namespace RateController
             cData[2] = mf.Tls.BuildModSenID((byte)cModuleID, 0);
 
             int Relays = mf.RelayObjects.SetRelays(cModuleID);
+
             cData[3] = (byte)Relays;
             cData[4] = (byte)(Relays >> 8);
 
@@ -49,7 +50,7 @@ namespace RateController
             cData[6] = (byte)(Power >> 8);
 
             // inverted relays
-            int Inverted=mf.RelayObjects.InvertedRelays(cModuleID);
+            int Inverted = mf.RelayObjects.InvertedRelays(cModuleID);
             cData[7] = (byte)Inverted;
             cData[8] = (byte)(Inverted >> 8);
 
@@ -57,7 +58,6 @@ namespace RateController
             cData[cByteCount - 1] = mf.Tls.CRC(cData, cByteCount - 1);
 
             // send
-            mf.SendSerial(cData);
             mf.UDPmodules.SendUDPMessage(cData);
 
             cSendTime = DateTime.Now;

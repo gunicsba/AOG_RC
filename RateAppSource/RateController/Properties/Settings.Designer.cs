@@ -12,7 +12,7 @@ namespace RateController.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.8.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.13.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -25,49 +25,13 @@ namespace RateController.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool IsDay {
-            get {
-                return ((bool)(this["IsDay"]));
-            }
-            set {
-                this["IsDay"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("210, 220, 230")]
-        public global::System.Drawing.Color DayColour {
-            get {
-                return ((global::System.Drawing.Color)(this["DayColour"]));
-            }
-            set {
-                this["DayColour"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("60, 60, 60")]
-        public global::System.Drawing.Color NightColour {
-            get {
-                return ((global::System.Drawing.Color)(this["NightColour"]));
-            }
-            set {
-                this["NightColour"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("Default.rcs")]
-        public string FileName {
+        public string CurrentFile {
             get {
-                return ((string)(this["FileName"]));
+                return ((string)(this["CurrentFile"]));
             }
             set {
-                this["FileName"] = value;
+                this["CurrentFile"] = value;
             }
         }
         
@@ -92,18 +56,6 @@ namespace RateController.Properties {
             }
             set {
                 this["Transparent"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string FilesDir {
-            get {
-                return ((string)(this["FilesDir"]));
-            }
-            set {
-                this["FilesDir"] = value;
             }
         }
         
@@ -140,6 +92,138 @@ namespace RateController.Properties {
             }
             set {
                 this["UserLanguageChange"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("210, 220, 230")]
+        public global::System.Drawing.Color DisplayBackColour {
+            get {
+                return ((global::System.Drawing.Color)(this["DisplayBackColour"]));
+            }
+            set {
+                this["DisplayBackColour"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Black")]
+        public global::System.Drawing.Color DisplayForeColourUser {
+            get {
+                return ((global::System.Drawing.Color)(this["DisplayForeColourUser"]));
+            }
+            set {
+                this["DisplayForeColourUser"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("210, 220, 230")]
+        public global::System.Drawing.Color DisplayBackColourUser {
+            get {
+                return ((global::System.Drawing.Color)(this["DisplayBackColourUser"]));
+            }
+            set {
+                this["DisplayBackColourUser"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("DarkSlateBlue")]
+        public global::System.Drawing.Color MouseDown {
+            get {
+                return ((global::System.Drawing.Color)(this["MouseDown"]));
+            }
+            set {
+                this["MouseDown"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Microsoft Sans Serif, 14.25pt")]
+        public global::System.Drawing.Font MenuFontSmall {
+            get {
+                return ((global::System.Drawing.Font)(this["MenuFontSmall"]));
+            }
+            set {
+                this["MenuFontSmall"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Black")]
+        public global::System.Drawing.Color DisplayForeColour {
+            get {
+                return ((global::System.Drawing.Color)(this["DisplayForeColour"]));
+            }
+            set {
+                this["DisplayForeColour"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("210, 220, 230")]
+        public global::System.Drawing.Color MainBackColour {
+            get {
+                return ((global::System.Drawing.Color)(this["MainBackColour"]));
+            }
+            set {
+                this["MainBackColour"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Black")]
+        public global::System.Drawing.Color MainForeColour {
+            get {
+                return ((global::System.Drawing.Color)(this["MainForeColour"]));
+            }
+            set {
+                this["MainForeColour"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool UseJobs {
+            get {
+                return ((bool)(this["UseJobs"]));
+            }
+            set {
+                this["UseJobs"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string CurrentRateDataFile {
+            get {
+                return ((string)(this["CurrentRateDataFile"]));
+            }
+            set {
+                this["CurrentRateDataFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int CurrentJob {
+            get {
+                return ((int)(this["CurrentJob"]));
+            }
+            set {
+                this["CurrentJob"] = value;
             }
         }
     }

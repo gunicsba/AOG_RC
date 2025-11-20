@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using RateController.Classes;
 
 namespace RateController
 {
@@ -50,7 +49,7 @@ namespace RateController
 
         public void ParseByteData(byte[] Data)
         {
-            if (Data.Length > totalHeaderByteCount)
+            if ((Props.SimMode == SimType.Sim_None) && (Data.Length > totalHeaderByteCount))
             {
                 if (Data.Length == Data[4] + totalHeaderByteCount + 1)
                 {
@@ -68,18 +67,18 @@ namespace RateController
 
         private void Load()
         {
-            byte.TryParse(mf.Tls.LoadProperty("RaiseTime"), out cRaiseTime);
-            byte.TryParse(mf.Tls.LoadProperty("LowerTime"), out cLowerTime);
-            bool.TryParse(mf.Tls.LoadProperty("HydEnable"), out cHydEnable);
-            byte.TryParse(mf.Tls.LoadProperty("HydSettings"), out cSet0);
+            byte.TryParse(Props.GetProp("RaiseTime"), out cRaiseTime);
+            byte.TryParse(Props.GetProp("LowerTime"), out cLowerTime);
+            bool.TryParse(Props.GetProp("HydEnable"), out cHydEnable);
+            byte.TryParse(Props.GetProp("HydSettings"), out cSet0);
         }
 
         private void Save()
         {
-            mf.Tls.SaveProperty("RaiseTime", cRaiseTime.ToString());
-            mf.Tls.SaveProperty("LowerTime", cLowerTime.ToString());
-            mf.Tls.SaveProperty("HydEnable", cHydEnable.ToString());
-            mf.Tls.SaveProperty("HydSettings", cSet0.ToString());
+            Props.SetProp("RaiseTime", cRaiseTime.ToString());
+            Props.SetProp("LowerTime", cLowerTime.ToString());
+            Props.SetProp("HydEnable", cHydEnable.ToString());
+            Props.SetProp("HydSettings", cSet0.ToString());
         }
     }
 }

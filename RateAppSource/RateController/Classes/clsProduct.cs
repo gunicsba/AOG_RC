@@ -1,82 +1,225 @@
-﻿using System;
+﻿using RateController.Classes;
+using RateController.Language;
+using System;
 using System.Diagnostics;
 
 namespace RateController
 {
-    public enum ControlTypeEnum
-    { Valve, ComboClose, Motor, MotorWeights, Fan, ComboCloseTimed }
-
     public class clsProduct
     {
         public readonly FormStart mf;
 
-        public PGN32400 ArduinoModule;
         public byte CoverageUnits = 0;
         public PGN32500 ModuleRateSettings;
-        public double TankSize = 0;
+        public PGN32400 RateSensorData;
+        private double AccumulatedLast = 0;
+        private ApplicationMode cAppMode = ApplicationMode.ControlledUPM;
         private bool cBumpButtons;
-        private bool cCalRun;
-        private bool cCalSetMeter;
         private bool cCalUseBaseRate;
-        private bool cConstantUPM;
         private ControlTypeEnum cControlType = 0;
         private int cCountsRev;
         private bool cEnabled = true;
         private bool cEnableProdDensity = false;
-        private bool cEraseAccumulatedUnits = false;
         private bool cFanOn;
         private double cHectaresPerMinute;
-        private bool cLogRate;
+        private double cHours1;
+        private double cHours2;
         private int cManualPWM;
         private double cMeterCal = 0;
         private double cMinUPM;
-        private int cModID;
+        private double cMinUPMbySpeed;
         private byte cOffRateSetting;
         private bool cOnScreen;
         private double Coverage = 0;
+        private double Coverage2 = 0;
         private double cProdDensity = 0;
         private int cProductID;
         private string cProductName = "";
         private string cQuantityDescription = "Lbs";
         private double cRateAlt = 100;
+        private clsSensor cRateSensor;
         private double cRateSet = 0;
-        private int cSenID;
         private int cSerialPort;
+        private int cShiftRange = 4;
+        private double cTankSize = 0;
         private double cTankStart = 0;
         private double cUnitsApplied = 0;
-        private double CurrentMinutes;
+        private double cUnitsApplied2 = 0;
         private double CurrentWorkedArea_Hc = 0;
         private bool cUseAltRate = false;
-        private bool cUseMultiPulse;
+        private bool cUseMinUPMbySpeed = false;
         private bool cUseOffRateAlarm;
-        private bool cUseVR;
-        private byte cVRID = 0;
-        private double cVRmax;
-        private double cVRmin;
-        private byte cWifiStrength;
-        private double LastAccQuantity = 0;
-        private DateTime LastUpdateTime;
-        private PGN32502 ModulePIDdata;
-        private bool PauseWork = false;
-        private double UnitsOffset = 0;
+        private PGN32502 SensorControlSettings;
+        private Stopwatch UpdateStopWatch;
+        private CalibrationMode cCalMode = CalibrationMode.Off;
 
         public clsProduct(FormStart CallingForm, int ProdID)
         {
             mf = CallingForm;
             cProductID = ProdID;
-            cModID = -1;  // default other than 0
-            PauseWork = true;
+            //int Mod = ProdID / 2;
+            //int Sen = (byte)(ProdID % 2);
+            //cRateSensor = mf.RateSensors.Item(Mod, Sen);
+            //if (cRateSensor == null) cRateSensor = mf.RateSensors.AddSensor(Mod, Sen);
 
-            ArduinoModule = new PGN32400(this);
+            RateSensorData = new PGN32400(this);
             ModuleRateSettings = new PGN32500(this);
-            ModulePIDdata = new PGN32502(this);
-            cLogRate = false;
+            SensorControlSettings = new PGN32502(this);
 
-            if (cProductID > mf.MaxProducts - 3)
+            if (cProductID > Props.MaxProducts - 3)
             {
                 cControlType = ControlTypeEnum.Fan;
                 ProductName = "fan";
             }
+
+            UpdateStopWatch = new Stopwatch();
+        }
+
+        #region Control edit
+
+        public byte Brakepoint
+        {
+            get { return cRateSensor.BrakePoint; }
+            set
+            {
+                cRateSensor.BrakePoint = value;
+            }
+        }
+
+        public byte Deadband
+        {
+            get { return cRateSensor.DeadBand; }
+            set
+            {
+                cRateSensor.DeadBand = value;
+            }
+        }
+        public byte PulseMinHz
+        {
+            get { return cRateSensor.PulseMinHz; }
+            set
+            {  cRateSensor.PulseMinHz = value;}
+        }
+        public UInt16 PulseMaxHz
+        {
+            get { return cRateSensor.PulseMaxHz; }
+            set { cRateSensor.PulseMaxHz = value;}
+        }
+        public byte PulseSampleSize
+        {
+            get { return cRateSensor.PulseSampleSize; }
+            set { cRateSensor.PulseSampleSize=value;}
+        }
+
+        public int KI
+        {
+            get { return cRateSensor.KI; }
+            set
+            {
+                cRateSensor.KI = (byte)value;
+            }
+        }
+
+        public int KP
+        {
+            get { return cRateSensor.KP; }
+            set
+            {
+                cRateSensor.KP = (byte)value;
+            }
+        }
+
+        public byte MaxMotorIntegral
+        {
+            get { return cRateSensor.MaxIntegral; }
+            set
+            {
+                cRateSensor.MaxIntegral = value;
+            }
+        }
+
+        public int MaxPWMadjust
+        {
+            get { return cRateSensor.MaxPWM; }
+            set
+            {
+                cRateSensor.MaxPWM = (byte)value;
+            }
+        }
+
+        public int MinPWMadjust
+        {
+            get { return cRateSensor.MinPWM; }
+            set
+            {
+                cRateSensor.MinPWM = (byte)value;
+            }
+        }
+
+        public byte PIDslowAdjust
+        {
+            get { return cRateSensor.PIDslowAdjust; }
+            set
+            {
+                cRateSensor.PIDslowAdjust = value;
+            }
+        }
+
+        public byte PIDtime
+        {
+            get { return cRateSensor.PIDtime; }
+            set
+            {
+                cRateSensor.PIDtime = value;
+            }
+        }
+
+        public clsSensor RateSensor
+        { get { return cRateSensor; } }
+
+        public byte SlewRate
+        {
+            get { return cRateSensor.SlewRate; }
+            set
+            {
+                cRateSensor.SlewRate = value;
+            }
+        }
+
+        public UInt16 TimedAdjust
+        {
+            get { return cRateSensor.TimedAdjust; }
+            set
+            {
+                cRateSensor.TimedAdjust = value;
+            }
+        }
+
+        public byte TimedMinStart
+        {
+            get { return cRateSensor.TimedMinStart; }
+            set
+            {
+                cRateSensor.TimedMinStart = value;
+            }
+        }
+
+        public int TimedPause
+        {
+            get { return cRateSensor.TimedPause; }
+            set
+            {
+                cRateSensor.TimedPause = (ushort)value;
+            }
+        }
+
+        #endregion Control edit
+
+        public ApplicationMode AppMode
+        {
+            get { return cAppMode; }
+            set
+            { cAppMode = value; }
         }
 
         public bool BumpButtons
@@ -85,50 +228,62 @@ namespace RateController
             set { cBumpButtons = value; }
         }
 
-        public bool CalRun
-        {
-            // notifies module Master switch on for calibrate and use current meter cal in manual mode
-            // current meter position is used and not adjusted
+        //public bool CalRun
+        //{
+        //    // notifies module Master switch on for calibrate and use current meter cal in manual mode
+        //    // current meter position is used and not adjusted
 
-            get { return cCalRun; }
+        //    get { return cCalRun; }
+        //    set
+        //    {
+        //        cCalRun = value;
+        //        if (cCalRun) cCalSetMeter = false;
+        //    }
+        //}
+
+        //public bool CalSetMeter
+        //{
+        //    // notifies module Master switch on for calibrate and use auto mode to find meter cal
+        //    // adjusts meter position to match base rate
+
+        //    get { return cCalSetMeter; }
+        //    set
+        //    {
+        //        cCalSetMeter = value;
+        //        if (cCalSetMeter) cCalRun = false;
+        //    }
+        //}
+
+        //public bool CalUseBaseRate
+        //{
+        //    // use base rate for cal and not vr rate
+        //    get { return cCalUseBaseRate; }
+        //    set { cCalUseBaseRate = value; }
+        //}
+
+        public CalibrationMode CalMode
+        {
+            get { return cCalMode; }
             set
             {
-                cCalRun = value;
-                if (cCalRun) cCalSetMeter = false;
+                cCalMode = value;
+                if(cCalMode==CalibrationMode.Off)
+                {
+                    cCalUseBaseRate = false;
+                }
+                else
+                {
+                    // use base rate for cal and not vr rate
+                    cCalUseBaseRate = true;
+                }
             }
-        }
-
-        public bool CalSetMeter
-        {
-            // notifies module Master switch on for calibrate and use auto mode to find meter cal
-            // adjusts meter position to match base rate
-
-            get { return cCalSetMeter; }
-            set
-            {
-                cCalSetMeter = value;
-                if (cCalSetMeter) cCalRun = false;
-            }
-        }
-
-        public bool CalUseBaseRate
-        {
-            // use base rate for cal and not vr rate
-            get { return cCalUseBaseRate; }
-            set { cCalUseBaseRate = value;}
-        }
-
-        public bool ConstantUPM
-        {
-            get { return cConstantUPM; }
-            set { cConstantUPM = value; }
         }
 
         public ControlTypeEnum ControlType
         {
             get
             {
-                if (cProductID > mf.MaxProducts - 3)
+                if (cProductID > Props.MaxProducts - 3)
                 {
                     return ControlTypeEnum.Fan;
                 }
@@ -139,7 +294,7 @@ namespace RateController
             }
             set
             {
-                if (cProductID > mf.MaxProducts - 3)
+                if (cProductID > Props.MaxProducts - 3)
                 {
                     cControlType = ControlTypeEnum.Fan;
                 }
@@ -162,8 +317,8 @@ namespace RateController
             }
         }
 
-        public int ElapsedTime
-        { get { return ArduinoModule.ElapsedTime(); } }
+        public double ElapsedTime
+        { get { return RateSensorData.ElapsedTime(); } }
 
         public bool Enabled
         {
@@ -177,7 +332,7 @@ namespace RateController
         public bool EnableProdDensity
         { get { return cEnableProdDensity; } set { cEnableProdDensity = value; } }
 
-        public bool EraseAccumulatedUnits { get => cEraseAccumulatedUnits; set => cEraseAccumulatedUnits = value; }
+        public bool EraseAccumulatedUnits { get; set; }
 
         public bool FanOn
         {
@@ -188,18 +343,22 @@ namespace RateController
             }
         }
 
+        public double Hours1
+        { get { return cHours1; } }
+
+        public double Hours2
+        { get { return cHours2; } }
+
         public int ID
         { get { return cProductID; } }
-
-        public bool LogRate
-        { get { return cLogRate; } set { cLogRate = value; } }
 
         public int ManualPWM
         {
             get { return cManualPWM; }
             set
             {
-                if (cControlType == ControlTypeEnum.Valve || cControlType == ControlTypeEnum.ComboClose)
+                if (cControlType == ControlTypeEnum.Valve || cControlType == ControlTypeEnum.ComboClose
+                    || ControlType == ControlTypeEnum.ComboCloseTimed)
                 {
                     if (value < -255) cManualPWM = -255;
                     else if (value > 255) cManualPWM = 255;
@@ -219,7 +378,7 @@ namespace RateController
             get { return cMeterCal; }
             set
             {
-                if (value > 0 && value < 10000)
+                if (value > 0 && value < 16701)
                 {
                     cMeterCal = value;
                 }
@@ -242,24 +401,29 @@ namespace RateController
             }
         }
 
-        public int ModuleID
+        public double MinUPMbySpeed
         {
-            get { return (byte)cModID; }
+            get { return cMinUPMbySpeed; }
             set
             {
-                if (value > -1 && value < 255)
+                if (value >= 0 && value < 50)
                 {
-                    if (mf.Products.UniqueModSen(value, cSenID, cProductID))
-                    {
-                        cModID = value;
-                    }
+                    cMinUPMbySpeed = value;
                 }
                 else
                 {
-                    throw new ArgumentException("Invalid ModuleID.");
+                    throw new ArgumentException("Invalid value.");
                 }
             }
         }
+
+        public int ModuleID
+        {
+            get { return cRateSensor.ModuleID; }
+        }
+
+        public bool ModuleSending
+        { get { return RateSensorData.ModuleSending(); } }
 
         public byte OffRateSetting
         {
@@ -283,21 +447,6 @@ namespace RateController
             set { cOnScreen = value; }
         }
 
-        public double PIDkd
-        { get { return ModulePIDdata.KD; } set { ModulePIDdata.KD = value; } }
-
-        public double PIDki
-        { get { return ModulePIDdata.KI; } set { ModulePIDdata.KI = value; } }
-
-        public double PIDkp
-        { get { return ModulePIDdata.KP; } set { ModulePIDdata.KP = value; } }
-
-        public byte PIDmax
-        { get { return ModulePIDdata.MaxPWM; } set { ModulePIDdata.MaxPWM = value; } }
-
-        public byte PIDmin
-        { get { return ModulePIDdata.MinPWM; } set { ModulePIDdata.MinPWM = value; } }
-
         public double ProdDensity
         { get { return cProdDensity; } set { cProdDensity = value; } }
 
@@ -307,7 +456,7 @@ namespace RateController
             {
                 if (cControlType == ControlTypeEnum.Fan)
                 {
-                    int tmp = 3 - (mf.MaxProducts - cProductID);
+                    int tmp = 3 - (Props.MaxProducts - cProductID);
                     cProductName = "Fan " + tmp.ToString();
                 }
                 return cProductName;
@@ -316,7 +465,7 @@ namespace RateController
             {
                 if (cControlType == ControlTypeEnum.Fan)
                 {
-                    int tmp = 3 - (mf.MaxProducts - cProductID);
+                    int tmp = 3 - (Props.MaxProducts - cProductID);
                     cProductName = "Fan " + tmp.ToString();
                 }
                 else
@@ -377,30 +526,13 @@ namespace RateController
 
         public byte SensorID
         {
-            get { return (byte)cSenID; }
-            set
-            {
-                if (value < 16)
-                {
-                    if (mf.Products.UniqueModSen(cModID, value, cProductID)) cSenID = value;
-                }
-                else
-                {
-                    throw new ArgumentException("Invalid SensorID.");
-                }
-            }
+            get { return (byte)cRateSensor.SensorID; }
         }
 
-        public int SerialPort
+        public double TankSize
         {
-            get { return cSerialPort; }
-            set
-            {
-                if (value > -2 && value < 3)
-                {
-                    cSerialPort = value;
-                }
-            }
+            get { return cTankSize; }
+            set { cTankSize = value; }
         }
 
         public double TankStart
@@ -418,63 +550,17 @@ namespace RateController
         public bool UseAltRate
         { get { return cUseAltRate; } set { cUseAltRate = value; } }
 
-        public bool UseMultiPulse
-        { get { return cUseMultiPulse; } set { cUseMultiPulse = value; } }
+        public bool UseMinUPMbySpeed
+        {
+            get { return cUseMinUPMbySpeed; }
+            set { cUseMinUPMbySpeed = value; }
+        }
 
         public bool UseOffRateAlarm
         { get { return cUseOffRateAlarm; } set { cUseOffRateAlarm = value; } }
 
-        public bool UseVR
-        {
-            get { return cUseVR; }
-            set { cUseVR = value; }
-        }
-
-        public byte VRID
-        {
-            get { return cVRID; }
-            set
-            {
-                if (value < (mf.VRdata.ChannelCount))
-                {
-                    cVRID = value;
-                }
-                else
-                {
-                    throw new ArgumentException("Invalid Variable Rate option.");
-                }
-            }
-        }
-
-        public double VRmax
-        {
-            get { return cVRmax; }
-            set
-            {
-                if (value > 0 && value < 100000) cVRmax = value;
-            }
-        }
-
-        public double VRmin
-        {
-            get { return cVRmin; }
-            set
-            {
-                if (value >= 0 && value < 100000) cVRmin = value;
-            }
-        }
-
-        public byte WifiStrength
-        {
-            get { return cWifiStrength; }
-            set
-            {
-                cWifiStrength = value;
-            }
-        }
-
         private string IDname
-        { get { return cProductID.ToString(); } }
+        { get { return "Product_" + cProductID.ToString() + "_"; } }
 
         public double AverageRate()
         {
@@ -490,22 +576,6 @@ namespace RateController
             }
         }
 
-        public bool ChangeID(int ModID, int SenID)
-        {
-            bool Result = false;
-
-            if (ModID > -1 && ModID < mf.MaxModules && SenID > -1 && SenID < mf.MaxSensors)
-            {
-                if (mf.Products.UniqueModSen(ModID, SenID, cProductID))
-                {
-                    cModID = ModID;
-                    cSenID = SenID;
-                    Result = true;
-                }
-            }
-            return Result;
-        }
-
         public string CoverageDescription()
         {
             return mf.CoverageDescriptions[CoverageUnits];
@@ -514,6 +584,11 @@ namespace RateController
         public double CurrentCoverage()
         {
             return Coverage;
+        }
+
+        public double CurrentCoverage2()
+        {
+            return Coverage2;
         }
 
         public double CurrentRate()
@@ -530,97 +605,85 @@ namespace RateController
             }
         }
 
+        public bool EditSensorIDs(int ModID, int SenID)
+        {
+            return mf.RateSensors.EditSensorIDs(cRateSensor, ModID, SenID);
+        }
+
+        public double Hz()
+        {
+            return RateSensorData.Hz;
+        }
+
         public bool IsNew()
         {
-            bool Result = (PIDkd == 0 && PIDki == 0 && PIDkp == 0 && PIDmin == 0 && PIDmax == 0);
+            bool Result = true;
+            if (bool.TryParse(Props.GetProp(IDname + "IsNew"), out bool nw)) Result = nw;
             return Result;
         }
 
         public void Load()
         {
             int tmp;
-            byte val;
-            double TempDB;
 
-            double.TryParse(mf.Tls.LoadProperty("Coverage" + IDname), out Coverage);
-            byte.TryParse(mf.Tls.LoadProperty("CoverageUnits" + IDname), out CoverageUnits);
+            double.TryParse(Props.GetProp(IDname + "Coverage"), out Coverage);
+            double.TryParse(Props.GetProp(IDname + "Coverage2"), out Coverage2);
+            byte.TryParse(Props.GetProp(IDname + "CoverageUnits"), out CoverageUnits);
 
-            double.TryParse(mf.Tls.LoadProperty("TankStart" + IDname), out cTankStart);
-            double.TryParse(mf.Tls.LoadProperty("QuantityApplied" + IDname), out cUnitsApplied);
-            double.TryParse(mf.Tls.LoadProperty("LastAccQuantity" + IDname), out LastAccQuantity);
+            double.TryParse(Props.GetProp(IDname + "TankStart"), out cTankStart);
+            double.TryParse(Props.GetProp(IDname + "QuantityApplied"), out cUnitsApplied);
+            double.TryParse(Props.GetProp(IDname + "QuantityApplied2"), out cUnitsApplied2);
 
-            cQuantityDescription = mf.Tls.LoadProperty("QuantityDescription" + IDname);
+            if (double.TryParse(Props.GetProp(IDname + "AccumulatedLast"), out double oa)) AccumulatedLast = oa;
+
+            cQuantityDescription = Props.GetProp(IDname + "QuantityDescription");
             if (cQuantityDescription == "") cQuantityDescription = "Lbs";
 
-            double.TryParse(mf.Tls.LoadProperty("RateSet" + IDname), out cRateSet);
+            double.TryParse(Props.GetProp(IDname + "RateSet"), out cRateSet);
             if (cRateSet < 0 || cRateSet > 50000) cRateSet = 0;
 
-            double.TryParse(mf.Tls.LoadProperty("RateAlt" + IDname), out cRateAlt);
+            double.TryParse(Props.GetProp(IDname + "RateAlt"), out cRateAlt);
 
-            double.TryParse(mf.Tls.LoadProperty("cProdDensity" + IDname), out cProdDensity);
-            bool.TryParse(mf.Tls.LoadProperty("cEnableProdDensity" + IDname), out cEnableProdDensity);
+            double.TryParse(Props.GetProp(IDname + "cProdDensity"), out cProdDensity);
+            bool.TryParse(Props.GetProp(IDname + "cEnableProdDensity"), out cEnableProdDensity);
 
-            double.TryParse(mf.Tls.LoadProperty("FlowCal" + IDname), out cMeterCal);
-            double.TryParse(mf.Tls.LoadProperty("TankSize" + IDname), out TankSize);
+            double.TryParse(Props.GetProp(IDname + "FlowCal"), out cMeterCal);
+            if (double.TryParse(Props.GetProp(IDname + "TankSize"), out double ts)) cTankSize = ts;
 
-            cProductName = mf.Tls.LoadProperty("ProductName" + IDname);
+            cProductName = Props.GetProp(IDname + "ProductName");
 
-            bool.TryParse(mf.Tls.LoadProperty("UseMultiPulse" + IDname), out cUseMultiPulse);
-            int.TryParse(mf.Tls.LoadProperty("CountsRev" + IDname), out cCountsRev);
+            int.TryParse(Props.GetProp(IDname + "CountsRev"), out cCountsRev);
 
             int tmpModuleID = -1;
-            if (int.TryParse(mf.Tls.LoadProperty("ModuleID" + IDname), out int tmp1)) tmpModuleID = tmp1;
-            int.TryParse(mf.Tls.LoadProperty("SensorID" + IDname), out int tmp2);
-            ChangeID(tmpModuleID, tmp2);
+            if (int.TryParse(Props.GetProp(IDname + "ModuleID"), out int tmp1)) tmpModuleID = tmp1;
+            int.TryParse(Props.GetProp(IDname + "SensorID"), out int tmp2);
+            LoadSensor(tmp1, tmp2);
 
-            bool.TryParse(mf.Tls.LoadProperty("OffRateAlarm" + IDname), out cUseOffRateAlarm);
-            byte.TryParse(mf.Tls.LoadProperty("OffRateSetting" + IDname), out cOffRateSetting);
+            bool.TryParse(Props.GetProp(IDname + "OffRateAlarm"), out cUseOffRateAlarm);
+            byte.TryParse(Props.GetProp(IDname + "OffRateSetting"), out cOffRateSetting);
 
-            double.TryParse(mf.Tls.LoadProperty("MinUPM" + IDname), out cMinUPM);
-            byte.TryParse(mf.Tls.LoadProperty("VRID" + IDname), out cVRID);
-
-            if (bool.TryParse(mf.Tls.LoadProperty("UseVR" + IDname), out bool tmp3)) cUseVR = tmp3;
-            if (double.TryParse(mf.Tls.LoadProperty("VRmax" + IDname), out double tmp4)) cVRmax = tmp4;
-            if (double.TryParse(mf.Tls.LoadProperty("VRmin" + IDname), out double tmp5)) cVRmin = tmp5;
+            double.TryParse(Props.GetProp(IDname + "MinUPM"), out cMinUPM);
+            double.TryParse(Props.GetProp(IDname + "MinUPMbySpeed"), out cMinUPMbySpeed);
+            if (bool.TryParse(Props.GetProp(IDname + "UseMinUPMbySpeed"), out bool ms)) cUseMinUPMbySpeed = ms;
 
             tmp = 0;
-            int.TryParse(mf.Tls.LoadProperty("SerialPort" + IDname), out tmp);
+            int.TryParse(Props.GetProp(IDname + "SerialPort"), out tmp);
             cSerialPort = tmp;
 
             tmp = 0;
-            int.TryParse(mf.Tls.LoadProperty("ManualPWM" + IDname), out tmp);
+            int.TryParse(Props.GetProp(IDname + "ManualPWM"), out tmp);
             cManualPWM = tmp;
 
-            TempDB = 0;
-            double.TryParse(mf.Tls.LoadProperty("KP" + IDname), out TempDB);
-            ModulePIDdata.KP = TempDB;
-
-            TempDB = 0;
-            double.TryParse(mf.Tls.LoadProperty("KI" + IDname), out TempDB);
-            ModulePIDdata.KI = TempDB;
-
-            TempDB = 0;
-            double.TryParse(mf.Tls.LoadProperty("KD" + IDname), out TempDB);
-            ModulePIDdata.KD = TempDB;
-
-            val = 0;
-            byte.TryParse(mf.Tls.LoadProperty("MinPWM" + IDname), out val);
-            ModulePIDdata.MinPWM = val;
-
-            val = 0;
-            byte.TryParse(mf.Tls.LoadProperty("MaxPWM" + IDname), out val);
-            ModulePIDdata.MaxPWM = val;
-
-            if (ID > mf.MaxProducts - 3)
+            if (ID > Props.MaxProducts - 3)
             {
                 cControlType = ControlTypeEnum.Fan;
             }
             else
             {
-                Enum.TryParse(mf.Tls.LoadProperty("ValveType" + IDname), true, out cControlType);
+                Enum.TryParse(Props.GetProp(IDname + "ValveType"), true, out cControlType);
             }
 
-            if (bool.TryParse(mf.Tls.LoadProperty("OnScreen" + IDname), out bool OS))
+            if (bool.TryParse(Props.GetProp(IDname + "OnScreen"), out bool OS))
             {
                 cOnScreen = OS;
             }
@@ -629,7 +692,7 @@ namespace RateController
                 cOnScreen = true;
             }
 
-            if (bool.TryParse(mf.Tls.LoadProperty("BumpButtons" + IDname), out bool BB))
+            if (bool.TryParse(Props.GetProp(IDname + "BumpButtons"), out bool BB))
             {
                 cBumpButtons = BB;
             }
@@ -638,7 +701,44 @@ namespace RateController
                 cBumpButtons = false;
             }
 
-            bool.TryParse(mf.Tls.LoadProperty("ConstantUPM" + IDname), out cConstantUPM);
+            if (int.TryParse(Props.GetProp(IDname + "ShiftRange"), out int sr)) cShiftRange = sr;
+            if (double.TryParse(Props.GetProp(IDname + "Hours1"), out double h1)) cHours1 = h1;
+            if (double.TryParse(Props.GetProp(IDname + "Hours2"), out double h2)) cHours2 = h2;
+            if (Enum.TryParse(Props.GetProp(IDname + "AppMode"), true, out ApplicationMode am)) cAppMode = am;
+        }
+
+        public void LoadSensor(int ModID, int SenID)
+        {
+            cRateSensor = mf.RateSensors.Item(ModID, SenID);
+            if (cRateSensor == null) cRateSensor = mf.RateSensors.AddSensor(ModID, SenID);
+        }
+
+        public double MinUPMinUse()
+        {
+            double Result = cMinUPM;
+            if (cUseMinUPMbySpeed)
+            {
+                double KPH = cMinUPMbySpeed;
+                if (!Props.UseMetric) KPH *= Props.MPHtoKPH;
+                double HPM = mf.Sections.TotalWidth(false) * KPH / 600.0;   // hectares per minute
+                Result = TargetRate() * HPM;
+                if (CoverageUnits == 0) Result *= 2.47;
+            }
+            return Result;
+        }
+
+        public bool ProductOn()
+        {
+            bool Result = false;
+            if (ControlType == ControlTypeEnum.Fan)
+            {
+                Result = RateSensorData.Connected();
+            }
+            else
+            {
+                Result = (RateSensorData.Connected() && (cHectaresPerMinute > 0 || Props.RateCalibrationOn));
+            }
+            return Result;
         }
 
         public double Pulses()
@@ -648,7 +748,7 @@ namespace RateController
 
         public double PWM()
         {
-            return ArduinoModule.PWMsetting();
+            return RateSensorData.PWMsetting;
         }
 
         public double RateApplied()
@@ -658,39 +758,70 @@ namespace RateController
             {
                 case 0:
                     // acres
-                    if (cConstantUPM)
+                    if (cAppMode == ApplicationMode.ControlledUPM || cAppMode == ApplicationMode.DocumentApplied)
                     {
+                        // section controlled UPM or Document applied
+                        if (cHectaresPerMinute > 0) Result = RateSensorData.UPM / (cHectaresPerMinute * 2.47);
+                    }
+                    else if (cAppMode == ApplicationMode.ConstantUPM)
+                    {
+                        // Constant UPM
                         // same upm no matter how many sections are on
                         double HPM = mf.Sections.TotalWidth(false) * KMH() / 600.0;
-                        if (HPM > 0) Result = ArduinoModule.UPM() / (HPM * 2.47);
+                        if (HPM > 0) Result = RateSensorData.UPM / (HPM * 2.47);
                     }
                     else
                     {
-                        if (cHectaresPerMinute > 0) Result = ArduinoModule.UPM() / (cHectaresPerMinute * 2.47);
+                        // Document target rate
+                        Result = TargetRate();
                     }
                     break;
 
                 case 1:
                     // hectares
-                    if (cConstantUPM)
+                    if (cAppMode == ApplicationMode.ControlledUPM || cAppMode == ApplicationMode.DocumentApplied)
                     {
+                        // section controlled UPM or Document applied
+                        if (cHectaresPerMinute > 0) Result = RateSensorData.UPM / cHectaresPerMinute;
+                    }
+                    else if (cAppMode == ApplicationMode.ConstantUPM)
+                    {
+                        // Constant UPM
+                        // same upm no matter how many sections are on
                         double HPM = mf.Sections.TotalWidth(false) * KMH() / 600.0;
-                        if (HPM > 0) Result = ArduinoModule.UPM() / HPM;
+                        if (HPM > 0) Result = RateSensorData.UPM / HPM;
                     }
                     else
                     {
-                        if (cHectaresPerMinute > 0) Result = ArduinoModule.UPM() / cHectaresPerMinute;
+                        // Document target rate
+                        Result = TargetRate();
                     }
                     break;
 
                 case 2:
                     // minutes
-                    Result = ArduinoModule.UPM();
+                    if (cAppMode == ApplicationMode.DocumentTarget)
+                    {
+                        // document target rate
+                        Result = TargetRate();
+                    }
+                    else
+                    {
+                        Result = RateSensorData.UPM;
+                    }
                     break;
 
                 default:
                     // hours
-                    Result = ArduinoModule.UPM() * 60;
+                    if (cAppMode == ApplicationMode.DocumentTarget)
+                    {
+                        // document target rate
+                        Result = TargetRate();
+                    }
+                    else
+                    {
+                        Result = RateSensorData.UPM * 60;
+                    }
                     break;
             }
 
@@ -700,14 +831,32 @@ namespace RateController
         public void ResetApplied()
         {
             cUnitsApplied = 0;
-            UnitsOffset = 0;
             EraseAccumulatedUnits = true;
+        }
+
+        public void ResetApplied2()
+        {
+            cUnitsApplied2 = 0;
         }
 
         public void ResetCoverage()
         {
             Coverage = 0;
-            LastUpdateTime = DateTime.Now;
+        }
+
+        public void ResetCoverage2()
+        {
+            Coverage2 = 0;
+        }
+
+        public void ResetHours1()
+        {
+            cHours1 = 0;
+        }
+
+        public void ResetHours2()
+        {
+            cHours2 = 0;
         }
 
         public void ResetTank()
@@ -717,82 +866,59 @@ namespace RateController
 
         public void Save()
         {
-            mf.Tls.SaveProperty("Coverage" + IDname, Coverage.ToString());
-            mf.Tls.SaveProperty("CoverageUnits" + IDname, CoverageUnits.ToString());
+            Props.SetProp(IDname + "IsNew", "false");
+            Props.SetProp(IDname + "Coverage", Coverage.ToString());
+            Props.SetProp(IDname + "Coverage2", Coverage2.ToString());
+            Props.SetProp(IDname + "CoverageUnits", CoverageUnits.ToString());
 
-            mf.Tls.SaveProperty("TankStart" + IDname, cTankStart.ToString());
-            mf.Tls.SaveProperty("QuantityApplied" + IDname, cUnitsApplied.ToString());
-            mf.Tls.SaveProperty("LastAccQuantity" + IDname, LastAccQuantity.ToString());
-            mf.Tls.SaveProperty("QuantityDescription" + IDname, cQuantityDescription);
+            Props.SetProp(IDname + "TankStart", cTankStart.ToString());
+            Props.SetProp(IDname + "QuantityDescription", cQuantityDescription);
 
-            mf.Tls.SaveProperty("cProdDensity" + IDname, cProdDensity.ToString());
-            mf.Tls.SaveProperty("cEnableProdDensity" + IDname, cEnableProdDensity.ToString());
+            Props.SetProp(IDname + "QuantityApplied", cUnitsApplied.ToString());
+            Props.SetProp(IDname + "QuantityApplied2", cUnitsApplied2.ToString());
+            Props.SetProp(IDname + "AccumulatedLast", AccumulatedLast.ToString());
 
-            mf.Tls.SaveProperty("RateSet" + IDname, cRateSet.ToString());
-            mf.Tls.SaveProperty("RateAlt" + IDname, cRateAlt.ToString());
-            mf.Tls.SaveProperty("FlowCal" + IDname, cMeterCal.ToString());
-            mf.Tls.SaveProperty("TankSize" + IDname, TankSize.ToString());
-            mf.Tls.SaveProperty("ValveType" + IDname, cControlType.ToString());
+            Props.SetProp(IDname + "cProdDensity", cProdDensity.ToString());
+            Props.SetProp(IDname + "cEnableProdDensity", cEnableProdDensity.ToString());
 
-            mf.Tls.SaveProperty("ProductName" + IDname, cProductName);
+            Props.SetProp(IDname + "RateSet", cRateSet.ToString());
+            Props.SetProp(IDname + "RateAlt", cRateAlt.ToString());
+            Props.SetProp(IDname + "FlowCal", cMeterCal.ToString());
+            Props.SetProp(IDname + "TankSize", TankSize.ToString());
+            Props.SetProp(IDname + "ValveType", cControlType.ToString());
 
-            mf.Tls.SaveProperty("UseMultiPulse" + IDname, cUseMultiPulse.ToString());
-            mf.Tls.SaveProperty("CountsRev" + IDname, cCountsRev.ToString());
+            Props.SetProp(IDname + "ProductName", cProductName);
 
-            mf.Tls.SaveProperty("ModuleID" + IDname, cModID.ToString());
-            mf.Tls.SaveProperty("SensorID" + IDname, cSenID.ToString());
+            Props.SetProp(IDname + "CountsRev", cCountsRev.ToString());
 
-            mf.Tls.SaveProperty("OffRateAlarm" + IDname, cUseOffRateAlarm.ToString());
-            mf.Tls.SaveProperty("OffRateSetting" + IDname, cOffRateSetting.ToString());
+            Props.SetProp(IDname + "ModuleID", cRateSensor.ModuleID.ToString());
+            Props.SetProp(IDname + "SensorID", cRateSensor.SensorID.ToString());
 
-            mf.Tls.SaveProperty("MinUPM" + IDname, cMinUPM.ToString());
-            mf.Tls.SaveProperty("VRID" + IDname, cVRID.ToString());
-            mf.Tls.SaveProperty("UseVR" + IDname, cUseVR.ToString());
-            mf.Tls.SaveProperty("VRmax" + IDname, cVRmax.ToString());
-            mf.Tls.SaveProperty("VRmin" + IDname, cVRmin.ToString());
+            Props.SetProp(IDname + "OffRateAlarm", cUseOffRateAlarm.ToString());
+            Props.SetProp(IDname + "OffRateSetting", cOffRateSetting.ToString());
 
-            mf.Tls.SaveProperty("SerialPort" + IDname, cSerialPort.ToString());
-            mf.Tls.SaveProperty("ManualPWM" + IDname, cManualPWM.ToString());
+            Props.SetProp(IDname + "MinUPM", cMinUPM.ToString());
+            Props.SetProp(IDname + "MinUPMbySpeed", cMinUPMbySpeed.ToString());
+            Props.SetProp(IDname + "UseMinUPMbySpeed", cUseMinUPMbySpeed.ToString());
 
-            mf.Tls.SaveProperty("KP" + IDname, ModulePIDdata.KP.ToString());
-            mf.Tls.SaveProperty("KI" + IDname, ModulePIDdata.KI.ToString());
-            mf.Tls.SaveProperty("KD" + IDname, ModulePIDdata.KD.ToString());
-            mf.Tls.SaveProperty("MinPWM" + IDname, ModulePIDdata.MinPWM.ToString());
-            mf.Tls.SaveProperty("MaxPWM" + IDname, ModulePIDdata.MaxPWM.ToString());
+            Props.SetProp(IDname + "SerialPort", cSerialPort.ToString());
+            Props.SetProp(IDname + "ManualPWM", cManualPWM.ToString());
 
-            mf.Tls.SaveProperty("OnScreen" + IDname, cOnScreen.ToString());
-            mf.Tls.SaveProperty("BumpButtons" + IDname, cBumpButtons.ToString());
-            mf.Tls.SaveProperty("ConstantUPM" + IDname, cConstantUPM.ToString());
+            Props.SetProp(IDname + "OnScreen", cOnScreen.ToString());
+            Props.SetProp(IDname + "BumpButtons", cBumpButtons.ToString());
+
+            Props.SetProp(IDname + "ShiftRange", cShiftRange.ToString());
+            Props.SetProp(IDname + "Hours1", cHours1.ToString());
+            Props.SetProp(IDname + "Hours2", cHours2.ToString());
+
+            Props.SetProp(IDname + "AppMode", cAppMode.ToString());
+
+            cRateSensor.Save();
         }
 
-        public void SendPID()
+        public void SendSensorSettings()
         {
-            ModulePIDdata.Send();
-        }
-
-        public bool SerialFromAruduino(string[] words, bool RealNano = true)
-        {
-            bool Result = false;    // return true if there is good comm
-            try
-            {
-                if (RealNano && mf.SimMode == SimType.VirtualNano)
-                {
-                    // block PGN32400 from real nano when simulation is with virtual nano
-                }
-                else
-                {
-                    if (ArduinoModule.ParseStringData(words))
-                    {
-                        UpdateUnitsApplied();
-                        Result = true;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            return Result;
+            SensorControlSettings.Send();
         }
 
         public double SmoothRate()
@@ -807,7 +933,7 @@ namespace RateController
                 {
                     double Rt = Ra / TargetRate();
 
-                    if (Rt >= .9 && Rt <= 1.1 && mf.SwitchBox.SwitchIsOn(SwIDs.Auto))
+                    if (Rt >= .9 && Rt <= 1.1 && mf.SwitchBox.AutoRateOn)
                     {
                         Result = TargetRate();
                     }
@@ -826,29 +952,31 @@ namespace RateController
 
         public double Speed()
         {
-            if (mf.SimMode == SimType.Speed)
+            double Result = 0;
+            if (Props.SimMode == SimType.Sim_Speed || mf.SectionControl.PrimeOn)
             {
-                return mf.SimSpeed;
+                Result = Props.SimSpeed;
             }
             else
             {
-                if (mf.UseInches)
+                if (!Props.UseMetric)
                 {
-                    return mf.AutoSteerPGN.Speed_KMH() * 0.621371;
+                    Result = mf.AutoSteerPGN.Speed_KMH() * 0.621371;
                 }
                 else
                 {
-                    return mf.AutoSteerPGN.Speed_KMH();
+                    Result = mf.AutoSteerPGN.Speed_KMH();
                 }
             }
+            return Result;
         }
 
         public double TargetRate()
         {
             double Result = 0;
-            if (cUseVR && !CalUseBaseRate)
+            if (!cCalUseBaseRate && Props.VariableRateEnabled)
             {
-                Result = cVRmin + (cVRmax - cVRmin) * mf.VRdata.Percentage(cVRID) * 0.01;
+                Result = mf.Tls.Manager.GetRate(ID);
             }
             else
             {
@@ -860,71 +988,77 @@ namespace RateController
 
         public double TargetUPM() // returns units per minute set rate
         {
-            double V = 0;
+            double Result = 0;
             switch (CoverageUnits)
             {
                 case 0:
                     // acres
-                    if (cConstantUPM)
+                    if (cAppMode == ApplicationMode.ConstantUPM)
                     {
+                        // Constant UPM
+                        // same upm no matter how many sections are on
                         double HPM = mf.Sections.TotalWidth(false) * KMH() / 600.0;
-                        V = TargetRate() * HPM * 2.47;
+                        if (cHectaresPerMinute == 0 && cCalMode==CalibrationMode.Off) HPM = 0;   // all sections off
+                        Result = TargetRate() * HPM * 2.47;
                     }
                     else
                     {
-                        V = TargetRate() * cHectaresPerMinute * 2.47;
+                        // section controlled UPM, Document applied or Document target
+                        Result = TargetRate() * cHectaresPerMinute * 2.47;
                     }
                     break;
 
                 case 1:
                     // hectares
-                    if (cConstantUPM)
+                    if (cAppMode == ApplicationMode.ConstantUPM)
                     {
+                        // Constant UPM
+                        // same upm no matter how many sections are on
                         double HPM = mf.Sections.TotalWidth(false) * KMH() / 600.0;
-                        V = TargetRate() * HPM;
+                        if (cHectaresPerMinute == 0 && cCalMode == CalibrationMode.Off) HPM = 0;
+                        Result = TargetRate() * HPM;
                     }
                     else
                     {
-                        V = TargetRate() * cHectaresPerMinute;
+                        // section controlled UPM, Document applied or Document target
+                        Result = TargetRate() * cHectaresPerMinute;
                     }
                     break;
 
                 case 2:
                     // minutes
-                    V = TargetRate();
+                    Result = TargetRate();
                     break;
 
                 default:
                     // hours
-                    V = TargetRate() / 60;
+                    Result = TargetRate() / 60;
                     break;
             }
 
             // added this back in to change from lb/min to ft^3/min, Moved from PGN32614.
-            if (cEnableProdDensity && cProdDensity > 0) { V /= cProdDensity; }
+            if (cEnableProdDensity && cProdDensity > 0) { Result /= cProdDensity; }
 
-            return V;
+            return Result;
         }
 
         public void UDPcommFromArduino(byte[] data, int PGN)
         {
             try
             {
-                if (mf.SimMode != SimType.VirtualNano)  // block pgns from real nano when simulation is with virtual nano
+                if (cAppMode != ApplicationMode.DocumentTarget)    // block real module
                 {
                     switch (PGN)
                     {
                         case 32400:
-                            if (ArduinoModule.ParseByteData(data))
-                            {
-                                UpdateUnitsApplied();
-                            }
+                            if (RateSensorData.ParseByteData(data)) UpdateUnitsApplied();
                             break;
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Props.WriteErrorLog("clsProduct/UDPcomFromArduino: " + ex.Message);
             }
         }
 
@@ -941,20 +1075,19 @@ namespace RateController
             return Result;
         }
 
+        public double UnitsApplied2()
+        {
+            double Result = cUnitsApplied2;
+            if (cEnableProdDensity && cProdDensity > 0) Result *= cProdDensity;
+            return Result;
+        }
+
         public void Update()
         {
-            DateTime UpdateStartTime;
-            if (ArduinoModule.ModuleSending())
+            if (RateSensorData.ModuleSending() || cAppMode == ApplicationMode.DocumentTarget)
             {
-                UpdateStartTime = DateTime.Now;
-                CurrentMinutes = (UpdateStartTime - LastUpdateTime).TotalMinutes;
-                LastUpdateTime = UpdateStartTime;
-
-                if (CurrentMinutes < 0 || CurrentMinutes > 1 || PauseWork)
-                {
-                    CurrentMinutes = 0;
-                    PauseWork = false;
-                }
+                double CurrentMinutes = UpdateStopWatch.ElapsedMilliseconds / 60000.0;
+                UpdateStopWatch.Restart();
 
                 // update worked area
                 cHectaresPerMinute = mf.Sections.WorkingWidth(false) * KMH() / 600.0;
@@ -968,33 +1101,55 @@ namespace RateController
                         case 0:
                             // acres
                             Coverage += CurrentWorkedArea_Hc * 2.47105;
+                            Coverage2 += CurrentWorkedArea_Hc * 2.47105;
                             break;
 
                         case 1:
                             // hectares
                             Coverage += CurrentWorkedArea_Hc;
+                            Coverage2 += CurrentWorkedArea_Hc;
                             break;
 
                         case 2:
                             // minutes
                             Coverage += CurrentMinutes;
+                            Coverage2 += CurrentMinutes;
                             break;
 
                         default:
                             // hours
                             Coverage += CurrentMinutes / 60;
+                            Coverage2 += CurrentMinutes / 60;
                             break;
                     }
+
+                    cHours1 += CurrentMinutes / 60.0;
+                    cHours2 += CurrentMinutes / 60.0;
                 }
 
                 // send to arduino
                 ModuleRateSettings.Send();
-                if (cLogRate) LogTheRate();
+
+                if (cAppMode == ApplicationMode.DocumentTarget)
+                {
+                    // send pgn from virtual module
+                    byte[] Data = new byte[13];
+                    Data[0] = 144;
+                    Data[1] = 126;
+                    Data[2] = (byte)(cRateSensor.ModuleID * 16 + cRateSensor.SensorID);
+                    double Hz = (TargetUPM() * MeterCal / 60.0) * 1000;
+                    Data[3] = (byte)Hz;
+                    Data[4] = (byte)((int)Hz >> 8);
+                    Data[5] = (byte)((int)Hz >> 16);
+                    Data[11] = 0b00000001; // sensor connected
+                    Data[12] = mf.Tls.CRC(Data, 12);
+                    if (RateSensorData.ParseByteData(Data)) UpdateUnitsApplied();
+                }
             }
             else
             {
                 // connection lost
-                PauseWork = true;
+                UpdateStopWatch.Reset();
             }
 
             if (cControlType == ControlTypeEnum.MotorWeights)
@@ -1005,7 +1160,7 @@ namespace RateController
 
         public double UPMapplied()
         {
-            return ArduinoModule.UPM();
+            return RateSensorData.UPM;
         }
 
         public double WorkRate()
@@ -1013,7 +1168,7 @@ namespace RateController
             double Result = 0;
             if (mf.Sections.WorkingWidth(true) > 0)
             {
-                if (mf.UseInches)
+                if (!Props.UseMetric)
                 {
                     Result = cHectaresPerMinute * 2.47105 * 60.0;
                 }
@@ -1027,69 +1182,41 @@ namespace RateController
 
         private double KMH()
         {
-            if (mf.SimMode == SimType.Speed)
+            double Result = 0;
+            if (Props.SimMode == SimType.Sim_Speed || mf.SectionControl.PrimeOn)
             {
-                if (mf.UseInches)
+                if (!Props.UseMetric)
                 {
-                    return mf.SimSpeed / 0.621371;  // convert mph back to kmh
+                    Result = Props.SimSpeed / 0.621371;  // convert mph back to kmh
                 }
                 else
                 {
-                    return mf.SimSpeed;
+                    Result = Props.SimSpeed;
                 }
             }
             else
             {
-                return mf.AutoSteerPGN.Speed_KMH();
-            }
-        }
-
-        private void LogTheRate()
-        {
-            double Target = TargetRate();
-            double Applied = RateApplied();
-            if (Target > 0 && Applied > 0)
-            {
-                double Ratio = Applied / Target;
-                if (Ratio < 0.80 || Ratio > 1.20)
-                {
-                    string Mes = "Product: " + cProductID;
-                    Mes += "\t Coverage: " + Coverage.ToString("N1");
-                    Mes += "\t Target: " + Target.ToString("N1");
-                    Mes += "\t Applied: " + Applied.ToString("N1");
-                    Mes += "\t Ratio: " + Ratio.ToString("N2");
-                    mf.Tls.WriteActivityLog(Mes);
-                }
-            }
-        }
-
-        private bool ProductOn()
-        {
-            bool Result = false;
-            if (ControlType == ControlTypeEnum.Fan)
-            {
-                Result = ArduinoModule.Connected();
-            }
-            else
-            {
-                Result = (ArduinoModule.Connected() && mf.AutoSteerPGN.Connected() && cHectaresPerMinute > 0);
+                Result = mf.AutoSteerPGN.Speed_KMH();
             }
             return Result;
         }
 
         private void UpdateUnitsApplied()
         {
-            double AccumulatedUnits;
+            double AccumulatedUnits = RateSensorData.AccumulatedQuantity;
+            double Diff = AccumulatedUnits - AccumulatedLast;
+            if (Diff < 0 || Diff > 1000) Diff = 0;
+            AccumulatedLast = AccumulatedUnits;
 
-            if (!EraseAccumulatedUnits)
+            cUnitsApplied += Diff;
+            cUnitsApplied2 += Diff;
+
+            if (cAppMode == ApplicationMode.ConstantUPM && mf.Sections.TotalWidth() > 0 && !Props.RateCalibrationOn)
             {
-                AccumulatedUnits = ArduinoModule.AccumulatedQuantity();
-                if ((AccumulatedUnits + UnitsOffset) < cUnitsApplied)
-                {
-                    // account for arduino losing accumulated quantity, ex: power loss
-                    UnitsOffset = cUnitsApplied - AccumulatedUnits;
-                }
-                cUnitsApplied = AccumulatedUnits + UnitsOffset;
+                // constant upm, subtract amount for sections that are off
+                double Offset = (1.0 - (mf.Sections.WorkingWidth() / mf.Sections.TotalWidth())) * Diff;
+                cUnitsApplied -= Offset;
+                cUnitsApplied2 -= Offset;
             }
         }
     }

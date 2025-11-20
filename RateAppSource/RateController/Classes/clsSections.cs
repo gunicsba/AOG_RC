@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RateController.Classes;
+using System;
 using System.Collections.Generic;
 
 namespace RateController
@@ -24,7 +25,7 @@ namespace RateController
             get
             {
                 int tmp = 0;
-                for (int i = 0; i < mf.MaxSections; i++)
+                for (int i = 0; i < Props.MaxSections; i++)
                 {
                     if (cSections[i].Enabled) tmp++;
                 }
@@ -32,13 +33,13 @@ namespace RateController
             }
             set
             {
-                if (value < 0 || value > mf.MaxSections)
+                if (value < 0 || value > Props.MaxSections)
                 {
                     throw new ArgumentException("Invalid section number. (clsSections)");
                 }
                 else
                 {
-                    for (int i = 0; i < mf.MaxSections; i++)
+                    for (int i = 0; i < Props.MaxSections; i++)
                     {
                         Tmp = ListID(i);
                         if (i < value)
@@ -59,14 +60,21 @@ namespace RateController
         public void CheckSwitchDefinitions()
         {
             bool Changed = false;
-            for (int i = 0; i < mf.MaxSections; i++)
+            for (int i = 0; i < Props.MaxSections; i++)
             {
                 if (cSections[i].SwitchChanged) Changed = true;
                 cSections[i].SwitchChanged = false;
             }
             if (Changed)
             {
-                mf.SectionControl.UpdateSectionStatus();
+                if (Props.UseZones)
+                {
+                    mf.SectionControl.UpdateSectionStatusWithZones();
+                }
+                else
+                {
+                    mf.SectionControl.UpdateSectionStatusNoZones();
+                }
             }
         }
 
@@ -80,12 +88,16 @@ namespace RateController
         public void Load()
         {
             cSections.Clear();
-            for (int i = 0; i < mf.MaxSections; i++)
+            for (int i = 0; i < Props.MaxSections; i++)
             {
                 clsSection Sec = new clsSection(mf, i);
                 Sec.Load();
                 cSections.Add(Sec);
             }
+        }
+
+        public void Renumber()
+        {
         }
 
         public void Save()
@@ -96,12 +108,12 @@ namespace RateController
             }
         }
 
-        public float TotalWidth(bool UseInches)
+        public float TotalWidth(bool ReturnFeet = false)
         {
             float Result = 0;
             float cWorkingWidth_cm = 0;
 
-            for (int i = 0; i < mf.MaxSections; i++)
+            for (int i = 0; i < Props.MaxSections; i++)
             {
                 if (cSections[i].Enabled)
                 {
@@ -109,23 +121,23 @@ namespace RateController
                 }
             }
 
-            if (UseInches)
+            if (ReturnFeet)
             {
-                Result = (float)((cWorkingWidth_cm / 100.0) * 3.28);   // feet
+                Result = (float)(cWorkingWidth_cm * 0.032808);   // feet
             }
             else
             {
-                Result = (float)(cWorkingWidth_cm / 100.0);    // meters
+                Result = (float)(cWorkingWidth_cm * 0.01);    // meters
             }
             return Result;
         }
 
-        public float WorkingWidth(bool UseInches)
+        public float WorkingWidth(bool ReturnFeet = false)
         {
             float Result = 0;
             float cWorkingWidth_cm = 0;
 
-            for (int i = 0; i < mf.MaxSections; i++)
+            for (int i = 0; i < Props.MaxSections; i++)
             {
                 if (mf.Sections.Item(i).IsON)
                 {
@@ -133,13 +145,13 @@ namespace RateController
                 }
             }
 
-            if (UseInches)
+            if (ReturnFeet)
             {
-                Result = (float)((cWorkingWidth_cm / 100.0) * 3.28);   // feet
+                Result = (float)(cWorkingWidth_cm * 0.032808);   // feet
             }
             else
             {
-                Result = (float)(cWorkingWidth_cm / 100.0);    // meters
+                Result = (float)(cWorkingWidth_cm * 0.01);    // meters
             }
             return Result;
         }
@@ -148,7 +160,7 @@ namespace RateController
         {
             double Wdth;
             string Units;
-            if (mf.UseInches)
+            if (!Props.UseMetric)
             {
                 Units = "Inches";
             }
@@ -162,7 +174,7 @@ namespace RateController
 
             for (int i = 0; i < mf.SectionsPGN.SectionCount(); i++)
             {
-                if (mf.UseInches)
+                if (!Props.UseMetric)
                 {
                     Wdth = Math.Round((double)(mf.SectionsPGN.Width_cm(i)) * 0.393701);
                 }
@@ -186,7 +198,7 @@ namespace RateController
                 {
                     Items[i].Width_cm = (float)mf.SectionsPGN.Width_cm(i);
                 }
-                mf.Tls.ShowHelp("Sections changed. Check switch definitions.", "Sections", 5000);
+                Props.ShowMessage("Sections changed. Check switch definitions.", "Sections", 5000);
             }
         }
 

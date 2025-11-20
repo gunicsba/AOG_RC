@@ -1,5 +1,5 @@
-﻿using System;
-using System.Diagnostics;
+﻿using RateController.Classes;
+using System;
 using System.Net;
 using System.Net.Sockets;
 
@@ -30,12 +30,14 @@ namespace RateController
             cSendFromPort = SendFromPort;
             cConnectionName = ConnectionName;
             SetEP(DestinationEndPoint);
+            Props.WriteLog("Ethernet Log.txt", "", true, true);
         }
 
         // Status delegate
         private delegate void HandleDataDelegateObj(int port, byte[] msg);
 
-        public bool IsUDPSendConnected { get => cIsUDPSendConnected; set => cIsUDPSendConnected = value; }
+        public bool IsUDPSendConnected
+        { get { return cIsUDPSendConnected; } }
 
         public string NetworkEP
         {
@@ -43,11 +45,11 @@ namespace RateController
             set
             {
                 string[] data;
-                if (IPAddress.TryParse(value, out IPAddress IP))
+                if (IPAddress.TryParse(value, out _))
                 {
                     data = value.Split('.');
                     cNetworkEP = IPAddress.Parse(data[0] + "." + data[1] + "." + data[2] + ".255");
-                    mf.Tls.SaveProperty("EndPoint_" + cConnectionName, value);
+                    Props.SetProp("EndPoint_" + cConnectionName, value);
                     cSubNet = data[0].ToString() + "." + data[1].ToString() + "." + data[2].ToString();
                 }
             }
@@ -63,6 +65,7 @@ namespace RateController
         {
             recvSocket.Close();
             sendSocket.Close();
+            Props.WriteLog("Ethernet Log.txt", cLog);
         }
 
         public string Log()
@@ -70,10 +73,9 @@ namespace RateController
             return cLog;
         }
 
-        //sends byte array
         public void SendUDPMessage(byte[] byteData)
         {
-            if (IsUDPSendConnected)
+            if (cIsUDPSendConnected)
             {
                 try
                 {
@@ -89,7 +91,7 @@ namespace RateController
                 }
                 catch (Exception ex)
                 {
-                    mf.Tls.WriteErrorLog("UDPcomm/SendUDPMessage " + ex.Message);
+                    Props.WriteErrorLog("UDPcomm/SendUDPMessage " + ex.Message);
                 }
             }
         }
@@ -117,12 +119,18 @@ namespace RateController
 
                 // Start listening for incoming data
                 recvSocket.BeginReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None, ref client, new AsyncCallback(ReceiveData), recvSocket);
-                IsUDPSendConnected = true;
+                cIsUDPSendConnected = true;
             }
             catch (Exception e)
             {
-                mf.Tls.WriteErrorLog("UDPcomm/StartUDPServer: \n" + e.Message);
+                Props.WriteErrorLog("UDPcomm/StartUDPServer: \n" + e.Message);
             }
+        }
+
+        public void UpdateLog()
+        {
+            Props.WriteLog("Ethernet Log.txt",cLog);
+            cLog = "";
         }
 
         private void AddToLog(string NewData)
@@ -154,23 +162,28 @@ namespace RateController
                             break;
 
                         case 32401:
-                            mf.AnalogData.ParseByteData(Data);
+                            mf.ModulesStatus.ParseByteData(Data);
                             break;
 
                         case 32618:
-                            if (mf.SwitchBox.ParseByteData(Data))
+                            if (mf.SwitchBox.ParseByteData(Data, true))
                             {
                                 SBtime = DateTime.Now;
-                                if(mf.vSwitchBox.Enabled) mf.vSwitchBox.Enabled = false;
+                                if (mf.vSwitchBox.Enabled) mf.vSwitchBox.Enabled = false;
                             }
                             break;
 
                         case 33152: // AOG, 0x81, 0x80
                             switch (Data[3])
                             {
-                                case 228:
-                                    // vr data
-                                    mf.VRdata.ParseByteData(Data);
+                                case 100:
+                                    // AOG roll corrected lat,lon
+                                    mf.GPS.ParseByteData(Data);
+                                    break;
+
+                                case 229:
+                                    // aog sections
+                                    mf.AOGsections.ParseByteData(Data);
                                     break;
 
                                 case 235:
@@ -199,7 +212,7 @@ namespace RateController
             }
             catch (Exception ex)
             {
-                mf.Tls.WriteErrorLog("UDPcomm/HandleData " + ex.Message);
+                Props.WriteErrorLog("UDPcomm/HandleData " + ex.Message);
             }
         }
 
@@ -229,8 +242,7 @@ namespace RateController
             }
             catch (Exception ex)
             {
-                //mf.Tls.ShowHelp("ReceiveData Error \n" + e.Message, "Comm", 3000, true);
-                mf.Tls.WriteErrorLog("UDPcomm/ReceiveData " + ex.Message);
+                Props.WriteErrorLog("UDPcomm/ReceiveData " + ex.Message);
             }
         }
 
@@ -242,7 +254,7 @@ namespace RateController
             }
             catch (Exception ex)
             {
-                mf.Tls.WriteErrorLog(" UDP Send Data" + ex.ToString());
+                Props.WriteErrorLog(" UDP Send Data" + ex.ToString());
             }
         }
 
@@ -256,7 +268,7 @@ namespace RateController
                 }
                 else
                 {
-                    string EP = mf.Tls.LoadProperty("EndPoint_" + cConnectionName);
+                    string EP = Props.GetProp("EndPoint_" + cConnectionName);
                     if (IPAddress.TryParse(EP, out _))
                     {
                         NetworkEP = EP;
@@ -269,7 +281,7 @@ namespace RateController
             }
             catch (Exception ex)
             {
-                mf.Tls.WriteErrorLog("UDPcomm/SetEP " + ex.Message);
+                Props.WriteErrorLog("UDPcomm/SetEP " + ex.Message);
             }
         }
     }

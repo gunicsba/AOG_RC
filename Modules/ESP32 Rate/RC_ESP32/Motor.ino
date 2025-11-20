@@ -3,61 +3,70 @@ void AdjustFlow()
 {
     for (int i = 0; i < MDL.SensorCount; i++)
     {
+        float clamped = constrain(Sensor[i].PWM, -255.0f, 255.0f);
+
         switch (Sensor[i].ControlType)
         {
-        case 0:
-            // standard valve, flow control only
-            if (Sensor[i].FlowEnabled)
-            {
-                SetPWM(i, Sensor[i].PWM);
-            }
+        case StandardValve_ct:
+        case Motor_ct:
+        case Fan_ct:
+            SetPWM(i, Sensor[i].FlowEnabled ? clamped : 0.0f);
             break;
 
-        case 1:
-        case 5:
+        case ComboClose_ct:
+        case TimedCombo_ct:
             // fast close valve or combo close timed, used for flow control and on/off
-            if (Sensor[i].FlowEnabled)
-            {
-                SetPWM(i, Sensor[i].PWM);
-            }
-            else
-            {
-                // stop flow, close valve
-                SetPWM(i, -255);
-            }
+            SetPWM(i, Sensor[i].FlowEnabled ? clamped : -255.0f);
             break;
 
-        case 2:
-        case 4:
-            // motor control
-            if (Sensor[i].FlowEnabled)
-            {
-                SetPWM(i, Sensor[i].PWM);
-            }
-            else
-            {
-                // stop motor
-                SetPWM(i, 0);
-            }
+        default:
             break;
         }
     }
 }
 
-void SetPWM(byte ID, double PWM)
+void SetPWM(byte ID, float pwmVal)
 {
-    if (MDL.FlowOnDirection == 0) PWM *= -1;    // flow on low
+    const int maxDuty = (1 << PWM_BITS) - 1;
+    int duty = (int)floorf(fabsf(pwmVal) * maxDuty / 255.0f);
 
-    if (PWM > 0)
+    bool Increase = (pwmVal >= 0.0f);
+    if (MDL.InvertFlow) Increase = !Increase;
+
+#if PWM_BITS == 8
+    duty = ditherAdjust(duty, fabsf(pwmVal));
+#endif
+
+
+#if defined(ESP32)
+    if (Increase)
     {
-        ledcWrite(ID * 2, PWM);     // IN1
-        ledcWrite(ID * 2 + 1, 0);   // IN2
+        ledcWrite(Sensor[ID].IN1, duty);
+        ledcWrite(Sensor[ID].IN2, 0);
     }
     else
     {
-        PWM = abs(PWM);
-        ledcWrite(ID * 2 + 1, PWM); // IN2
-        ledcWrite(ID * 2, 0);       // IN1
+        ledcWrite(Sensor[ID].IN1, 0);
+        ledcWrite(Sensor[ID].IN2, duty);
     }
+
+#else
+    digitalWrite(Sensor[ID].DirPin, Increase);
+    analogWrite(Sensor[ID].PWMPin, duty);
+#endif
 }
 
+#if PWM_BITS == 8
+int ditherAdjust(int base, float val255)
+{
+    const int maxDuty = 255;
+    float exactDuty = val255 * maxDuty / 255.0f;
+    float frac = exactDuty - base;
+
+    ditherCounter = (ditherCounter + 1) & 0x0F; // 16 step cycle
+    if (frac > 0 && ditherCounter < (uint8_t)(frac * 16)) {
+        base = min(base + 1, maxDuty);
+    }
+    return base;
+}
+#endif

@@ -1,42 +1,69 @@
-#include <Adafruit_MCP23008.h>
-#include <Adafruit_MCP23X08.h>
-#include <Adafruit_MCP23X17.h>
-#include <Adafruit_MCP23XXX.h>
 #include <Wire.h>
 #include <EEPROM.h>
-
-#include <Adafruit_BusIO_Register.h>
-#include <Adafruit_I2CDevice.h>
-#include <Adafruit_I2CRegister.h>
-#include <Adafruit_SPIDevice.h>
-
 #include <SPI.h>
 #include <EtherCard.h>
 #include "PCA95x5_RC.h"		// modified from https://github.com/hideakitai/PCA95x5
 
-// rate control with nano
-# define InoDescription "RCnano :  18-Feb-2024"
-const uint16_t InoID = 18024;	// change to send defaults to eeprom, ddmmy, no leading 0
+// rate control with arduino nano
+# define InoDescription "RCnano"
+const uint16_t InoID = 21105;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 2;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 
 #define MaxProductCount 2
 #define NC 0xFF		// Pins are not connected
+uint8_t MCP23017address;
 
+#if defined(ESP32)
+const int PWM_BITS = 12;
+const int PWM_FREQ = 490;
+#elif defined(ARDUINO_TEENSY41)
+const int PWM_BITS = 12;
+const int PWM_FREQ = 490;
+#else // Nano & similar AVR
+const int PWM_BITS = 8;
+const int PWM_FREQ = 490;  // Default
+uint8_t ditherCounter = 0; // for Nano dithering
+#endif
+
+enum ControlType
+{
+	StandardValve_ct = 0,
+	ComboClose_ct = 1,
+	Motor_ct = 2,
+	Fan_ct = 4,
+	TimedCombo_ct = 5
+};
+
+// MCP23017 control pins, RC5, RC8	{ 8,9,10,11,12,13,14,15,7,6,5,4,3,2,1,0 }
+// MCP23017 control pins, RC12-3	{ 0,15,1,14,2,13,3,12,4,11,5,10,6,9,7,8 }
 struct ModuleConfig
 {
+	// RC12-3
 	uint8_t ID = 0;
 	uint8_t SensorCount = 2;        // up to 2 sensors, if 0 rate control will be disabled
-	uint8_t RelayOnSignal = 0;	    // value that turns on relays
-	uint8_t FlowOnDirection = 0;	// sets on value for flow valve or sets motor direction
+	bool InvertRelay = true;	    // value that turns on relays
+	bool InvertFlow = true;		// sets on value for flow valve or sets motor direction
+	uint8_t RelayControlPins[16] = { 0,15,1,14,2,13,3,12,4,11,5,10,6,9,7,8 };	// MCP23017, RC12-3
+	uint8_t RelayControl = 4;		// 0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
+	uint8_t WorkPin = 14;
+	bool WorkPinIsMomentary = false;
+	bool Is3Wire = true;			// False - powered on/off, True - powered on only
+	uint8_t PressurePin = 15;		
+	bool ADS1115Enabled = false;
+};
+
+ModuleConfig MDL;
+
+struct ModuleNetwork
+{
+	uint16_t Identifier = 9876;
 	uint8_t IP0 = 192;
 	uint8_t IP1 = 168;
 	uint8_t IP2 = 1;
 	uint8_t IP3 = 50;
-	uint8_t RelayControl = 2;		// 0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685 single , 6 - PCA9685 paired
-	uint8_t RelayPins[16] = { 8,9,10,11,12,13,14,15,7,6,5,4,3,2,1,0 };		// MCP23017 pins RC5, RC8
 };
 
-ModuleConfig MDL;
+ModuleNetwork MDLnetwork;
 
 struct SensorConfig
 {
@@ -44,21 +71,32 @@ struct SensorConfig
 	uint8_t DirPin;
 	uint8_t PWMPin;
 	bool FlowEnabled;
-	double UPM;				// sent as upm X 1000
-	double PWM;
+	float UPM;				// sent as upm X 1000
+	float PWM;
 	uint32_t CommTime;
-	byte ControlType;		// flow control, 0 standard, 1 combo close, 2 motor, 3 motor/weight, 4 fan, 5 timed combo
+	byte ControlType;		// 0 standard, 1 combo close, 2 motor, 3 -, 4 fan, 5 timed combo
 	uint32_t TotalPulses;
-	double TargetUPM;
-	double MeterCal;
-	double ManualAdjust;
-	double KP;
-	double KI;
-	double KD;
-	byte MinPWM;
-	byte MaxPWM;
-	bool UseMultiPulses;	// 0 - time for one pulse, 1 - average time for multiple pulses
-	uint8_t Debounce;
+	float TargetUPM;
+	float MeterCal;
+	float ManualAdjust;
+	float Hz;
+	float MaxPWM;
+	float MinPWM;
+	float Kp;
+	float Ki;
+	float Deadband;
+	float BrakePoint;
+	float PIDslowAdjust;
+	float SlewRate;
+	float MaxIntegral;
+	float TimedMinStart;
+	uint32_t TimedAdjust;
+	uint32_t TimedPause;
+	uint32_t PIDtime;
+	uint32_t PulseMin;
+	uint32_t PulseMax;
+	byte PulseSampleSize;
+	bool AutoOn;
 };
 
 SensorConfig Sensor[2];
@@ -70,21 +108,17 @@ SensorConfig Sensor[2];
 // and then mount the shield on top of the Nano.
 
 // ethernet
-byte Ethernet::buffer[100];			// udp send and receive buffer
+byte Ethernet::buffer[500];			// udp send and receive buffer (increased to prevent UDP payload truncation)
 static byte selectPin = 10;
 uint16_t ListeningPort = 28888;
 uint16_t DestinationPort = 29999;
-byte DestinationIP[] = { MDL.IP0, MDL.IP1, MDL.IP2, 255 };	// broadcast 255
+byte DestinationIP[] = { MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255 };	// broadcast 255
 unsigned int SourcePort = 5123;		// to send from
 bool ENCfound;
 
-// AGIO
-uint16_t ListeningPortAGIO = 8888;		// to listen on
-uint16_t DestinationPortAGIO = 9999;	// to send to
-
 // Relays
-byte RelayLo = 0;	// sections 0-7
-byte RelayHi = 0;	// sections 8-15
+volatile byte RelayLo = 0;	// sections 0-7
+volatile byte RelayHi = 0;	// sections 8-15
 byte PowerRelayLo;
 byte PowerRelayHi;
 byte InvertedLo;
@@ -96,20 +130,18 @@ const uint16_t SendTime = 200;
 uint32_t SendLast = SendTime;
 
 bool MasterOn = false;
-bool AutoOn = true;
 
 PCA9555 PCA;
 bool PCA9555PW_found = false;
-
-Adafruit_MCP23X17 MCP;
 bool MCP23017_found = false;
+int16_t PressureReading = 0;
 
-int TimedCombo(byte, bool);	// function prototype
+bool GoodPins;	// pin configuration correct
+
+float TimedCombo(byte, bool);	// function prototype
 
 //reset function
 void(*resetFunc) (void) = 0;
-
-bool GoodPins;	// pin configuration correct
 
 bool EthernetConnected()
 {
@@ -122,6 +154,8 @@ bool EthernetConnected()
 	return Result;
 }
 
+bool CalibrationOn[] = { false,false };
+
 void setup()
 {
 	DoSetup();
@@ -129,42 +163,51 @@ void setup()
 
 void loop()
 {
-	SetPWM();
-
-	if (millis() - LoopLast >= LoopTime)
-	{
-		LoopLast = millis();
-
-		for (int i = 0; i < MDL.SensorCount; i++)
-		{
-			Sensor[i].FlowEnabled = (millis() - Sensor[i].CommTime < 4000)
-				&& ((Sensor[i].TargetUPM > 0 && MasterOn)
-					|| ((Sensor[i].ControlType == 4) && (Sensor[i].TargetUPM > 0))
-					|| (!AutoOn && MasterOn));
-		}
-
-		CheckRelays();
-		GetUPM();
-		AdjustFlow();
-	}
-
-	if (millis() - SendLast > SendTime)
-	{
-		SendLast = millis();
-		SendData();
-	}
-
 	if (EthernetConnected())
 	{
 		//this must be called for ethercard functions to work.
 		ether.packetLoop(ether.packetReceive());
 	}
-	else
+
+	SetPWM();
+
+	if (millis() - LoopLast >= LoopTime)
 	{
-		ReceiveSerial();
+		LoopLast = millis();
+		SetSensorsEnabled();
+		CheckRelays();
+		GetUPM();
+		AdjustFlow();
+		CheckPressure();
 	}
 
+	SendComm();
 	//DebugTheIno();
+}
+
+void SetSensorsEnabled()
+{
+	for (int i = 0; i < MDL.SensorCount; i++)
+	{
+		bool Result = false;
+		if (millis() - Sensor[i].CommTime < 5000)
+		{
+			if (Sensor[i].TargetUPM > 0 && MasterOn)
+			{
+				Result = true;
+			}
+			else if (MasterOn && !Sensor[i].AutoOn)
+			{
+				Result = true;
+			}
+			else if ((Sensor[i].ControlType == Fan_ct) && (Sensor[i].TargetUPM > 0))
+			{
+				// fan
+				Result = true;
+			}
+		}
+		Sensor[i].FlowEnabled = Result;
+	}
 }
 
 byte ParseModID(byte ID)
@@ -194,59 +237,84 @@ bool GoodCRC(byte Data[], byte Length)
 byte CRC(byte Chk[], byte Length, byte Start)
 {
 	byte Result = 0;
-	int CK = 0;
 	for (int i = Start; i < Length; i++)
 	{
-		CK += Chk[i];
+		Result += Chk[i];
 	}
-	Result = (byte)CK;
 	return Result;
 }
 
-uint32_t DebugTime;
-uint32_t MaxLoopTime;
-uint32_t LoopTmr;
-byte ReadReset;
-int MinMem = 2000;
-double debug1;
-double debug2;
-
-void DebugTheIno()
+bool WorkPinOn()
 {
-	if (millis() - DebugTime > 1000)
+	static bool WrkOn = false;
+	static bool WrkLast = false;
+
+	if (MDL.WorkPin < NC)
 	{
-		DebugTime = millis();
-		Serial.println("");
-
-		Serial.print(F(" Micros: "));
-		Serial.print(MaxLoopTime);
-
-		Serial.print(F(",  SRAM left: "));
-		Serial.print(MinMem);
-
-		Serial.print(", ");
-		Serial.print(debug1);
-
-		Serial.print(", ");
-		Serial.print(debug2);
-
-		Serial.println("");
-
-		if (ReadReset++ > 10)
+		bool WrkCurrent = digitalRead(MDL.WorkPin);
+		if (MDL.WorkPinIsMomentary)
 		{
-			ReadReset = 0;
-			MaxLoopTime = 0;
-			MinMem = 2000;
+			if (WrkCurrent != WrkLast)
+			{
+				if (WrkCurrent) WrkOn = !WrkOn;	// only cycle when going from low to high
+				WrkLast = WrkCurrent;
+			}
+		}
+		else
+		{
+			WrkOn = WrkCurrent;
 		}
 	}
-	if (micros() - LoopTmr > MaxLoopTime) MaxLoopTime = micros() - LoopTmr;
-	LoopTmr = micros();
-	if (freeRam() < MinMem) MinMem = freeRam();
+	else
+	{
+		WrkOn = false;
+	}
+	return WrkOn;
 }
 
-int freeRam() {
-	extern int __heap_start, * __brkval;
-	int v;
-	return (int)&v - (__brkval == 0
-		? (int)&__heap_start : (int)__brkval);
+void CheckPressure()
+{
+	PressureReading = 0;
+	if (MDL.PressurePin < NC)
+	{
+		PressureReading = analogRead(MDL.PressurePin);	// 10 bit, 0-1023
+	}
 }
+
+//uint32_t DebugTime;
+//uint32_t MaxLoopTime;
+//uint32_t LoopTmr;
+//byte ReadReset;
+//float debug1;
+//float debug2;
+//
+//void DebugTheIno()
+//{
+//	if (millis() - DebugTime > 1000)
+//	{
+//		DebugTime = millis();
+//		Serial.println("");
+//
+//		Serial.print(MaxLoopTime);
+//
+//		Serial.print(", ");
+//		Serial.print(debug1);
+//
+//		Serial.print(", ");
+//		Serial.print(debug2);
+//
+//		Serial.print(", ");
+//		Serial.print(debug3);
+//
+//		Serial.println("");
+//
+//		if (ReadReset++ > 10)
+//		{
+//			ReadReset = 0;
+//			MaxLoopTime = 0;
+//		}
+//	}
+//	if (micros() - LoopTmr > MaxLoopTime) MaxLoopTime = micros() - LoopTmr;
+//	LoopTmr = micros();
+//}
+

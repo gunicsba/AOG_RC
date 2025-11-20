@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RateController.Classes;
+using System;
 
 namespace RateController
 {
@@ -21,9 +22,6 @@ namespace RateController
             cID = ID;
             Name = "Sec" + ID.ToString();
         }
-
-        public bool Edited
-        { get { return cEdited; } }
 
         public bool Enabled
         {
@@ -70,7 +68,7 @@ namespace RateController
             get { return cSwitchID; }
             set
             {
-                if (value >= 0 && value < mf.MaxSwitches)
+                if (value >= 0 && value < Props.MaxSwitches)
                 {
                     if (cSwitchID != value)
                     {
@@ -81,7 +79,7 @@ namespace RateController
                 }
                 else
                 {
-                    throw new ArgumentException("Must be between 0 and " + (mf.MaxSwitches - 1).ToString());
+                    throw new ArgumentException("Must be between 0 and " + (Props.MaxSwitches - 1).ToString());
                 }
             }
         }
@@ -117,18 +115,18 @@ namespace RateController
 
         public void Load()
         {
-            bool.TryParse(mf.Tls.LoadProperty(Name + "_enabled"), out cEnabled);
-            float.TryParse(mf.Tls.LoadProperty(Name + "_width"), out cWidth);
-            int.TryParse(mf.Tls.LoadProperty(Name + "_SwitchID"), out cSwitchID);
+            bool.TryParse(Props.GetProp(Name + "_enabled"), out cEnabled);
+            float.TryParse(Props.GetProp(Name + "_width"), out cWidth);
+            int.TryParse(Props.GetProp(Name + "_SwitchID"), out cSwitchID);
         }
 
         public void Save()
         {
             if (cEdited)
             {
-                mf.Tls.SaveProperty(Name + "_enabled", cEnabled.ToString());
-                mf.Tls.SaveProperty(Name + "_width", cWidth.ToString());
-                mf.Tls.SaveProperty(Name + "_SwitchID", cSwitchID.ToString());
+                Props.SetProp(Name + "_enabled", cEnabled.ToString());
+                Props.SetProp(Name + "_width", cWidth.ToString());
+                Props.SetProp(Name + "_SwitchID", cSwitchID.ToString());
                 cEdited = false;
             }
         }

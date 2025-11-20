@@ -96,7 +96,7 @@ void ReadPGNs(byte Data[], uint16_t len)
 				MDL.IP1 = Data[3];
 				MDL.IP2 = Data[4];
 
-				EEPROM.put(10, MDL);
+				SaveData();
 
 				// restart
 				resetFunc();
@@ -108,7 +108,7 @@ void ReadPGNs(byte Data[], uint16_t len)
 		// Switchbox pins
 		//0         HeaderLo    189
 		//1         HeaderHi    127
-		//2         Auto
+		//2         auto
 		//3         Master On
 		//4         Master Off
 		//5         Rate Up
@@ -123,7 +123,8 @@ void ReadPGNs(byte Data[], uint16_t len)
 		{
 			if (GoodCRC(Data, PGNlength))
 			{
-				MDL.Auto = Data[2];
+				MDL.AutoRate = Data[2];	
+				MDL.AutoSection = Data[2];	
 				MDL.MasterOn = Data[3];
 				MDL.MasterOff = Data[4];
 				MDL.RateUp = Data[5];
@@ -131,12 +132,13 @@ void ReadPGNs(byte Data[], uint16_t len)
 
 				for (int i = 7; i < 23; i++)
 				{
-					MDL.PinIDs[i - 7] = Data[i];
+					MDL.SectionPins[i - 7] = Data[i];
+					if (MDL.SectionPins[i - 7] < 3) MDL.SectionPins[i - 7] = NC;
 				}
-
 				MDL.WorkPin = Data[23];
+				if (MDL.WorkPin < 3) MDL.WorkPin = NC;
 
-				EEPROM.put(10, MDL);
+				SaveData();
 
 				// restart
 				resetFunc();

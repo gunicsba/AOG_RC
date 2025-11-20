@@ -1,7 +1,4 @@
-﻿
-using System;
-
-namespace RateController
+﻿namespace RateController
 {
     public class PGN234
     {

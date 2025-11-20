@@ -1,5 +1,5 @@
-﻿using System;
-using System.Diagnostics;
+﻿using RateController.Classes;
+using System;
 
 namespace RateController
 {
@@ -8,16 +8,20 @@ namespace RateController
         // to Rate Controller from virtual switch box
         // 0   106
         // 1   127
-        // 2    - bit 0 Auto
+        // 2    - bit 0 -
         //      - bit 1 MasterOn
         //      - bit 2 MasterOff
         //      - bit 3 RateUp
         //      - bit 4 RateDown
+        //      - bit 5 AutoSection
+        //      - bit 6 AutoRate
+        //		- bit 7 Work switch
         // 3    sw0 to sw7
         // 4    sw8 to sw15
         // 5    crc
 
-        private bool cAuto;
+        private bool cAutoRate;
+        private bool cAutoSection;
         private bool cEnabled;
         private bool cLargeScreenOn;
         private bool[] cSwitch;
@@ -29,7 +33,7 @@ namespace RateController
         public clsVirtualSwitchBox(FormStart CalledFrom)
         {
             mf = CalledFrom;
-            cSwitch = new bool[mf.MaxSwitches];
+            cSwitch = new bool[Props.MaxSwitches];
             PressedData = new byte[6];
             PressedData[0] = 106;
             PressedData[1] = 127;
@@ -37,25 +41,14 @@ namespace RateController
             Timer1.Interval = 250;
         }
 
-        private bool phySwitchboxConnected()
+        public bool AutoRateOn
         {
-            bool Result = false;
-            if (mf.UDPmodules.SwitchBoxConnected)
-            {
-                Result = true;
-            }
-            else
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    if (mf.SER[i].SwitchBoxConnected)
-                    {
-                        Result = true;
-                        break;
-                    }
-                }
-            }
-            return Result;
+            get { return cAutoRate; }
+        }
+
+        public bool AutoSectionOn
+        {
+            get { return cAutoSection; }
         }
 
         public bool Enabled
@@ -104,33 +97,40 @@ namespace RateController
             // build PGN32618
             switch (ID)
             {
-                case SwIDs.Auto:
-                    if (cAuto)
+                case SwIDs.AutoRate:
+                    if (cAutoRate)
                     {
                         // turn off
-                        PressedData[2] = mf.Tls.BitClear(PressedData[2], 0);
-                        cAuto = false;
+                        PressedData[2] = mf.Tls.BitClear(PressedData[2], 6);
+                        cAutoRate = false;
                     }
                     else
                     {
                         // turn on
-                        PressedData[2] = mf.Tls.BitSet(PressedData[2], 0);
-                        cAuto = true;
+                        PressedData[2] = mf.Tls.BitSet(PressedData[2], 6);
+                        cAutoRate = true;
+                    }
+                    break;
+
+                case SwIDs.AutoSection:
+                    if (cAutoSection)
+                    {
+                        // turn off
+                        PressedData[2] = mf.Tls.BitClear(PressedData[2], 5);
+                        cAutoSection = false;
+                    }
+                    else
+                    {
+                        // turn on
+                        PressedData[2] = mf.Tls.BitSet(PressedData[2], 5);
+                        cAutoSection = true;
                     }
                     break;
 
                 case SwIDs.MasterOn:
                     PressedData[2] = mf.Tls.BitSet(PressedData[2], 1);
                     PressedData[2] = mf.Tls.BitClear(PressedData[2], 2);
-                    if (FromLargeScreen)
-                    {
-                        PressedData[3] = 255;
-                        PressedData[4] = 255;
-                        for (int i = 0; i < mf.MaxSwitches; i++)
-                        {
-                            cSwitch[i] = true;
-                        }
-                    }
+                    if (FromLargeScreen) SetSwitchesLS();
                     break;
 
                 case SwIDs.MasterOff:
@@ -189,8 +189,39 @@ namespace RateController
 
         public void ReleaseSwitch()
         {
-            PressedData[2] = (byte)(PressedData[2] & 1);
+            PressedData[2] = (byte)(PressedData[2] & 0b11100001);
             PressedData[5] = mf.Tls.CRC(PressedData, 5);
+        }
+
+        private bool phySwitchboxConnected()
+        {
+            bool Result = false;
+            if (mf.UDPmodules.SwitchBoxConnected)
+            {
+                Result = true;
+            }
+            return Result;
+        }
+
+        private void SetSwitchesLS()
+        {
+            // set only section switches on when master pressed from large screen
+            foreach (clsSection Sec in mf.Sections.Items)
+            {
+                if (Sec.Enabled)
+                {
+                    int ID = Sec.SwitchID;
+                    cSwitch[ID] = true;
+                    if (ID < 8)
+                    {
+                        PressedData[3] = (byte)(PressedData[3] | (byte)(Math.Pow(2, ID)));
+                    }
+                    else
+                    {
+                        PressedData[4] = (byte)(PressedData[4] | (byte)(Math.Pow(2, ID - 8)));
+                    }
+                }
+            }
         }
 
         private void TimerEventProcessor(Object myObject, EventArgs myEventArgs)
