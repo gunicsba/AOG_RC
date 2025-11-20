@@ -55,8 +55,7 @@ void DoSetup()
 	if (MDL.SensorCount > MaxProductCount) MDL.SensorCount = MaxProductCount;
 
 	// I2C
-	Wire.begin();			// I2C on pins SCL 22, SDA 21
-	Wire.setClock(400000);	//Increase I2C data rate to 400kHz
+	Wire.begin(8, 18, 400000);	// I2C on pins SDA 8, SCL 18, data rate to 400kHz
 
 	// ADS1115
 	if (MDL.ADS1115Enabled)
@@ -92,39 +91,37 @@ void DoSetup()
 	MDLnetwork.IP3 = MDL.ID + 50;
 	IPAddress LocalIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, MDLnetwork.IP3);
 	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDLnetwork.IP3 };
-
-	Ethernet.init(W5500_SS);   // SS pin
-	Ethernet.begin(LocalMac, 0);
-	Ethernet.setLocalIP(LocalIP);
 	IPAddress Mask(255, 255, 255, 0);
-	Ethernet.setSubnetMask(Mask);
 	IPAddress Gateway(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 1);
-	Ethernet.setGatewayIP(Gateway);
-
-	delay(1500);
-	ChipFound = (Ethernet.hardwareStatus() != EthernetNoHardware);
-	if (ChipFound)
-	{
-		if (Ethernet.linkStatus() == LinkON)
-		{
-			Serial.println("Ethernet connected.");
-		}
-		else
-		{
-			Serial.println("Ethernet not connected.");
-		}
-		Serial.print("IP Address: ");
-		Serial.println(Ethernet.localIP());
-	}
-	else
-	{
-		Serial.println("Ethernet hardware not found.");
-	}
-
 	Ethernet_DestinationIP = IPAddress(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);	// update from saved data
 
+	WT5500setup();
+
+	// write config for static IP, gateway, subnet
+	if (ETH.config(LocalIP, Gateway, Mask) == false) {
+		Serial.println("WT5500 Configuration failed.");
+	} else {
+		Serial.println("WT5500 Configuration success.");
+	}
+
+	int timeout = 10;
+	while (!ETHconnected && --timeout >= 0) {
+		Serial.print("Linkup:");
+		Serial.print(ETH.linkUp());
+		Serial.print(" Linkspeed:");
+		Serial.print(ETH.linkSpeed());
+		Serial.print(" LocalIP:");
+		Serial.print(ETH.localIP());
+		Serial.println("  Wait for network connect ..."); 
+		delay(500);
+	}
+
+	Serial.println("UDP begin");
 	// UDP
 	UDP_Ethernet.begin(ListeningPort);
+	
+	// AGIO UDP
+	UDP_AGIO.begin(ListeningPortAGIO);
 
 	// sensors
 	for (int i = 0; i < MDL.SensorCount; i++)
@@ -136,10 +133,10 @@ void DoSetup()
 		switch (i)
 		{
 		case 0:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, CHANGE);
 			break;
 		case 1:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, CHANGE);
 			break;
 		}
 
@@ -150,6 +147,13 @@ void DoSetup()
 		ledcAttach(Sensor[i].IN2, PWM_FREQ, PWM_BITS);
 		ledcWrite(Sensor[i].IN2, 0);
 	}
+
+	// Initialize temperature sensor
+	initTempSensor();
+	
+	// Set Cytron control pin (pin 13) HIGH
+	pinMode(13, OUTPUT);
+	digitalWrite(13, HIGH);
 
 	// Relays
 	switch (MDL.RelayControl)
@@ -278,6 +282,30 @@ void DoSetup()
 
 			pinMode(OutputEnablePin, OUTPUT);
 			digitalWrite(OutputEnablePin, LOW);	//enable
+			
+			// Check for second PCA9685
+			Serial.println("Checking for second PCA9685 at 0x41...");
+			ErrorCount = 0;
+			while (!PCA9685Ext_found)
+			{
+				Serial.print(".");
+				Wire.beginTransmission(PCAExtaddress);
+				PCA9685Ext_found = (Wire.endTransmission() == 0);
+				ErrorCount++;
+				delay(500);
+				if (ErrorCount > 5) break;
+			}
+			Serial.println("");
+			if (PCA9685Ext_found)
+			{
+				Serial.println("Second PCA9685 expander found.");
+				PWMServoDriverExt.begin();
+				PWMServoDriverExt.setPWMFreq(200);
+			}
+			else
+			{
+				Serial.println("Second PCA9685 expander not found.");
+			}
 		}
 		else
 		{
@@ -353,6 +381,8 @@ void DoSetup()
 	server.on("/page1", HandlePage1);
 	server.on("/page2", HandlePage2);
 	server.on("/ButtonPressed", ButtonPressed);
+	server.on("/info", HandleInfo);
+	server.on("/Cytron", Cytron);
 	server.onNotFound(HandleRoot);
 
 	server.on("/generate_204", []() {server.send(204, "text/plain", "");	});	
@@ -451,6 +481,9 @@ void LoadData()
 	{
 		// load stored data
 		Serial.println("Loading stored settings.");
+		EEPROM.get(10, disableMotor);
+		EEPROM.get(11, disableFlow);
+		EEPROM.get(12, b9threlay);
 		EEPROM.get(23, MDL);
 
 		for (int i = 0; i < MaxProductCount; i++)
@@ -473,6 +506,9 @@ void SaveData()
 	Serial.println("Updating stored settings.");
 	EEPROM.put(0, InoID);
 	EEPROM.put(2, InoType);
+	EEPROM.put(10, disableMotor);
+	EEPROM.put(11, disableFlow);
+	EEPROM.put(12, b9threlay);
 	EEPROM.put(23, MDL);
 
 	for (int i = 0; i < MaxProductCount; i++)
@@ -487,14 +523,14 @@ void LoadDefaults()
 	Serial.println("Loading default settings.");
 
 	// RC15
-	// default flow pins
-	Sensor[0].FlowPin = 17;
-	Sensor[0].IN1 = 32;
-	Sensor[0].IN2 = 33;
+	// default flow pins - Updated for custom configuration
+	Sensor[0].FlowPin = 21;
+	Sensor[0].IN1 = 4;
+	Sensor[0].IN2 = 5;
 
-	Sensor[1].FlowPin = 16;
-	Sensor[1].IN1 = 25;
-	Sensor[1].IN2 = 26;
+	Sensor[1].FlowPin = 47;
+	Sensor[1].IN1 = 7;
+	Sensor[1].IN2 = 15;
 
 	// default control settings
 	for (int i = 0; i < 2; i++)
@@ -670,4 +706,69 @@ void SaveNetworks()
 	EEPROM.commit();
 }
 
+// Helper function to scan I2C devices
+String scanI2CDevices()
+{
+	String forReturn = "";
+	byte error, address;
+	int nDevices;
+	Serial.println("Scanning I2C devices...");
+	forReturn += "Scanning...\n";
+	nDevices = 0;
+	for (address = 1; address < 127; address++)
+	{
+		Wire.beginTransmission(address);
+		error = Wire.endTransmission();
+		if (error == 0)
+		{
+			Serial.print("I2C device found at address 0x");
+			forReturn += "I2C device found at address 0x";
+			if (address < 16)
+			{
+				Serial.print("0");
+				forReturn += "0";
+			}
+			Serial.println(address, HEX);
+			forReturn += String(address, HEX);
+			forReturn += "\n";
+			nDevices++;
+		}
+		else if (error == 4)
+		{
+			Serial.print("Unknown error at address 0x");
+			if (address < 16)
+			{
+				Serial.print("0");
+			}
+			Serial.println(address, HEX);
+		}
+	}
+	if (nDevices == 0)
+	{
+		Serial.println("No I2C devices found\n");
+		forReturn += "No I2C devices found\n";
+	}
+	else
+	{
+		Serial.println("I2C scan done\n");
+		forReturn += "I2C scan done\n";
+	}
+	return forReturn;
+}
+
+// Initialize temperature sensor
+void initTempSensor()
+{
+	temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
+	temp_sensor.dac_offset = TSENS_DAC_L2;  // TSENS_DAC_L2 is default; L4(-40°C ~ 20°C), L2(-10°C ~ 80°C), L1(20°C ~ 100°C), L0(50°C ~ 125°C)
+	temp_sensor_set_config(temp_sensor);
+	temp_sensor_start();
+}
+
+// Get current in amps from analog pin
+float getCurrentInAmps(int pin)
+{
+	int volt = analogRead(pin);
+	return map(volt, 3000, 500, 0, 30) / 10.0;
+}
 
