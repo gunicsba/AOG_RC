@@ -141,10 +141,12 @@ void DoSetup()
 		}
 
 		// pwm frequency change from default 5000 Hz to 490 Hz, required for some valves to work
-		ledcAttach(Sensor[i].IN1, PWM_FREQ, PWM_BITS);
+    ledcSetup(i * 2, PWM_FREQ, PWM_BITS);
+		ledcAttachPin(Sensor[i].IN1, i * 2);
 		ledcWrite(Sensor[i].IN1, 0);
 
-		ledcAttach(Sensor[i].IN2, PWM_FREQ, PWM_BITS);
+    ledcSetup(i * 2 + 1, PWM_FREQ, PWM_BITS);
+		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
 		ledcWrite(Sensor[i].IN2, 0);
 	}
 

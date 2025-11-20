@@ -185,3 +185,44 @@ float TimedCombo(byte ID, bool ManualAdjust = false)
 	}
 	return Result;
 }
+
+String getDebugPID(byte ID){
+  String fr = "";
+  fr += "PID Debug for valve:";
+  fr += ID;
+  fr += "<br> MaxPWM: ";
+  fr += Sensor[ID].MaxPWM;
+  fr += " MinPWM: ";
+  fr += Sensor[ID].MinPWM;
+  fr += "<br> FlowEnabled? ";
+  fr += Sensor[ID].FlowEnabled;
+  fr += "<br> TargetUPM: ";
+  fr += Sensor[ID].TargetUPM;
+  fr += " UPM: ";
+  fr += Sensor[ID].UPM;
+  fr += " RateError: ";
+  fr += (Sensor[ID].TargetUPM - Sensor[ID].UPM);
+  fr += " TimedMinStart: ";
+  fr += Sensor[ID].TimedMinStart;
+  fr += " TimedPause: ";
+  fr += Sensor[ID].TimedPause;
+  fr += " BrakePoint: ";
+  fr += Sensor[ID].BrakePoint;
+  fr += " Deadband: ";
+  fr += Sensor[ID].Deadband;
+  fr += " SlewRate: ";
+  fr += Sensor[ID].SlewRate;
+  fr += " PIDslowAdjust: ";
+  fr += Sensor[ID].PIDslowAdjust;
+  fr += "<br> LastCheck: ";
+  fr += LastCheck[ID];
+  fr += "<br> IntegralSum[ID]: "; 
+  fr += IntegralSum[ID];
+  fr += " KP: ";
+  fr += Sensor[ID].Kp;
+  fr += " IntegralSum: ";
+  fr += IntegralSum[ID];
+  fr += "<br> LastPWM ";
+  fr += LastPWM[ID];
+ return fr;
+}
