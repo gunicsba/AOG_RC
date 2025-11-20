@@ -120,30 +120,24 @@ void DoSetup()
 
 	// Call WT5500setup() instead of Ethernet.init()
 	WT5500setup();
-	
-	// Only configure ETH if hardware was found
-	if (ChipFound) {
-		if (ETH.config(LocalIP, Gateway, Mask) == false) {
-			Serial.println("WT5500 Configuration failed.");
-		} else {
-			Serial.println("WT5500 Configuration success.");
-		}
-		// Wait for connection
-		int timeout = 10;
-		while (!ETHconnected && --timeout >= 0) {
-			delay(500);
-		}
-		
-		// UDP
-		UDP_Ethernet.begin(ListeningPort);
-		
-		// AGIO
-		UDP_AGIO.begin(ListeningPortAGIO);
+	if (ETH.config(LocalIP, Gateway, Mask) == false) {
+		Serial.println("WT5500 Configuration failed.");
 	} else {
-		Serial.println("Skipping Ethernet configuration - no hardware detected.");
+		Serial.println("WT5500 Configuration success.");
+	}
+	// Wait for connection
+	int timeout = 10;
+	while (!ETHconnected && --timeout >= 0) {
+		delay(500);
 	}
 
 	Ethernet_DestinationIP = IPAddress(MDL.IP0, MDL.IP1, MDL.IP2, 255);	// update from saved data
+
+	// UDP
+	UDP_Ethernet.begin(ListeningPort);
+
+	// AGIO
+	UDP_AGIO.begin(ListeningPortAGIO);
 
 	// sensors
 	for (int i = 0; i < MDL.SensorCount; i++)
