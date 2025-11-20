@@ -84,7 +84,7 @@ void SendUDP()
 
         if (ChipFound)
         {
-            if (Ethernet.linkStatus() == LinkON) Data[11] |= 0b01000000;
+            if (ETHconnected) Data[11] |= 0b01000000;
         }
 
         if (GoodPins) Data[11] |= 0b10000000;
@@ -96,7 +96,7 @@ void SendUDP()
         // ethernet
         if (ChipFound)
         {
-            if (Ethernet.linkStatus() == LinkON)
+            if (ETHconnected)
             {
 
                 UDP_Ethernet.beginPacket(Ethernet_DestinationIP, DestinationPort);
@@ -157,7 +157,7 @@ void SendUDP()
     // ethernet
     if (ChipFound)
     {
-        if (Ethernet.linkStatus() == LinkON)
+        if (ETHconnected)
         {
 
             UDP_Ethernet.beginPacket(Ethernet_DestinationIP, DestinationPort);
@@ -180,7 +180,7 @@ void ReceiveUDP()
 {
     if (ChipFound)
     {
-        if (Ethernet.linkStatus() == LinkON)
+        if (ETHconnected)
         {
             uint16_t len = UDP_Ethernet.parsePacket();
             if (len)
@@ -469,7 +469,7 @@ void ReceiveAGIO()
 {
     if (ChipFound)
     {
-        if (Ethernet.linkStatus() == LinkON)
+        if (ETHconnected)
         {
             uint16_t len = UDP_AGIO.parsePacket();
             if (len)

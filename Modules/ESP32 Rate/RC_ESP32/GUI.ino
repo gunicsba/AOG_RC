@@ -60,4 +60,43 @@ void ButtonPressed()
 	}
 }
 
+void HandleInfo()
+{
+	server.send(200, "text/html", GetPageInfo());
+}
+
+void Cytron()
+{
+	if (server.hasArg("disableMotor"))
+	{
+		disableMotor = (server.arg("disableMotor") == "1");
+	}
+	if (server.hasArg("disableFlow"))
+	{
+		disableFlow = (server.arg("disableFlow") == "1");
+	}
+	if (server.hasArg("b9threlay"))
+	{
+		b9threlay = (server.arg("b9threlay") == "1");
+	}
+	SaveData();
+	server.send(200, "text/html", GetPage0());
+}
+
+String HtmlGetHead(String title)
+{
+	String HTML = "<!DOCTYPE html>\r\n";
+	HTML += "<html>\r\n";
+	HTML += "<head>\r\n";
+	HTML += "<meta name='viewport' content='width=device-width, initial-scale=1'>\r\n";
+	HTML += "<title>";
+	HTML += title;
+	HTML += "</title>\r\n";
+	HTML += "<style>\r\n";
+	HTML += "body { font-family: Arial, sans-serif; margin: 20px; }\r\n";
+	HTML += "hr { border: 1px solid #ccc; }\r\n";
+	HTML += "</style>\r\n";
+	HTML += "</head>\r\n";
+	return HTML;
+}
 

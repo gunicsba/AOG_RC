@@ -19,6 +19,9 @@ void DoSetup()
 	Serial.println(InoDescription);
 	Serial.println("");
 
+	// Initialize temperature sensor
+	initTempSensor();
+
 	// eeprom
 	EEPROM.begin(EEPROM_SIZE);
 	LoadData();
@@ -33,7 +36,7 @@ void DoSetup()
 	Serial.println("");
 
 	// I2C
-	Wire.begin();			// I2C on pins SCL 22, SDA 21
+	Wire.begin(8, 18);		// I2C with custom pins: SDA=8, SCL=18
 	Wire.setClock(400000);	//Increase I2C data rate to 400kHz
 
 	// ADS1115
@@ -109,37 +112,23 @@ void DoSetup()
 	}
 
 	// ethernet 
-	Serial.println("Starting Ethernet ...");
+	Serial.println("Starting WT5500 Ethernet ...");
 	MDL.IP3 = MDL.ID + 50;
 	IPAddress LocalIP(MDL.IP0, MDL.IP1, MDL.IP2, MDL.IP3);
-	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDL.IP3 };
-
-	Ethernet.init(W5500_SS);   // SS pin
-	Ethernet.begin(LocalMac, 0);
-	Ethernet.setLocalIP(LocalIP);
-	IPAddress Mask(255, 255, 255, 0);
-	Ethernet.setSubnetMask(Mask);
 	IPAddress Gateway(MDL.IP0, MDL.IP1, MDL.IP2, 1);
-	Ethernet.setGatewayIP(Gateway);
+	IPAddress Mask(255, 255, 255, 0);
 
-	delay(1500);
-	ChipFound = (Ethernet.hardwareStatus() != EthernetNoHardware);
-	if (ChipFound)
-	{
-		if (Ethernet.linkStatus() == LinkON)
-		{
-			Serial.println("Ethernet Connected.");
-		}
-		else
-		{
-			Serial.println("Ethernet Not Connected.");
-		}
-		Serial.print("IP Address: ");
-		Serial.println(Ethernet.localIP());
+	// Call WT5500setup() instead of Ethernet.init()
+	WT5500setup();
+	if (ETH.config(LocalIP, Gateway, Mask) == false) {
+		Serial.println("WT5500 Configuration failed.");
+	} else {
+		Serial.println("WT5500 Configuration success.");
 	}
-	else
-	{
-		Serial.println("No ethernet hardware found.");
+	// Wait for connection
+	int timeout = 10;
+	while (!ETHconnected && --timeout >= 0) {
+		delay(500);
 	}
 
 	Ethernet_DestinationIP = IPAddress(MDL.IP0, MDL.IP1, MDL.IP2, 255);	// update from saved data
@@ -160,10 +149,10 @@ void DoSetup()
 		switch (i)
 		{
 		case 0:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, CHANGE);
 			break;
 		case 1:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, CHANGE);
 			break;
 		}
 
@@ -176,6 +165,10 @@ void DoSetup()
 		ledcSetup(i * 2 + 1, 500, 8);
 		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
 	}
+
+	// Cytron enable pin
+	pinMode(13, OUTPUT);
+	digitalWrite(13, HIGH);  // Cytron enable
 
 	// Relays
 	switch (MDL.RelayControl)
@@ -282,6 +275,24 @@ void DoSetup()
 
 			pinMode(OutputEnablePin, OUTPUT);
 			digitalWrite(OutputEnablePin, LOW);	//enable
+
+			// Second PCA9685
+			ErrorCount = 0;
+			while (!PCA9685Ext_found)
+			{
+				Serial.print(".");
+				Wire.beginTransmission(PCAExtaddress);
+				PCA9685Ext_found = (Wire.endTransmission() == 0);
+				ErrorCount++;
+				delay(500);
+				if (ErrorCount > 5) break;
+			}
+			if (PCA9685Ext_found)
+			{
+				Serial.println("PCA9685Ext found.");
+				PWMServoDriverExt.begin();
+				PWMServoDriverExt.setPWMFreq(200);
+			}
 		}
 		else
 		{
@@ -348,6 +359,8 @@ void DoSetup()
 	server.on("/page1", HandlePage1);
 	server.on("/page2", HandlePage2);
 	server.on("/ButtonPressed", ButtonPressed);
+	server.on("/info", HandleInfo);
+	server.on("/Cytron", Cytron);
 	server.onNotFound(HandleRoot);
 
 	// OTA
@@ -399,6 +412,9 @@ void LoadData()
 		{
 			EEPROM.get(300 + i * 80, Sensor[i]);
 		}
+		EEPROM.get(10, disableMotor);
+		EEPROM.get(11, disableFlow);
+		EEPROM.get(12, b9threlay);
 		IsValid = ValidData();
 		if (!IsValid)
 		{
@@ -425,6 +441,9 @@ void SaveData()
 	{
 		EEPROM.put(300 + i * 80, Sensor[i]);
 	}
+	EEPROM.put(10, disableMotor);
+	EEPROM.put(11, disableFlow);
+	EEPROM.put(12, b9threlay);
 	EEPROM.commit();
 }
 
@@ -433,13 +452,13 @@ void LoadDefaults()
 	Serial.println("Loading default settings.");
 
 	// default flow pins
-	Sensor[0].FlowPin = 17;
-	Sensor[0].IN1 = 32;
-	Sensor[0].IN2 = 33;
+	Sensor[0].FlowPin = 21;
+	Sensor[0].IN1 = 4;
+	Sensor[0].IN2 = 5;
 
-	Sensor[1].FlowPin = 16;
-	Sensor[1].IN1 = 25;
-	Sensor[1].IN2 = 26;
+	Sensor[1].FlowPin = 47;
+	Sensor[1].IN1 = 7;
+	Sensor[1].IN2 = 15;
 
 	// default pid
 	Sensor[0].KP = 5;
@@ -531,5 +550,17 @@ bool ValidData()
 	}
 	GoodPins = Result;
 	return Result;
+}
+
+void initTempSensor() {
+	temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
+	temp_sensor.dac_offset = TSENS_DAC_L2;
+	temp_sensor_set_config(temp_sensor);
+	temp_sensor_start();
+}
+
+float getCurrentInAmps(int pin) {
+	int volt = analogRead(pin);
+	return map(volt, 3000, 500, 0, 30) / 10.0;
 }
 

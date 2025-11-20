@@ -28,6 +28,9 @@
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 
+#include "ETHClass.h"
+#include "driver/temp_sensor.h"
+
 // rate control with ESP32	board: DOIT ESP32 DEVKIT V1
 # define InoDescription "RC_ESP32 :  24-Feb-2024"
 const uint16_t InoID = 24024;	// change to send defaults to eeprom, ddmmy, no leading 0
@@ -46,6 +49,13 @@ const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 #define PCFaddress 0x20
 #define W5500_SS 5	// W5500 SPI SS
 #define NC 0xFF		// Pin not connected
+
+// Custom configuration flags
+#define Current1Pin 6
+#define Current2Pin 14
+bool disableMotor = false;
+bool disableFlow = false;
+bool b9threlay = false;
 
 struct ModuleConfig
 {
@@ -100,9 +110,10 @@ const uint16_t ListeningPort = 28888;
 const uint16_t DestinationPort = 29999;
 
 // ethernet
-EthernetUDP UDP_Ethernet;
+WiFiUDP UDP_Ethernet;
 IPAddress Ethernet_DestinationIP(MDL.IP0, MDL.IP1, MDL.IP2, 255);
 bool ChipFound;
+static bool ETHconnected = false;
 
 // AGIO
 EthernetUDP UDP_AGIO;
@@ -145,6 +156,10 @@ bool PCA9555PW_found = false;
 
 Adafruit_PWMServoDriver PWMServoDriver = Adafruit_PWMServoDriver(PCAaddress);
 bool PCA9685_found = false;
+
+#define PCAExtaddress 0x41
+Adafruit_PWMServoDriver PWMServoDriverExt = Adafruit_PWMServoDriver(PCAExtaddress);
+bool PCA9685Ext_found = false;
 
 Adafruit_MCP23X17 MCP;
 bool MCP23017_found = false;
