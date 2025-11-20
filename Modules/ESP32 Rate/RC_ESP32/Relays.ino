@@ -44,6 +44,16 @@ void CheckRelays()
         NewHi = PowerRelayHi | InvertedHi;
     }
 
+    // power relays, always on
+    NewLo |= PowerRelayLo;
+    NewHi |= PowerRelayHi;
+    
+    // Disable Cytron motor if disableMotor flag is set and 8th relay (bit 7) is OFF
+    if (disableMotor && Sensor[1].ControlType == Motor_ct)
+    {
+        digitalWrite(13, bitRead(NewLo, 7));
+    }
+
     switch (MDL.RelayControl)
     {
     case 1:
@@ -221,6 +231,12 @@ void CheckRelays()
                         RelayStatus[i] = BitState;
                     }
                 }
+            }
+            
+            // Handle 9th relay (b9threlay) to control F2 via SetPWM for sensor 1
+            if (b9threlay)
+            {
+                SetPWM(1, bitRead(NewHi, 0) ? 255 : -255);
             }
         }
         break;
