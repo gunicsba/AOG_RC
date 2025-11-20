@@ -12,11 +12,22 @@
 #include <EEPROM.h> 
 #include <Wire.h>
 
-#include <SPI.h>
-#include <Ethernet.h>
+//#include <SPI.h>
+//#include <Ethernet.h>
+#include "ETHClass.h"
 #include <EthernetUdp.h>
 
 #include <Adafruit_PWMServoDriver.h>
+#include <Adafruit_MCP23008.h>
+#include <Adafruit_MCP23X08.h>
+#include <Adafruit_MCP23X17.h>
+#include <Adafruit_MCP23XXX.h>
+#include <Adafruit_BusIO_Register.h>
+#include <Adafruit_I2CDevice.h>
+#include <Adafruit_I2CRegister.h>
+#include <Adafruit_SPIDevice.h>
+
+#include "driver/temp_sensor.h"
 
 //rate control with ESP32, board: DOIT ESP32 DEVKIT V1
 # define InoDescription "RC_ESP32"
@@ -38,6 +49,10 @@ const int16_t ADS1115_Address = 0x48;
 uint8_t MCP23017address;
 const uint8_t PCF8574address = 0x20;
 const uint8_t W5500_SS = 5;		// W5500 SPI SS
+
+// Custom pin definitions
+#define Current1Pin 6		// Current monitoring for sections
+#define Current2Pin 14		// Current monitoring for Cytron
 
 #if defined(ESP32)
 const int PWM_BITS = 12;
@@ -136,6 +151,12 @@ const uint16_t ListeningPort = 28888;
 const uint16_t DestinationPort = 29999;
 IPAddress Ethernet_DestinationIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);
 bool ChipFound;
+static bool ETHconnected = false;	// Ethernet.linkStatus() is too slow
+
+// AGIO UDP support
+WiFiUDP UDP_AGIO;
+const uint16_t ListeningPortAGIO = 8888;		// to listen on
+const uint16_t DestinationPortAGIO = 9999;		// to send to
 
 // wifi
 WiFiUDP UDP_Wifi;
@@ -178,11 +199,27 @@ bool PCA9685_found = false;
 #define PCA9685Address 0x55
 Adafruit_PWMServoDriver PWMServoDriver = Adafruit_PWMServoDriver(PCA9685Address);
 
+// Dual PCA9685 support
+const uint8_t PCAExtaddress = 0x41;
+Adafruit_PWMServoDriver PWMServoDriverExt = Adafruit_PWMServoDriver(PCAExtaddress);
+bool PCA9685Ext_found = false;
+
 // analog
 int16_t PressureReading = 0;
 bool ADSfound = false;
 
 bool GoodPins;	// pin configuration correct
+
+// Custom checkbox flags for info page
+bool disableMotor = false;
+bool disableFlow = false;
+bool b9threlay = false;
+
+// Debugging and diagnostics
+uint32_t MaxLoopTime = 0;
+float debug1 = 0;
+float debug2 = 0;
+float debug3 = 0;
 
 float TimedCombo(byte, bool);	// function prototype
 void IRAM_ATTR ISR0();		// function prototype
