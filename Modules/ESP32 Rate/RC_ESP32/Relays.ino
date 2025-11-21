@@ -209,14 +209,68 @@ void CheckRelays()
                         if (BitState)
                         {
                             // on  
-                            PWMServoDriver.setPWM(IOpin, 4096, 0);
-                            PWMServoDriver.setPWM(IOpin + 1, 0, 4096);
+                            PWMServoDriver.setPWM(IOpin, 0, 4095);
+                            PWMServoDriver.setPWM(IOpin + 1, 0, 0);
                         }
                         else
                         {
                             // off
-                            PWMServoDriver.setPWM(IOpin, 0, 4096);
-                            PWMServoDriver.setPWM(IOpin + 1, 4096, 0);
+                            PWMServoDriver.setPWM(IOpin, 0, 0);
+                            PWMServoDriver.setPWM(IOpin + 1, 0, 4095);
+                        }
+                        RelayStatus[i] = BitState;
+                    }
+                }
+            }
+        }
+
+        if (PCA9685Ext_found)
+        {
+            if (MDL.Is3Wire)
+            {
+                // 1 pin for each valve, powered on only, 8 sections, 1 drv for each section, use IN1
+                for (int i = 0; i < 8; i++)
+                {
+                    BitState = bitRead(NewHi, i);
+
+                    if (RelayStatus[i] != BitState)
+                    {
+                        IOpin = (1 + i) * 2 - 1;
+                        if (BitState)
+                        {
+                            // on
+                            PWMServoDriverExt.setPWM(IOpin, 4096, 0);
+                        }
+                        else
+                        {
+                            // off
+                            PWMServoDriverExt.setPWM(IOpin, 0, 0);
+                        }
+                        RelayStatus[i] = BitState;
+                    }
+                }
+            }
+            else
+            {
+                // 2 pins used for each valve, powered on and off, 8 sections
+                for (int i = 0; i < 8; i++)
+                {
+                    BitState = bitRead(NewHi, i);
+
+                    if (RelayStatus[i] != BitState)
+                    {
+                        IOpin = i * 2;
+                        if (BitState)
+                        {
+                            // on  
+                            PWMServoDriverExt.setPWM(IOpin, 0, 4095);
+                            PWMServoDriverExt.setPWM(IOpin + 1, 0, 0);
+                        }
+                        else
+                        {
+                            // off
+                            PWMServoDriverExt.setPWM(IOpin, 0, 0);
+                            PWMServoDriverExt.setPWM(IOpin + 1, 0, 4095);
                         }
                         RelayStatus[i] = BitState;
                     }

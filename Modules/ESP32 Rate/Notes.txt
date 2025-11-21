@@ -6,3 +6,10 @@ httpswww.kapilarya.comhow-to-use-wifi-and-ethernet-at-same-time-in-windows-11
 The access point is at 192.168.200 + module number. For example module 2 would be at 192.168.200.2
 
 If using the client mode and the ESP32 can't connect to the network after 10 tries it will revert back to AP mode only.
+
+How to Flash?
+esptool --chip esp32s3 --port "COM8" --baud 460800  --before default_reset --after hard_reset write_flash  -z --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 RC_ESP32.ino.bootloader.bin 0x8000 RC_ESP32.ino.partitions.bin 0xe000 boot_app0.bin 0x10000 RC_ESP32.ino.bin
+
+
+Ethernet library 2.0.0 !!
+Esp32 board verion 2.0.14 / .17

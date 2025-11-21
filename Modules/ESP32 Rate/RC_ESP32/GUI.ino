@@ -22,6 +22,11 @@ void HandlePage2()
 	server.send(200, "text/html", GetPage2());
 }
 
+void HandleInfo()
+{
+  server.send(200, "text/html", GetPageInfo());
+}
+
 void handleCredentials()
 {
 	bool OldMode = MDLnetwork.WifiModeUseStation;
@@ -47,6 +52,28 @@ void handleCredentials()
 		delay(3000);
 		ESP.restart();
 	}
+}
+
+void Cytron() {
+
+  bool newState = server.arg("disableFlow") == "on";
+  if(disableFlow != newState) {
+    disableFlow = newState;
+    SaveData();
+  }
+  newState = server.arg("disableMotor") == "on";
+  if(disableMotor != newState) {
+    disableMotor = newState;
+    SaveData();
+  }
+  newState = server.arg("b9threlay") == "on";
+  if(b9threlay != newState) {
+    b9threlay = newState;
+    SaveData();
+  }
+  
+  HandleInfo();
+
 }
 
 void ButtonPressed()

@@ -1,6 +1,5 @@
-
 // valid pins for each processor
-uint8_t ValidPins0[] = { 0,2,4,13,14,15,16,17,21,22,25,26,27,32,33 };	// SPI pins 5,18,19,23 excluded for ethernet module
+uint8_t ValidPins0[] = { 0,2,4,5,7,13,14,15,16,17,21,22,25,26,27,32,33,47 };	// SPI pins 5,18,19,23 excluded for ethernet module
 
 void DoSetup()
 {
@@ -10,7 +9,7 @@ void DoSetup()
 	Sensor[1].FlowEnabled = false;
 
 	Serial.begin(38400);
-	delay(3000);
+	delay(300);
 	Serial.println("");
 	Serial.println("");
 	Serial.println("");
@@ -55,8 +54,8 @@ void DoSetup()
 	if (MDL.SensorCount > MaxProductCount) MDL.SensorCount = MaxProductCount;
 
 	// I2C
-	Wire.begin();			// I2C on pins SCL 22, SDA 21
-	Wire.setClock(400000);	//Increase I2C data rate to 400kHz
+	Wire.begin(8,18,400000);
+	scanI2CDevices();
 
 	// ADS1115
 	if (MDL.ADS1115Enabled)
@@ -92,34 +91,34 @@ void DoSetup()
 	MDLnetwork.IP3 = MDL.ID + 50;
 	IPAddress LocalIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, MDLnetwork.IP3);
 	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDLnetwork.IP3 };
-
-	Ethernet.init(W5500_SS);   // SS pin
-	Ethernet.begin(LocalMac, 0);
-	Ethernet.setLocalIP(LocalIP);
+	
 	IPAddress Mask(255, 255, 255, 0);
-	Ethernet.setSubnetMask(Mask);
 	IPAddress Gateway(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 1);
-	Ethernet.setGatewayIP(Gateway);
 
-	delay(1500);
-	ChipFound = (Ethernet.hardwareStatus() != EthernetNoHardware);
-	if (ChipFound)
-	{
-		if (Ethernet.linkStatus() == LinkON)
-		{
-			Serial.println("Ethernet connected.");
-		}
-		else
-		{
-			Serial.println("Ethernet not connected.");
-		}
-		Serial.print("IP Address: ");
-		Serial.println(Ethernet.localIP());
-	}
-	else
-	{
-		Serial.println("Ethernet hardware not found.");
-	}
+
+  WT5500setup();
+  
+  // write confir for static IP, gateway,subnet,dns1,dns2
+    if (ETH.config(LocalIP, Gateway, Mask) == false) {
+      Serial.println("WT5500 Configuration failed.");
+    } else {
+      Serial.println("WT5500 Configuration success.");
+    }
+
+    int timeout = 10;
+    while (!ETHconnected && --timeout >= 0) {
+      Serial.print("Linkup:");
+      Serial.print(ETH.linkUp());
+      
+      Serial.print("Linkspeed:");
+      Serial.print(ETH.linkSpeed());
+
+      Serial.print("LocalIP:");
+      Serial.print(ETH.localIP());
+      Serial.println("  Wait for network connect ..."); 
+      delay(500);
+    }
+  Serial.println("UDP begin ");
 
 	Ethernet_DestinationIP = IPAddress(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);	// update from saved data
 
@@ -136,20 +135,25 @@ void DoSetup()
 		switch (i)
 		{
 		case 0:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, CHANGE);
 			break;
 		case 1:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, CHANGE);
 			break;
 		}
 
 		// pwm frequency change from default 5000 Hz to 490 Hz, required for some valves to work
-		ledcAttach(Sensor[i].IN1, PWM_FREQ, PWM_BITS);
-		ledcWrite(Sensor[i].IN1, 0);
-
-		ledcAttach(Sensor[i].IN2, PWM_FREQ, PWM_BITS);
-		ledcWrite(Sensor[i].IN2, 0);
+		// DRV8870 IN1
+		ledcSetup(i * 2, PWM_FREQ, PWM_BITS);
+		ledcAttachPin(Sensor[i].IN1, i * 2);
+		
+		// DRV8870 IN2
+		ledcSetup(i * 2 + 1, PWM_FREQ, PWM_BITS);
+		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
 	}
+
+  pinMode(13, OUTPUT); //Cytron
+  digitalWrite(13,HIGH);
 
 	// Relays
 	switch (MDL.RelayControl)
@@ -276,12 +280,35 @@ void DoSetup()
 			PWMServoDriver.begin();
 			PWMServoDriver.setPWMFreq(200);
 
-			pinMode(OutputEnablePin, OUTPUT);
-			digitalWrite(OutputEnablePin, LOW);	//enable
+			//pinMode(OutputEnablePin, OUTPUT);
+			//digitalWrite(OutputEnablePin, LOW);	//enable
 		}
 		else
 		{
 			Serial.println("PCA9685 expander not found.");
+		}
+
+    ErrorCount = 0;
+		while (!PCA9685Ext_found)
+		{
+			Serial.print(".");
+			Wire.beginTransmission(PCA9685Extaddress);
+			PCA9685Ext_found = (Wire.endTransmission() == 0);
+			ErrorCount++;
+			delay(500);
+			if (ErrorCount > 5)break;
+		}
+
+		Serial.println("");
+		if (PCA9685Ext_found)
+		{
+			Serial.println("PCA9685Ext expander found.");
+			PWMServoDriverExt.begin();
+			PWMServoDriverExt.setPWMFreq(200);
+		}
+		else
+		{
+			Serial.println("PCA9685Ext expander not found.");
 		}
 		break;
 
@@ -353,6 +380,8 @@ void DoSetup()
 	server.on("/page1", HandlePage1);
 	server.on("/page2", HandlePage2);
 	server.on("/ButtonPressed", ButtonPressed);
+  server.on("/info", HandleInfo);
+  server.on("/Cytron", Cytron);
 	server.onNotFound(HandleRoot);
 
 	server.on("/generate_204", []() {server.send(204, "text/plain", "");	});	
@@ -451,6 +480,9 @@ void LoadData()
 	{
 		// load stored data
 		Serial.println("Loading stored settings.");
+    EEPROM.get(10,disableMotor);
+    EEPROM.get(11,disableFlow);
+    EEPROM.get(12,b9threlay);
 		EEPROM.get(23, MDL);
 
 		for (int i = 0; i < MaxProductCount; i++)
@@ -473,6 +505,9 @@ void SaveData()
 	Serial.println("Updating stored settings.");
 	EEPROM.put(0, InoID);
 	EEPROM.put(2, InoType);
+  EEPROM.put(10,disableMotor);
+  EEPROM.put(11,disableFlow);
+  EEPROM.put(12,b9threlay);
 	EEPROM.put(23, MDL);
 
 	for (int i = 0; i < MaxProductCount; i++)
@@ -488,13 +523,13 @@ void LoadDefaults()
 
 	// RC15
 	// default flow pins
-	Sensor[0].FlowPin = 17;
-	Sensor[0].IN1 = 32;
-	Sensor[0].IN2 = 33;
+	Sensor[0].FlowPin = 21;
+	Sensor[0].IN1 = 4;
+	Sensor[0].IN2 = 5;
 
-	Sensor[1].FlowPin = 16;
-	Sensor[1].IN1 = 25;
-	Sensor[1].IN2 = 26;
+	Sensor[1].FlowPin = 47;
+	Sensor[1].IN1 = 7;
+	Sensor[1].IN2 = 15;
 
 	// default control settings
 	for (int i = 0; i < 2; i++)
@@ -670,4 +705,46 @@ void SaveNetworks()
 	EEPROM.commit();
 }
 
+String scanI2CDevices(){
+  String forReturn="";
+  byte error, address;
+  int nDevices;
+  Serial.println("Scanning...");   /*ESP32 starts scanning available I2C devices*/
+  forReturn += "Scanning...\n";
+  nDevices = 0;
+  for(address = 1; address < 127; address++ ) {   /*for loop to check number of devices on 127 address*/
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+    if (error == 0) {   /*if I2C device found*/
+      Serial.print("I2C device found at address 0x");/*print this line if I2C device found*/
+      forReturn += "I2C device found at address 0x";
+      if (address<16) {
+        Serial.print("0");
+        forReturn += "0";
+      }
+      Serial.println(address,HEX);  /*prints the HEX value of I2C address*/
+      forReturn += String(address, HEX);
+      nDevices++;
+    }
+    else if (error==4) {
+      Serial.print("Unknown error at address 0x");
+      if (address<16) {
+        Serial.print("0");
+      }
+      Serial.println(address,HEX);
+    }    
+  }
+  if (nDevices == 0) {
+    Serial.println("No I2C devices found\n"); /*If no I2C device attached print this message*/
+    forReturn += "No I2C devices found\n";
+  }
+  else {
+    Serial.println("done\n");
+  }
+  return forReturn;
+}
 
+float getCurrentInAmps(int pin) {
+  int volt = analogRead(pin);
+  return map(volt,3000,500,0,30)/10.0;
+}

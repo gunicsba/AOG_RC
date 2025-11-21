@@ -12,10 +12,10 @@
 #include <EEPROM.h> 
 #include <Wire.h>
 
-#include <SPI.h>
-#include <Ethernet.h>
+#include "ETHClass.h"
 #include <EthernetUdp.h>
 
+#include <elapsedMillis.h>
 #include <Adafruit_PWMServoDriver.h>
 
 //rate control with ESP32, board: DOIT ESP32 DEVKIT V1
@@ -31,13 +31,13 @@ const uint8_t ModStringLengths = 15;
 const uint16_t EEPROM_SIZE = 512;
 
 // servo driver
-const uint8_t OutputEnablePin = 27;
-const uint8_t PCA9685address = 0x55;	// RC15 1010101, 1 + A5-A0
+//const uint8_t OutputEnablePin = 27;
+const uint8_t PCA9685address = 0x40;	// RC15 1010101, 1 + A5-A0
+const uint8_t PCA9685Extaddress = 0x41;	// RC15 1010101, 1 + A5-A0
 
 const int16_t ADS1115_Address = 0x48;
 uint8_t MCP23017address;
 const uint8_t PCF8574address = 0x20;
-const uint8_t W5500_SS = 5;		// W5500 SPI SS
 
 #if defined(ESP32)
 const int PWM_BITS = 12;
@@ -59,6 +59,9 @@ enum ControlType
 	Fan_ct = 4,
 	TimedCombo_ct = 5
 };
+
+#define Current1Pin 6 //CURRENT_SECTIONS
+#define Current2Pin 14 //CURRENT_CYTRON
 
 struct ModuleConfig	// about 130 bytes
 {
@@ -131,11 +134,12 @@ struct SensorConfig	// about 104 bytes
 SensorConfig Sensor[2];
 
 // ethernet
-EthernetUDP UDP_Ethernet;
+WiFiUDP UDP_Ethernet;
+static bool ETHconnected = false; //Ethernet.linkStatus() is too slow
 const uint16_t ListeningPort = 28888;
 const uint16_t DestinationPort = 29999;
 IPAddress Ethernet_DestinationIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);
-bool ChipFound;
+bool ChipFound = false;
 
 // wifi
 WiFiUDP UDP_Wifi;
@@ -149,6 +153,9 @@ const byte DNS_PORT = 53;
 bool WifiMasterOn = false;
 bool Button[16];
 uint32_t WifiSwitchesTimer;
+bool disableMotor = false;
+bool disableFlow = false;
+bool b9threlay = false;
 
 // Relays
 volatile byte RelayLo = 0;	// sections 0-7
@@ -175,8 +182,11 @@ bool MCP23017_found = false;
 
 // PCA9685
 bool PCA9685_found = false;
-#define PCA9685Address 0x55
+#define PCA9685Address 0x40
 Adafruit_PWMServoDriver PWMServoDriver = Adafruit_PWMServoDriver(PCA9685Address);
+bool PCA9685Ext_found = false;
+#define PCA9685ExtAddress 0x41
+Adafruit_PWMServoDriver PWMServoDriverExt = Adafruit_PWMServoDriver(PCA9685ExtAddress);
 
 // analog
 int16_t PressureReading = 0;

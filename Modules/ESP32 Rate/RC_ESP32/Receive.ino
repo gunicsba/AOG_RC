@@ -5,7 +5,7 @@ void ReceiveUDP()
 
     if (ChipFound)
     {
-        if (Ethernet.linkStatus() == LinkON)
+        if (ETHconnected)
         {
             uint16_t len = UDP_Ethernet.parsePacket();
             if (len)

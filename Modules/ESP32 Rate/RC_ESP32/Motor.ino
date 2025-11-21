@@ -41,13 +41,13 @@ void SetPWM(byte ID, float pwmVal)
 #if defined(ESP32)
     if (Increase)
     {
-        ledcWrite(Sensor[ID].IN1, duty);
-        ledcWrite(Sensor[ID].IN2, 0);
+        ledcWrite(ID * 2, duty);
+        ledcWrite(ID * 2 + 1, 0);
     }
     else
     {
-        ledcWrite(Sensor[ID].IN1, 0);
-        ledcWrite(Sensor[ID].IN2, duty);
+        ledcWrite(ID * 2, 0);
+        ledcWrite(ID * 2 + 1, duty);
     }
 
 #else
