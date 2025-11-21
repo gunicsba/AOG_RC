@@ -54,6 +54,7 @@ String GetPage0()
 	st += "</p>";
 	st += "    <form id=FORM1 method=post action='/'>&nbsp;";
 	st += "";
+	st += "      <p> <a class='btn-base btn-purple' href='/info' >Info</a> </p>";
 	st += "      <p> <a class='btn-base btn-purple' href='/page1' >Switches</a> </p>";
 	st += "      <p> <a class='btn-base btn-purple' href='/page2' >Network</a> </p>";
 	st += "      <p> <a class='btn-base btn-purple' href='/update' >Update Firmware</a> </p>";

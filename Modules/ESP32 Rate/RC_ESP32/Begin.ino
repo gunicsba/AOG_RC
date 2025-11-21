@@ -135,10 +135,10 @@ void DoSetup()
 		switch (i)
 		{
 		case 0:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, CHANGE);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, RISING);
 			break;
 		case 1:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, CHANGE);
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
 			break;
 		}
 
