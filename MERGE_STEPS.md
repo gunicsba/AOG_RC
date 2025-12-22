@@ -237,27 +237,38 @@ This will update PR #3 with the resolved merge.
 ## Quick Reference Commands
 
 ```bash
-# Start
+# 1. Start the merge
 git checkout ESP32RC_refactor25
 git merge master --no-commit --no-ff
 
-# Resolve
+# 2. Resolve simple files (keep ours)
 git checkout --ours "Modules/ESP32 Rate/Notes.txt"
 git checkout --ours "Modules/ESP32 Rate/RC_ESP32.ino.bin"
-# Edit RC_ESP32.ino manually (InoID: 20115 → 30115)
-# Edit Begin.ino manually (keep ValidPins, use new PWM API)
-# Edit PgNetwork.ino manually (keep GetCssStyle())
 
-# Stage all
+# 3. Edit files manually (see detailed instructions above)
+# - RC_ESP32.ino: Change InoID from 20115 to 30115
+# - Begin.ino: Keep ValidPins array, adopt new PWM API
+# - PgNetwork.ino: Keep GetCssStyle() call
+
+# 4. Stage all resolved files
 git add "Modules/ESP32 Rate/Notes.txt"
 git add "Modules/ESP32 Rate/RC_ESP32.ino.bin"
 git add "Modules/ESP32 Rate/RC_ESP32/RC_ESP32.ino"
 git add "Modules/ESP32 Rate/RC_ESP32/Begin.ino"
 git add "Modules/ESP32 Rate/RC_ESP32/PgNetwork.ino"
 
-# Commit
-git commit -m "Merge master into ESP32RC_refactor25 [see message above]"
+# 5. Commit the merge
+git commit -m "Merge master into ESP32RC_refactor25
 
-# Push
+Resolved conflicts:
+- Notes.txt: Kept ESP32RC_refactor25 version with flashing instructions
+- RC_ESP32.ino.bin: Kept ESP32RC_refactor25 binary
+- RC_ESP32.ino: Updated InoID to 30115 from master
+- Begin.ino: Kept custom ValidPins array, adopted master's ledcAttach API
+- PgNetwork.ino: Kept GetCssStyle() function approach
+
+Integration preserves custom hardware features while incorporating upstream improvements."
+
+# 6. Push to remote
 git push origin ESP32RC_refactor25
 ```

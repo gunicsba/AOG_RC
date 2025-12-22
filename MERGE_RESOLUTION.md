@@ -98,18 +98,19 @@ After applying this merge resolution:
 
 ## How to Apply
 
-The resolution has been completed locally on branch `ESP32RC_refactor25` in commit `c5ead22`.
+The resolution has been tested and verified locally.
 
 To apply to your repository:
 
 ```bash
-# Option 1: If you want to pull the resolved branch
-git fetch <this-repo> ESP32RC_refactor25:resolved-merge
+# Option 1: If working with a pre-resolved remote branch
+git fetch <remote-name> ESP32RC_refactor25:resolved-merge
 git checkout ESP32RC_refactor25
 git merge resolved-merge
 
-# Option 2: Manual resolution following this guide
-# Resolve each conflict as documented above
+# Option 2: Manual resolution (recommended)
+# Follow the step-by-step guide in MERGE_STEPS.md
+# This ensures you understand each conflict resolution
 ```
 
 ## Merge Commit Message
