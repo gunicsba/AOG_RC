@@ -2,6 +2,7 @@
 void DoSetup()
 {
 	uint8_t ErrorCount = 0;
+	bool WheelMatch = false;
 
 	Sensor[0].FlowEnabled = false;
 	Sensor[1].FlowEnabled = false;
@@ -134,7 +135,17 @@ void DoSetup()
 
 		// pwm frequency change from default 4482 Hz to 490 Hz, required for some valves to work
 		analogWriteFrequency(Sensor[i].PWMPin, 490);
+
+		if (Sensor[i].FlowPin == MDL.WheelSpeedPin) WheelMatch = true;
 	}
+
+	// wheel speed sensor
+	if (MDL.WheelSpeedPin != NC && !WheelMatch )
+	{
+		pinMode(MDL.WheelSpeedPin, INPUT_PULLUP);
+		attachInterrupt(digitalPinToInterrupt(MDL.WheelSpeedPin), ISR_Speed, FALLING);
+	}
+
 	analogWriteResolution(PWM_BITS);
 
 	// Relays
@@ -265,20 +276,48 @@ void DoSetup()
 	Serial.println(Sensor[1].PWMPin);
 
 	Serial.println("");
-	Serial.print("Work Switch Pin: ");
-	Serial.println(MDL.WorkPin);
-	Serial.print("Pressure Pin: ");
-	Serial.println(MDL.PressurePin);
 
-	Serial.println("");
-	Serial.print("ADS1115 enabled: ");
-	if (ADSfound)
+	Serial.print("Work Switch Pin: ");
+	if (MDL.WorkPin == NC)
 	{
-		Serial.println("true");
+		Serial.println(F("Disabled"));
 	}
 	else
 	{
-		Serial.println("false");
+		Serial.println(MDL.WorkPin);
+	}
+
+	Serial.print("Pressure Pin: ");
+	if (MDL.PressurePin == NC)
+	{
+		Serial.println(F("Disabled"));
+	}
+	else
+	{
+		Serial.println(MDL.PressurePin);
+	}
+
+	Serial.print(F("Wheel Speed Pin: "));
+	if (WheelMatch)
+	{
+		Serial.println(F("error, duplicate flow pin"));
+	}
+	else if (MDL.WheelSpeedPin == 255)
+	{
+		Serial.println(F("Disabled"));
+	}
+	else
+	{
+		Serial.println(MDL.WheelSpeedPin);
+	}
+
+	if (ADSfound)
+	{
+		Serial.println(F("ADS1115: Enabled "));
+	}
+	else
+	{
+		Serial.println(F("ADS1115: Disabled "));
 	}
 
 	Serial.println("");
@@ -352,15 +391,15 @@ void LoadDefaults()
 	for (int i = 0; i < 2; i++)
 	{
 		Sensor[i].MaxPWM = 255;
-		Sensor[i].MinPWM = 0;
-		Sensor[i].Kp = 0.0003;	// gain 35
-		Sensor[i].Ki = 0.00123;	// integral 5
+		Sensor[i].MinPWM = 5;
+		Sensor[i].Kp = pow(1.1, 65 - 120);	// Kp = 65
+		Sensor[i].Ki = pow(1.1, 65 - 120);	// Ki = 65
 		Sensor[i].Deadband = 0.015;
-		Sensor[i].BrakePoint = 0.35;
-		Sensor[i].PIDslowAdjust = 0.3;
-		Sensor[i].SlewRate = 15;
-		Sensor[i].MaxIntegral = 0.1;
-		Sensor[i].TimedMinStart = 0.03;
+		Sensor[i].BrakePoint = 35;
+		Sensor[i].PIDslowAdjust = 80;
+		Sensor[i].SlewRate = 25;
+		Sensor[i].MaxIntegral = 25;
+		Sensor[i].TimedMinStart = 0.5;
 		Sensor[i].TimedAdjust = 80;
 		Sensor[i].TimedPause = 400;
 		Sensor[i].PIDtime = 100;
@@ -387,6 +426,8 @@ void LoadDefaults()
 	MDL.Is3Wire = true;
 	MDL.ADS1115Enabled = false;
 	MDL.PressurePin = 40;
+	MDL.WheelCal = 0;
+	MDL.WheelSpeedPin = NC;
 }
 
 bool ValidData()
@@ -395,6 +436,7 @@ bool ValidData()
 
 	if (MDL.WorkPin > 41 && MDL.WorkPin != NC) Result = false;
 	if (MDL.PressurePin > 41 && MDL.PressurePin != NC) Result = false;
+	if (MDL.WheelSpeedPin > 41 && MDL.WheelSpeedPin != NC) Result = false;
 
 	if (Result)
 	{

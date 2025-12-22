@@ -1,9 +1,9 @@
-﻿using GMap.NET;
-using Microsoft.Win32;
-using RateController.Classes;
+﻿using RateController.Classes;
+using RateController.Forms;
 using RateController.Language;
 using RateController.PGNs;
 using RateController.Properties;
+using RateController.RateMap;
 using System;
 using System.Drawing;
 using System.IO;
@@ -17,7 +17,7 @@ namespace RateController
         public PGN254 AutoSteerPGN;
         public string[] CoverageAbbr = new string[] { "Ac", "Ha", "Min", "Hr" };
         public string[] CoverageDescriptions = new string[] { Lang.lgAcres, Lang.lgHectares, Lang.lgMinutes, Lang.lgHours };
-        public PGN100 GPS;
+        public PGN208 GPS;
         public bool LargeScreenExit = false;
         public frmLargeScreen Lscrn;
         public PGN238 MachineConfig;
@@ -44,6 +44,7 @@ namespace RateController
         public UDPComm UDPaog;
         public UDPComm UDPmodules;
         public clsVirtualSwitchBox vSwitchBox;
+        public PGN32504 WheelSpeed;
         public string WiFiIP;
         public clsZones Zones;
         private bool[] cShowScale = new bool[4];
@@ -56,7 +57,8 @@ namespace RateController
         private Label[] ProdName;
         private Label[] Rates;
         private PGN32501[] RelaySettings;
-        public clsSensors RateSensors;
+        private int RunOnce = 0;
+
         public FormStart()
         {
             InitializeComponent();
@@ -73,8 +75,12 @@ namespace RateController
             Props.MainForm = this;
             Props.CheckFolders();
             Props.OpenFile(Properties.Settings.Default.CurrentFile);
+
+            JobManager.Initialize();
+            MapController.Initialize();
+            Props.JobCollector.Enabled = true;
+
             Tls = new clsTools(this);
-            Tls.StartMapManager();
 
             //UDPaog = new UDPComm(this, 16666, 17777, 16660, "127.0.0.255");       // AGIO
 
@@ -110,8 +116,8 @@ namespace RateController
             AOGsections = new PGN229(this);
             SectionControl = new clsSectionControl(this);
             ScaleIndicator = new PGN32296(this);
-            GPS = new PGN100(this);
-            RateSensors = new clsSensors(this);
+            GPS = new PGN208(this);
+            WheelSpeed = new PGN32504(this);
         }
 
         public event EventHandler ColorChanged;
@@ -202,9 +208,9 @@ namespace RateController
             Sections.CheckSwitchDefinitions();
 
             Products.Load();
-            RelayObjects.Load();
+            CurrentPage = Props.DefaultProduct + 1;
 
-            LoadDefaultProduct();
+            RelayObjects.Load();
             Zones.Load();
 
             Props.DisplaySwitches();
@@ -260,7 +266,7 @@ namespace RateController
             {
                 this.Text = "RC [" + Path.GetFileNameWithoutExtension(Properties.Settings.Default.CurrentFile) + "]";
 
-                if (Props.SimMode == SimType.Sim_Speed || SectionControl.PrimeOn)
+                if (Props.SpeedMode == SpeedType.Simulated || SectionControl.PrimeOn)
                 {
                     btnSettings.Image = Properties.Resources.SimGear;
                 }
@@ -283,12 +289,13 @@ namespace RateController
                     // summary
                     for (int i = 0; i < Props.MaxProducts; i++)
                     {
+                        ProdName[i].Visible = Products.Item(i).Enabled;
                         ProdName[i].Text = Products.Item(i).ProductName;
-
                         ProdName[i].BackColor = Color.Transparent;
                         ProdName[i].ForeColor = Properties.Settings.Default.DisplayForeColour;
                         ProdName[i].BorderStyle = BorderStyle.None;
 
+                        Rates[i].Visible = Products.Item(i).Enabled;
                         Rates[i].Text = Products.Item(i).SmoothRate().ToString("N1");
                     }
                     lbArduinoConnected.Visible = false;
@@ -397,13 +404,22 @@ namespace RateController
                     lbArduinoConnected.Visible = true;
                 }
 
-                if (AutoSteerPGN.Connected())
+                if (GPS.TWOLconnected())
                 {
+                    lbAogConnected.Text = "TWOL";
                     lbAogConnected.BackColor = Color.LightGreen;
                 }
                 else
                 {
-                    lbAogConnected.BackColor = Color.Red;
+                    lbAogConnected.Text = "AOG";
+                    if (AutoSteerPGN.Connected())
+                    {
+                        lbAogConnected.BackColor = Color.LightGreen;
+                    }
+                    else
+                    {
+                        lbAogConnected.BackColor = Color.Red;
+                    }
                 }
 
                 // alarm
@@ -446,11 +462,87 @@ namespace RateController
             }
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            if (RunOnce == 0)
+            {
+                RunOnce = 1;
+                if (JobManager.ShowJobs)
+                {
+                    // show jobs menu
+                    var menuForm = Props.IsFormOpen("frmMenu", false) as frmMenu;
+                    if (menuForm == null)
+                    {
+                        int prd = CurrentProduct();
+                        menuForm = new frmMenu(this, prd);
+                        menuForm.Show();
+                    }
+
+                    menuForm.butFile_Click(this, EventArgs.Empty);
+                    menuForm.butJobs_Click(this, EventArgs.Empty);
+                }
+            }
+        }
+
+        private void AppShutDown(FormClosingEventArgs e)
+        {
+            bool ShutDown = true;
+
+            if (!LargeScreenExit && !Restart && !LoadError && Products.Connected() && e.CloseReason != CloseReason.WindowsShutDown
+                && e.CloseReason != CloseReason.TaskManagerClosing)
+            {
+                using (var Hlp = new frmMsgBox("Confirm Exit?", "Exit", true))
+                {
+                    Hlp.TopMost = true;
+
+                    Hlp.ShowDialog();
+                    bool Result = Hlp.Result;
+                    if (!Result)
+                    {
+                        ShutDown = false;
+                        e.Cancel = true;
+                    }
+                }
+            }
+
+            if (ShutDown)
+            {
+                try
+                {
+                    Props.RaiseApplicationExiting();
+
+                    timerMain.Enabled = false;
+
+                    MapController.Close();
+                    Props.SaveFormLocation(this);
+                    if (this.WindowState == FormWindowState.Normal)
+                    {
+                        Props.SetProp("CurrentPage", CurrentPage.ToString());
+                    }
+
+                    Sections.Save();
+                    Products.Save();
+
+                    UDPaog.Close();
+                    UDPmodules.Close();
+
+                    Props.WriteActivityLog("Stopped");
+                    string mes = "Run time (hours): " + ((DateTime.Now - cStartTime).TotalSeconds / 3600.0).ToString("N1");
+                    Props.WriteActivityLog(mes);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+
         private void AreaDone_Click(object sender, EventArgs e)
         {
             if (MouseButtonClicked == MouseButtons.Left)
             {
-                var Hlp = new frmMsgBox(this, "Reset area?", "Reset", true);
+                var Hlp = new frmMsgBox("Reset area?", "Reset", true);
                 Hlp.TopMost = true;
 
                 Hlp.ShowDialog();
@@ -477,11 +569,10 @@ namespace RateController
         {
             if (MouseButtonClicked == MouseButtons.Left)
             {
-                if (CurrentPage > 0)
-                {
-                    CurrentPage--;
-                    UpdateStatus();
-                }
+                int cp = CurrentPage;
+                CurrentPage = Products.PreviousEnabledProduct(CurrentPage - 1) + 1;
+                if (CurrentPage == cp) CurrentPage = 0; // show summary page
+                UpdateStatus();
             }
         }
 
@@ -489,11 +580,8 @@ namespace RateController
         {
             if (MouseButtonClicked == MouseButtons.Left)
             {
-                if (CurrentPage < Props.MaxProducts)
-                {
-                    CurrentPage++;
-                    UpdateStatus();
-                }
+                CurrentPage = Products.NextEnabledProduct(CurrentPage - 1) + 1;
+                UpdateStatus();
             }
         }
 
@@ -574,35 +662,6 @@ namespace RateController
             }
         }
 
-        private void FormRateControl_FormClosed(object sender, FormClosedEventArgs e)
-        {
-            try
-            {
-                Props.SaveFormLocation(this);
-                if (this.WindowState == FormWindowState.Normal)
-                {
-                    Props.SetProp("CurrentPage", CurrentPage.ToString());
-                }
-
-                Sections.Save();
-                Products.Save();
-
-                UDPaog.Close();
-                UDPmodules.Close();
-
-                timerMain.Enabled = false;
-                timerRates.Enabled = false;
-                Props.WriteActivityLog("Stopped");
-                string mes = "Run time (hours): " + ((DateTime.Now - cStartTime).TotalSeconds / 3600.0).ToString("N1");
-                Props.WriteActivityLog(mes);
-            }
-            catch (Exception)
-            {
-            }
-
-            Application.Exit();
-        }
-
         private void FormStart_Activated(object sender, EventArgs e)
         {
             if (Restart)
@@ -617,19 +676,7 @@ namespace RateController
 
         private void FormStart_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (!LargeScreenExit && !Restart && !LoadError && Products.Connected()
-                && e.CloseReason != CloseReason.WindowsShutDown && e.CloseReason != CloseReason.TaskManagerClosing)
-            {
-                using (var Hlp = new frmMsgBox(this, "Confirm Exit?", "Exit", true))
-                {
-                    Hlp.TopMost = true;
-
-                    Hlp.ShowDialog();
-                    bool Result = Hlp.Result;
-                    Hlp.Close();
-                    if (!Result) e.Cancel = true;
-                }
-            }
+            AppShutDown(e);
         }
 
         private void FormStart_Load(object sender, EventArgs e)
@@ -668,7 +715,13 @@ namespace RateController
                 Props.DisplayRate();
 
                 timerMain.Enabled = true;
-                timerRates.Enabled = true;
+
+                bool Preview = bool.TryParse(Props.GetAppProp("MapPreview"), out bool pv) ? pv : false;
+                if (Preview)
+                {
+                    frmMap frm = new frmMap();
+                    frm.Show();
+                }
             }
             catch (Exception ex)
             {
@@ -679,11 +732,6 @@ namespace RateController
             SetLanguage();
             Props.WriteActivityLog("Started", true);
             cStartTime = DateTime.Now;
-
-            if (Properties.Settings.Default.UseJobs)
-            {
-                // to do open jobs screen
-            }
         }
 
         private void FormStart_Resize(object sender, EventArgs e)
@@ -694,7 +742,7 @@ namespace RateController
         private void groupBox3_Paint(object sender, PaintEventArgs e)
         {
             GroupBox box = sender as GroupBox;
-            Tls.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, Properties.Settings.Default.DisplayForeColour);
+            Props.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, Properties.Settings.Default.DisplayForeColour);
         }
 
         private void label34_Click(object sender, EventArgs e)
@@ -719,9 +767,15 @@ namespace RateController
         {
             if (MouseButtonClicked == MouseButtons.Left)
             {
+                frmPressureDisplay pressure = (frmPressureDisplay)Props.IsFormOpen("frmPressureDisplay", false);
+                if (pressure != null && pressure.Owner == this)
+                {
+                    pressure.DetachFromOwner();
+                }
+
                 int prod = CurrentPage - 1;
                 if (prod < 0) prod = 0;
-                Form restoreform = new RCRestore(this, Props.UserRateType,  this);
+                Form restoreform = new RCRestore(this, Props.UserRateType, this);
                 restoreform.Show();
             }
         }
@@ -752,6 +806,17 @@ namespace RateController
 
             Props.ShowMessage(Message, "Coverage");
             hlpevent.Handled = true;
+        }
+
+        private void lbProduct_MouseDown(object sender, MouseEventArgs e)
+        {
+            MouseButtonClicked = e.Button;
+            if (e.Button == MouseButtons.Right || e.Button == MouseButtons.Left) MouseDownLocation = e.Location;
+        }
+
+        private void lbProduct_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right || e.Button == MouseButtons.Left) this.Location = new Point(this.Left + e.X - MouseDownLocation.X, this.Top + e.Y - MouseDownLocation.Y);
         }
 
         private void lbRate_Click(object sender, EventArgs e)
@@ -819,32 +884,15 @@ namespace RateController
             hlpevent.Handled = true;
         }
 
-        private void LoadDefaultProduct()
-        {
-            int count = 0;
-            int tmp = 0;
-            foreach (clsProduct Prd in Products.Items)
-            {
-                if (Prd.OnScreen && Prd.ID < Props.MaxProducts - 2)
-                {
-                    count++;
-                    tmp = Prd.ID;
-                }
-            }
-            if (count == 1) Props.DefaultProduct = tmp;
-
-            CurrentPage = Props.DefaultProduct + 1;
-        }
-
         private void mouseMove_MouseDown(object sender, MouseEventArgs e)
         {
             MouseButtonClicked = e.Button;
-            if (e.Button == MouseButtons.Right ) MouseDownLocation = e.Location;
+            if (e.Button == MouseButtons.Right) MouseDownLocation = e.Location;
         }
 
         private void mouseMove_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Right ) this.Location = new Point(this.Left + e.X - MouseDownLocation.X, this.Top + e.Y - MouseDownLocation.Y);
+            if (e.Button == MouseButtons.Right) this.Location = new Point(this.Left + e.X - MouseDownLocation.X, this.Top + e.Y - MouseDownLocation.Y);
         }
 
         private void SetDisplay()
@@ -930,27 +978,6 @@ namespace RateController
             SendRelays();
             Products.Save();
             SectionControl.ReadRateSwitches();
-        }
-
-        private void timerRates_Tick(object sender, EventArgs e)
-        {
-            if (GPS.Connected())
-            {
-                PointLatLng Position = new PointLatLng(GPS.Latitude, GPS.Longitude);
-                Tls.Manager.SetTractorPosition(Position, Products.ProductAppliedRates(), Products.ProductTargetRates());
-            }
-            Tls.Manager.UpdateTargetRates();
-        }
-
-        private void lbProduct_MouseDown(object sender, MouseEventArgs e)
-        {
-            MouseButtonClicked = e.Button;
-            if (e.Button == MouseButtons.Right || e.Button == MouseButtons.Left) MouseDownLocation = e.Location;
-        }
-
-        private void lbProduct_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Right || e.Button == MouseButtons.Left) this.Location = new Point(this.Left + e.X - MouseDownLocation.X, this.Top + e.Y - MouseDownLocation.Y);
         }
     }
 }

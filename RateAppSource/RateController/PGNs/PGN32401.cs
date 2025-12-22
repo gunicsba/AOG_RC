@@ -11,11 +11,11 @@ namespace RateController
         //2     module ID
         //3     Pressure Lo
         //4     Pressure Hi
-        //5     -
-        //6     -
-        //7     -
-        //8     -
-        //9     -
+        //5     wheel speed Lo  actual * 10
+        //6     wheel speed Hi
+        //7     wheel count Lo
+        //8     wheel count mid
+        //9     wheel count Hi
         //10    InoType
         //11    InoID lo
         //12    InoID hi
@@ -37,6 +37,8 @@ namespace RateController
         private UInt16[] cInoID;
         private UInt16[] cInoType;
         private double[] cPressureReading;
+        private UInt16[] cWheelCounts;
+        private double[] cWheelSpeed;
         private byte[] cWifiSignal;
         private bool[] cWorkSwitch;
         private bool[] EthernetConnectedLast;
@@ -60,6 +62,8 @@ namespace RateController
             GoodPinsLast = new bool[Props.MaxModules];
 
             cInoType = new ushort[Props.MaxModules];
+            cWheelSpeed = new double[Props.MaxModules];
+            cWheelCounts = new ushort[Props.MaxModules];
         }
 
         public event EventHandler<PinStatusEventArgs> PinStatusChanged;
@@ -85,22 +89,30 @@ namespace RateController
             if (Data[1] == HeaderHi && Data[0] == HeaderLo && Data.Length >= cByteCount && mf.Tls.GoodCRC(Data))
             {
                 byte ModuleID = Data[2];
-                cPressureReading[ModuleID] = (double)(Data[3] | Data[4] << 8);
-                cInoType[ModuleID] = Data[10];
-                cInoID[ModuleID] = (ushort)(Data[11] | Data[12] << 8);
-                cWorkSwitch[ModuleID] = ((Data[13] & 0b00000001) == 0b00000001);
+                if (ModuleID < Props.MaxModules)
+                {
+                    cPressureReading[ModuleID] = (double)(Data[3] | Data[4] << 8);
 
-                // wifi strength
-                cWifiSignal[ModuleID] = 0;
-                if ((Data[13] & 0b00000010) == 0b00000010) cWifiSignal[ModuleID] = 1;
-                if ((Data[13] & 0b00000100) == 0b00000100) cWifiSignal[ModuleID] = 2;
-                if ((Data[13] & 0b00001000) == 0b00001000) cWifiSignal[ModuleID] = 3;
+                    cWheelSpeed[ModuleID] = ((double)(Data[5] | Data[6] << 8)) / 10.0;
 
-                cEthernetConnected[ModuleID] = ((Data[13] & 0b00010000) == 0b00010000);
-                cGoodPins[ModuleID] = ((Data[13] & 0b00100000) == 0b00100000);
+                    cWheelCounts[ModuleID] = (ushort)(Data[7] | Data[8] << 8 | Data[9] << 16);
 
-                ReceiveTime[ModuleID] = DateTime.Now;
-                Result = true;
+                    cInoType[ModuleID] = Data[10];
+                    cInoID[ModuleID] = (ushort)(Data[11] | Data[12] << 8);
+                    cWorkSwitch[ModuleID] = ((Data[13] & 0b00000001) == 0b00000001);
+
+                    // wifi strength
+                    cWifiSignal[ModuleID] = 0;
+                    if ((Data[13] & 0b00000010) == 0b00000010) cWifiSignal[ModuleID] = 1;
+                    if ((Data[13] & 0b00000100) == 0b00000100) cWifiSignal[ModuleID] = 2;
+                    if ((Data[13] & 0b00001000) == 0b00001000) cWifiSignal[ModuleID] = 3;
+
+                    cEthernetConnected[ModuleID] = ((Data[13] & 0b00010000) == 0b00010000);
+                    cGoodPins[ModuleID] = ((Data[13] & 0b00100000) == 0b00100000);
+
+                    ReceiveTime[ModuleID] = DateTime.Now;
+                    Result = true;
+                }
             }
             UpdateActivity();
             return Result;
@@ -149,6 +161,16 @@ namespace RateController
                     PinStatusChanged?.Invoke(this, args);
                 }
             }
+        }
+
+        public UInt16 WheelCounts(int Module)
+        {
+            return cWheelCounts[Module];
+        }
+
+        public double WheelSpeed(int Module)
+        {
+            return cWheelSpeed[Module];
         }
 
         public byte WifiStrength(int Module)

@@ -36,7 +36,6 @@
             this.lb1 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.lbFieldName = new System.Windows.Forms.Label();
-            this.ckJobs = new System.Windows.Forms.CheckBox();
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnOK = new System.Windows.Forms.Button();
             this.tbDate = new System.Windows.Forms.TextBox();
@@ -49,6 +48,8 @@
             this.lvJobs = new System.Windows.Forms.ListView();
             this.HdrName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.HdrDate = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.HdrFileName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.ckFilter = new System.Windows.Forms.CheckBox();
             this.cbSearchField = new System.Windows.Forms.ComboBox();
             this.btnDeleteField = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
@@ -58,6 +59,10 @@
             this.label5 = new System.Windows.Forms.Label();
             this.tbName = new System.Windows.Forms.TextBox();
             this.cbField = new System.Windows.Forms.ComboBox();
+            this.ckResume = new System.Windows.Forms.CheckBox();
+            this.btnImport = new System.Windows.Forms.Button();
+            this.butActivity = new System.Windows.Forms.Button();
+            this.btnExport = new System.Windows.Forms.Button();
             this.gbJobs.SuspendLayout();
             this.gbCurrentJob.SuspendLayout();
             this.SuspendLayout();
@@ -117,7 +122,7 @@
             this.tbNotes.Multiline = true;
             this.tbNotes.Name = "tbNotes";
             this.tbNotes.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.tbNotes.Size = new System.Drawing.Size(373, 78);
+            this.tbNotes.Size = new System.Drawing.Size(258, 78);
             this.tbNotes.TabIndex = 5;
             this.tbNotes.TextChanged += new System.EventHandler(this.ckJobs_CheckedChanged);
             // 
@@ -150,22 +155,6 @@
             this.lbFieldName.Text = "Field:";
             this.lbFieldName.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // ckJobs
-            // 
-            this.ckJobs.Appearance = System.Windows.Forms.Appearance.Button;
-            this.ckJobs.Checked = true;
-            this.ckJobs.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.ckJobs.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
-            this.ckJobs.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckJobs.Location = new System.Drawing.Point(6, 228);
-            this.ckJobs.Name = "ckJobs";
-            this.ckJobs.Size = new System.Drawing.Size(89, 64);
-            this.ckJobs.TabIndex = 376;
-            this.ckJobs.Text = "Use Jobs";
-            this.ckJobs.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.ckJobs.UseVisualStyleBackColor = true;
-            this.ckJobs.CheckedChanged += new System.EventHandler(this.ckJobs_CheckedChanged);
-            // 
             // btnCancel
             // 
             this.btnCancel.BackColor = System.Drawing.Color.Transparent;
@@ -176,7 +165,7 @@
             this.btnCancel.Font = new System.Drawing.Font("Tahoma", 14.25F);
             this.btnCancel.Image = global::RateController.Properties.Resources.Cancel64;
             this.btnCancel.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnCancel.Location = new System.Drawing.Point(368, 229);
+            this.btnCancel.Location = new System.Drawing.Point(450, 79);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(70, 63);
             this.btnCancel.TabIndex = 379;
@@ -194,7 +183,7 @@
             this.btnOK.Font = new System.Drawing.Font("Tahoma", 14.25F);
             this.btnOK.Image = global::RateController.Properties.Resources.Save;
             this.btnOK.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnOK.Location = new System.Drawing.Point(444, 229);
+            this.btnOK.Location = new System.Drawing.Point(450, 148);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(70, 63);
             this.btnOK.TabIndex = 6;
@@ -216,7 +205,7 @@
             this.btnCalender.FlatAppearance.BorderSize = 0;
             this.btnCalender.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCalender.Image = global::RateController.Properties.Resources.calendar___large;
-            this.btnCalender.Location = new System.Drawing.Point(376, 42);
+            this.btnCalender.Location = new System.Drawing.Point(358, 43);
             this.btnCalender.Name = "btnCalender";
             this.btnCalender.Size = new System.Drawing.Size(82, 64);
             this.btnCalender.TabIndex = 383;
@@ -240,7 +229,7 @@
             this.btnJobsDown.FlatAppearance.BorderSize = 0;
             this.btnJobsDown.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnJobsDown.Image = global::RateController.Properties.Resources.arrow_down;
-            this.btnJobsDown.Location = new System.Drawing.Point(479, 274);
+            this.btnJobsDown.Location = new System.Drawing.Point(479, 298);
             this.btnJobsDown.Name = "btnJobsDown";
             this.btnJobsDown.Size = new System.Drawing.Size(41, 41);
             this.btnJobsDown.TabIndex = 386;
@@ -252,7 +241,7 @@
             this.btnNotesDown.FlatAppearance.BorderSize = 0;
             this.btnNotesDown.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnNotesDown.Image = global::RateController.Properties.Resources.arrow_down;
-            this.btnNotesDown.Location = new System.Drawing.Point(473, 170);
+            this.btnNotesDown.Location = new System.Drawing.Point(379, 170);
             this.btnNotesDown.Name = "btnNotesDown";
             this.btnNotesDown.Size = new System.Drawing.Size(41, 41);
             this.btnNotesDown.TabIndex = 387;
@@ -264,7 +253,7 @@
             this.btnNotesUp.FlatAppearance.BorderSize = 0;
             this.btnNotesUp.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnNotesUp.Image = global::RateController.Properties.Resources.arrow_up;
-            this.btnNotesUp.Location = new System.Drawing.Point(473, 115);
+            this.btnNotesUp.Location = new System.Drawing.Point(379, 115);
             this.btnNotesUp.Name = "btnNotesUp";
             this.btnNotesUp.Size = new System.Drawing.Size(41, 41);
             this.btnNotesUp.TabIndex = 388;
@@ -274,6 +263,7 @@
             // gbJobs
             // 
             this.gbJobs.Controls.Add(this.lvJobs);
+            this.gbJobs.Controls.Add(this.ckFilter);
             this.gbJobs.Controls.Add(this.cbSearchField);
             this.gbJobs.Controls.Add(this.btnDeleteField);
             this.gbJobs.Controls.Add(this.label2);
@@ -285,7 +275,7 @@
             this.gbJobs.Controls.Add(this.btnLoad);
             this.gbJobs.Controls.Add(this.btnCopy);
             this.gbJobs.Controls.Add(this.btnDelete);
-            this.gbJobs.Location = new System.Drawing.Point(6, 304);
+            this.gbJobs.Location = new System.Drawing.Point(6, 226);
             this.gbJobs.Name = "gbJobs";
             this.gbJobs.Size = new System.Drawing.Size(528, 362);
             this.gbJobs.TabIndex = 390;
@@ -297,11 +287,13 @@
             // 
             this.lvJobs.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.HdrName,
-            this.HdrDate});
+            this.HdrDate,
+            this.HdrFileName});
             this.lvJobs.FullRowSelect = true;
             this.lvJobs.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.None;
             this.lvJobs.HideSelection = false;
             this.lvJobs.Location = new System.Drawing.Point(94, 95);
+            this.lvJobs.MultiSelect = false;
             this.lvJobs.Name = "lvJobs";
             this.lvJobs.Size = new System.Drawing.Size(379, 244);
             this.lvJobs.TabIndex = 392;
@@ -311,12 +303,33 @@
             // HdrName
             // 
             this.HdrName.Text = "Name";
-            this.HdrName.Width = 275;
+            this.HdrName.Width = 150;
             // 
             // HdrDate
             // 
             this.HdrDate.Text = "Date";
-            this.HdrDate.Width = 300;
+            this.HdrDate.Width = 125;
+            // 
+            // HdrFileName
+            // 
+            this.HdrFileName.Text = "FileName";
+            this.HdrFileName.Width = 150;
+            // 
+            // ckFilter
+            // 
+            this.ckFilter.Appearance = System.Windows.Forms.Appearance.Button;
+            this.ckFilter.Checked = true;
+            this.ckFilter.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.ckFilter.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
+            this.ckFilter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ckFilter.Image = global::RateController.Properties.Resources.selection;
+            this.ckFilter.Location = new System.Drawing.Point(358, 20);
+            this.ckFilter.Name = "ckFilter";
+            this.ckFilter.Size = new System.Drawing.Size(70, 63);
+            this.ckFilter.TabIndex = 394;
+            this.ckFilter.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.ckFilter.UseVisualStyleBackColor = true;
+            this.ckFilter.CheckedChanged += new System.EventHandler(this.ckFilter_CheckedChanged);
             // 
             // cbSearchField
             // 
@@ -336,7 +349,7 @@
             this.btnDeleteField.FlatAppearance.BorderSize = 0;
             this.btnDeleteField.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDeleteField.Image = global::RateController.Properties.Resources.Trash;
-            this.btnDeleteField.Location = new System.Drawing.Point(376, 25);
+            this.btnDeleteField.Location = new System.Drawing.Point(434, 20);
             this.btnDeleteField.Name = "btnDeleteField";
             this.btnDeleteField.Size = new System.Drawing.Size(82, 64);
             this.btnDeleteField.TabIndex = 389;
@@ -355,7 +368,7 @@
             // 
             // tbSearchYear
             // 
-            this.tbSearchYear.Location = new System.Drawing.Point(10, 54);
+            this.tbSearchYear.Location = new System.Drawing.Point(10, 55);
             this.tbSearchYear.Name = "tbSearchYear";
             this.tbSearchYear.Size = new System.Drawing.Size(63, 29);
             this.tbSearchYear.TabIndex = 386;
@@ -382,7 +395,6 @@
             this.gbCurrentJob.Controls.Add(this.tbName);
             this.gbCurrentJob.Controls.Add(this.btnOK);
             this.gbCurrentJob.Controls.Add(this.btnCancel);
-            this.gbCurrentJob.Controls.Add(this.ckJobs);
             this.gbCurrentJob.Controls.Add(this.label1);
             this.gbCurrentJob.Controls.Add(this.tbDate);
             this.gbCurrentJob.Controls.Add(this.btnCalender);
@@ -394,7 +406,7 @@
             this.gbCurrentJob.Controls.Add(this.tbNotes);
             this.gbCurrentJob.Location = new System.Drawing.Point(6, 0);
             this.gbCurrentJob.Name = "gbCurrentJob";
-            this.gbCurrentJob.Size = new System.Drawing.Size(528, 298);
+            this.gbCurrentJob.Size = new System.Drawing.Size(528, 220);
             this.gbCurrentJob.TabIndex = 391;
             this.gbCurrentJob.TabStop = false;
             this.gbCurrentJob.Text = "Current Job";
@@ -432,11 +444,85 @@
             this.cbField.TabIndex = 4;
             this.cbField.TextChanged += new System.EventHandler(this.ckJobs_CheckedChanged);
             // 
+            // ckResume
+            // 
+            this.ckResume.Appearance = System.Windows.Forms.Appearance.Button;
+            this.ckResume.Checked = true;
+            this.ckResume.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.ckResume.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
+            this.ckResume.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ckResume.Location = new System.Drawing.Point(100, 599);
+            this.ckResume.Name = "ckResume";
+            this.ckResume.Size = new System.Drawing.Size(108, 64);
+            this.ckResume.TabIndex = 392;
+            this.ckResume.Text = "Show at Start-Up";
+            this.ckResume.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.ckResume.UseVisualStyleBackColor = true;
+            this.ckResume.CheckedChanged += new System.EventHandler(this.ckResume_CheckedChanged);
+            // 
+            // btnImport
+            // 
+            this.btnImport.BackColor = System.Drawing.Color.Transparent;
+            this.btnImport.FlatAppearance.BorderSize = 0;
+            this.btnImport.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnImport.Font = new System.Drawing.Font("Tahoma", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnImport.Image = global::RateController.Properties.Resources.folder_open_small;
+            this.btnImport.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.btnImport.Location = new System.Drawing.Point(329, 595);
+            this.btnImport.Name = "btnImport";
+            this.btnImport.Size = new System.Drawing.Size(81, 72);
+            this.btnImport.TabIndex = 393;
+            this.btnImport.Text = "Import";
+            this.btnImport.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnImport.UseVisualStyleBackColor = false;
+            this.btnImport.Click += new System.EventHandler(this.btnImport_Click);
+            // 
+            // butActivity
+            // 
+            this.butActivity.BackColor = System.Drawing.Color.Transparent;
+            this.butActivity.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.butActivity.FlatAppearance.BorderSize = 0;
+            this.butActivity.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.butActivity.Font = new System.Drawing.Font("Tahoma", 14.25F);
+            this.butActivity.Image = global::RateController.Properties.Resources.file_text;
+            this.butActivity.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.butActivity.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.butActivity.Location = new System.Drawing.Point(248, 595);
+            this.butActivity.Margin = new System.Windows.Forms.Padding(6);
+            this.butActivity.Name = "butActivity";
+            this.butActivity.Size = new System.Drawing.Size(81, 72);
+            this.butActivity.TabIndex = 394;
+            this.butActivity.Text = "Activity";
+            this.butActivity.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.butActivity.UseVisualStyleBackColor = false;
+            this.butActivity.Click += new System.EventHandler(this.butActivity_Click);
+            // 
+            // btnExport
+            // 
+            this.btnExport.BackColor = System.Drawing.Color.Transparent;
+            this.btnExport.FlatAppearance.BorderSize = 0;
+            this.btnExport.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnExport.Font = new System.Drawing.Font("Tahoma", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnExport.Image = global::RateController.Properties.Resources.folder_open_small;
+            this.btnExport.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.btnExport.Location = new System.Drawing.Point(416, 595);
+            this.btnExport.Name = "btnExport";
+            this.btnExport.Size = new System.Drawing.Size(81, 72);
+            this.btnExport.TabIndex = 395;
+            this.btnExport.Text = "Export";
+            this.btnExport.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnExport.UseVisualStyleBackColor = false;
+            this.btnExport.Click += new System.EventHandler(this.btnExport_Click);
+            // 
             // frmMenuJobs
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(540, 678);
+            this.Controls.Add(this.btnExport);
+            this.Controls.Add(this.butActivity);
+            this.Controls.Add(this.btnImport);
+            this.Controls.Add(this.ckResume);
             this.Controls.Add(this.gbCurrentJob);
             this.Controls.Add(this.gbJobs);
             this.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -445,7 +531,9 @@
             this.Name = "frmMenuJobs";
             this.ShowInTaskbar = false;
             this.Text = "frmMenuJobs";
+            this.Activated += new System.EventHandler(this.frmMenuJobs_Activated);
             this.Load += new System.EventHandler(this.frmMenuJobs_Load);
+            this.Shown += new System.EventHandler(this.frmMenuJobs_Shown);
             this.gbJobs.ResumeLayout(false);
             this.gbJobs.PerformLayout();
             this.gbCurrentJob.ResumeLayout(false);
@@ -463,7 +551,6 @@
         private System.Windows.Forms.Label lb1;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label lbFieldName;
-        private System.Windows.Forms.CheckBox ckJobs;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnOK;
         private System.Windows.Forms.TextBox tbDate;
@@ -485,5 +572,11 @@
         private System.Windows.Forms.ListView lvJobs;
         private System.Windows.Forms.ColumnHeader HdrName;
         private System.Windows.Forms.ColumnHeader HdrDate;
+        private System.Windows.Forms.CheckBox ckResume;
+        private System.Windows.Forms.ColumnHeader HdrFileName;
+        private System.Windows.Forms.Button btnImport;
+        private System.Windows.Forms.CheckBox ckFilter;
+        private System.Windows.Forms.Button butActivity;
+        private System.Windows.Forms.Button btnExport;
     }
 }

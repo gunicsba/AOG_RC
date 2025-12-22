@@ -1,6 +1,7 @@
 void DoSetup()
 {
 	uint8_t ErrorCount = 0;
+	bool WheelMatch = false;
 
 	Sensor[0].FlowEnabled = false;
 	Sensor[1].FlowEnabled = false;
@@ -115,6 +116,7 @@ void DoSetup()
 		analogWriteFrequency(Sensor[i].PWMPin, PWM_FREQ);
 #endif
 	}
+
 #if defined(ESP32) || defined(ARDUINO_TEENSY41)
 	analogWriteResolution(PWM_BITS);
 #endif
@@ -227,7 +229,6 @@ void DoSetup()
 	Serial.println(MDL.SensorCount);
 	Serial.println("");
 	Serial.println(F("Sensor 1: "));
-	Serial.print(F("Enabled: "));
 	Serial.print(F("Flow Pin: "));
 	Serial.println(Sensor[0].FlowPin);
 	Serial.print(F("DIR Pin: "));
@@ -245,14 +246,28 @@ void DoSetup()
 	Serial.println(Sensor[1].PWMPin);
 
 	Serial.println("");
-	Serial.print(F("Work Switch Pin: "));
-	Serial.println(MDL.WorkPin);
-	Serial.print(F("Pressure Pin: "));
-	Serial.println(MDL.PressurePin);
 
-	Serial.println("");
-	Serial.print(F("ADS1115 enabled: "));
-	Serial.println(F("false"));
+	Serial.print(F("Work Switch Pin: "));
+	if (MDL.WorkPin == NC)
+	{
+		Serial.println(F("Disabled"));
+	}
+	else
+	{
+		Serial.println(MDL.WorkPin);
+	}
+
+	Serial.print(F("Pressure Pin: "));
+	if (MDL.PressurePin == NC)
+	{
+		Serial.println(F("Disabled"));
+	}
+	else
+	{
+		Serial.println(MDL.PressurePin);
+	}
+
+	Serial.println(F("ADS1115: Disabled "));
 
 	Serial.println("");
 	Serial.println(F("Finished setup."));
@@ -312,9 +327,6 @@ void LoadDefaults()
 {
 	Serial.println(F("Loading default settings."));
 
-	MDL.WorkPin = 14;
-	MDL.PressurePin = 15;
-
 	// default flow pins
 	Sensor[0].FlowPin = 3;
 	Sensor[0].DirPin = 4;
@@ -328,15 +340,15 @@ void LoadDefaults()
 	for (int i = 0; i < 2; i++)
 	{
 		Sensor[i].MaxPWM = 255;
-		Sensor[i].MinPWM = 10;
-		Sensor[i].Kp = 0.0003;    // gain 35
-		Sensor[i].Ki = 0.00123;   // integral 5
+		Sensor[i].MinPWM = 5;
+		Sensor[i].Kp = pow(1.1, 65 - 120);	// Kp = 65
+		Sensor[i].Ki = pow(1.1, 65 - 120);	// Ki = 65
 		Sensor[i].Deadband = 0.015;
-		Sensor[i].BrakePoint = 0.35;
-		Sensor[i].PIDslowAdjust = 0.3;
-		Sensor[i].SlewRate = 6;
-		Sensor[i].MaxIntegral = 0.1;
-		Sensor[i].TimedMinStart = 0.03;
+		Sensor[i].BrakePoint = 35;
+		Sensor[i].PIDslowAdjust = 30;
+		Sensor[i].SlewRate = 25;
+		Sensor[i].MaxIntegral = 25;
+		Sensor[i].TimedMinStart = 0.5;
 		Sensor[i].TimedAdjust = 80;
 		Sensor[i].TimedPause = 400;
 		Sensor[i].PIDtime = 100;
@@ -357,6 +369,8 @@ void LoadDefaults()
 	MDL.ADS1115Enabled = false;
 	MDL.InvertFlow = true;
 	MDL.InvertRelay = true;
+	MDL.WorkPin = 15;
+	MDL.PressurePin = 14;
 }
 
 bool ValidData()
@@ -364,6 +378,7 @@ bool ValidData()
 	bool Result = true;
 
 	if (MDL.WorkPin > 21 && MDL.WorkPin != NC) Result = false;
+	if (MDL.PressurePin > 21 && MDL.PressurePin != NC) Result = false;
 
 	if (Result)
 	{

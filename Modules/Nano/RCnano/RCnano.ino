@@ -6,12 +6,14 @@
 
 // rate control with arduino nano
 # define InoDescription "RCnano"
-const uint16_t InoID = 21105;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint16_t InoID = 25115;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 2;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 
 #define MaxProductCount 2
 #define NC 0xFF		// Pins are not connected
 uint8_t MCP23017address;
+const int MaxSampleSize = 11;
+const uint32_t FlowTimeout = 4000UL;
 
 #if defined(ESP32)
 const int PWM_BITS = 12;
@@ -36,6 +38,7 @@ enum ControlType
 
 // MCP23017 control pins, RC5, RC8	{ 8,9,10,11,12,13,14,15,7,6,5,4,3,2,1,0 }
 // MCP23017 control pins, RC12-3	{ 0,15,1,14,2,13,3,12,4,11,5,10,6,9,7,8 }
+
 struct ModuleConfig
 {
 	// RC12-3
@@ -45,10 +48,10 @@ struct ModuleConfig
 	bool InvertFlow = true;		// sets on value for flow valve or sets motor direction
 	uint8_t RelayControlPins[16] = { 0,15,1,14,2,13,3,12,4,11,5,10,6,9,7,8 };	// MCP23017, RC12-3
 	uint8_t RelayControl = 4;		// 0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
-	uint8_t WorkPin = 14;
+	uint8_t WorkPin = 15;
 	bool WorkPinIsMomentary = false;
 	bool Is3Wire = true;			// False - powered on/off, True - powered on only
-	uint8_t PressurePin = 15;		
+	uint8_t PressurePin = 14;		
 	bool ADS1115Enabled = false;
 };
 
@@ -78,21 +81,21 @@ struct SensorConfig
 	uint32_t TotalPulses;
 	float TargetUPM;
 	float MeterCal;
-	float ManualAdjust;
+	int16_t ManualAdjust;
 	float Hz;
-	float MaxPWM;
-	float MinPWM;
+	uint8_t MaxPWM;
+	uint8_t MinPWM;
 	float Kp;
 	float Ki;
 	float Deadband;
-	float BrakePoint;
-	float PIDslowAdjust;
-	float SlewRate;
+	uint8_t BrakePoint;
+	uint8_t PIDslowAdjust;
+	uint8_t SlewRate;
 	float MaxIntegral;
 	float TimedMinStart;
-	uint32_t TimedAdjust;
-	uint32_t TimedPause;
-	uint32_t PIDtime;
+	uint16_t TimedAdjust;
+	uint16_t TimedPause;
+	uint8_t PIDtime;
 	uint32_t PulseMin;
 	uint32_t PulseMax;
 	byte PulseSampleSize;
@@ -108,7 +111,7 @@ SensorConfig Sensor[2];
 // and then mount the shield on top of the Nano.
 
 // ethernet
-byte Ethernet::buffer[500];			// udp send and receive buffer (increased to prevent UDP payload truncation)
+byte Ethernet::buffer[400];			// udp send and receive buffer (changed to 400 25Nov2025)
 static byte selectPin = 10;
 uint16_t ListeningPort = 28888;
 uint16_t DestinationPort = 29999;
@@ -182,7 +185,7 @@ void loop()
 	}
 
 	SendComm();
-	//DebugTheIno();
+	DebugTheIno();
 }
 
 void SetSensorsEnabled()
@@ -281,40 +284,96 @@ void CheckPressure()
 	}
 }
 
-//uint32_t DebugTime;
-//uint32_t MaxLoopTime;
-//uint32_t LoopTmr;
-//byte ReadReset;
-//float debug1;
-//float debug2;
-//
-//void DebugTheIno()
-//{
-//	if (millis() - DebugTime > 1000)
-//	{
-//		DebugTime = millis();
-//		Serial.println("");
-//
-//		Serial.print(MaxLoopTime);
-//
-//		Serial.print(", ");
-//		Serial.print(debug1);
-//
-//		Serial.print(", ");
-//		Serial.print(debug2);
-//
-//		Serial.print(", ");
-//		Serial.print(debug3);
-//
-//		Serial.println("");
-//
-//		if (ReadReset++ > 10)
-//		{
-//			ReadReset = 0;
-//			MaxLoopTime = 0;
-//		}
-//	}
-//	if (micros() - LoopTmr > MaxLoopTime) MaxLoopTime = micros() - LoopTmr;
-//	LoopTmr = micros();
-//}
+uint32_t MedianFromArray(uint32_t buf[], int count)
+{
+	uint32_t Result = 0;
+	if (count > 0)
+	{
+		uint32_t sorted[MaxSampleSize];
+		for (int i = 0; i < count; i++) sorted[i] = buf[i];
+
+		// insertion sort
+		for (int i = 1; i < count; i++)
+		{
+			uint32_t key = sorted[i];
+			int j = i - 1;
+			while (j >= 0 && sorted[j] > key)
+			{
+				sorted[j + 1] = sorted[j];
+				j--;
+			}
+			sorted[j + 1] = key;
+		}
+
+		if (count % 2 == 1)
+		{
+			Result = sorted[count / 2];
+		}
+		else
+		{
+			int mid = count / 2;
+			// average of middle two
+			Result = (sorted[mid - 1] + sorted[mid]) / 2;
+		}
+	}
+	return Result;
+}
+
+uint32_t DebugTime;
+uint32_t MaxLoopTime;
+uint32_t LoopTmr;
+byte ReadReset;
+int MinMem = 2000;
+//double debug1;
+//double debug2;
+//double debug3;
+//double debug4;
+//double debug5;
+
+void DebugTheIno()
+{
+	if (millis() - DebugTime > 1000)
+	{
+		DebugTime = millis();
+		Serial.println("");
+
+		Serial.print(F(" Micros: "));
+		Serial.print(MaxLoopTime);
+
+		Serial.print(F(",  SRAM: "));
+		Serial.print(MinMem);
+		//Serial.print(", ");
+
+		//Serial.print(debug1);
+
+		//Serial.print(", ");
+		//Serial.print(debug2);
+
+		//Serial.print(", ");
+		//Serial.print(debug3);
+
+		//Serial.print(", ");
+		//Serial.print(debug4);
+
+		//Serial.print(", ");
+		//Serial.print(debug5);
+
+		if (ReadReset++ > 10)
+		{
+			ReadReset = 0;
+			MaxLoopTime = 0;
+			MinMem = 2000;
+		}
+	}
+	if (micros() - LoopTmr > MaxLoopTime) MaxLoopTime = micros() - LoopTmr;
+	LoopTmr = micros();
+	if (freeRam() < MinMem) MinMem = freeRam();
+}
+
+int freeRam() {
+	extern int __heap_start, * __brkval;
+	int v;
+	return (int)&v - (__brkval == 0
+		? (int)&__heap_start : (int)__brkval);
+}
 

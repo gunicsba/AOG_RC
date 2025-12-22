@@ -126,6 +126,9 @@
     <Reference Include="RepeatButtonControl">
       <HintPath>.\RepeatButtonControl.dll</HintPath>
     </Reference>
+    <Reference Include="SharpKml.Core, Version=6.1.0.0, Culture=neutral, PublicKeyToken=9bb853c026a5c0ac, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpKml.Core.6.1.0\lib\net462\SharpKml.Core.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Buffers, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
@@ -144,6 +147,7 @@
     <Reference Include="System.Data.SQLite.Linq, Version=1.0.119.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Data.SQLite.Linq.1.0.119.0\lib\net46\System.Data.SQLite.Linq.dll</HintPath>
     </Reference>
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Pipelines, Version=9.0.0.3, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.IO.Pipelines.9.0.3\lib\net462\System.IO.Pipelines.dll</HintPath>
     </Reference>
@@ -184,20 +188,37 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\AppliedLayerCreator.cs" />
     <Compile Include="Classes\clsAlarm.cs" />
     <Compile Include="Classes\clsCalibrate.cs" />
     <Compile Include="Classes\clsCalibrates.cs" />
-    <Compile Include="Classes\clsPressureRawData.cs" />
-    <Compile Include="Classes\clsSensor.cs" />
-    <Compile Include="Classes\clsSensors.cs" />
+    <Compile Include="Classes\clsJobDataCollector.cs" />
+    <Compile Include="Classes\clsSensorSettings.cs" />
     <Compile Include="Classes\clsVersionChecker.cs" />
     <Compile Include="Classes\JobManager.cs" />
-    <Compile Include="Classes\MapImageSaver.cs" />
     <Compile Include="Classes\ParcelManager.cs" />
     <Compile Include="Classes\Props.cs" />
-    <Compile Include="Classes\DataCollector.cs" />
-    <Compile Include="Classes\RateReading.cs" />
+    <Compile Include="Forms\frmJobReport.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmJobReport.Designer.cs">
+      <DependentUpon>frmJobReport.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RateMap\frmMap.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RateMap\frmMap.Designer.cs">
+      <DependentUpon>frmMap.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmSpeedCal.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmSpeedCal.Designer.cs">
+      <DependentUpon>frmSpeedCal.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PGNs\PGN32504.cs" />
+    <Compile Include="Printing\RichTextBoxPrinterRTF.cs" />
+    <Compile Include="RateMap\ArcGISWorldImageryProvider.cs" />
+    <Compile Include="RateMap\DataCollector.cs" />
     <Compile Include="Classes\clsProducts.cs" />
     <Compile Include="Classes\clsRelay.cs" />
     <Compile Include="Classes\clsRelays.cs" />
@@ -210,9 +231,6 @@
     <Compile Include="Classes\clsZone.cs" />
     <Compile Include="Classes\clsZones.cs" />
     <Compile Include="Classes\FileNameValidator.cs" />
-    <Compile Include="Classes\MapManager.cs" />
-    <Compile Include="Classes\MapZone.cs" />
-    <Compile Include="Classes\ShapefileHelper.cs" />
     <Compile Include="Classes\UDPcomm.cs" />
     <Compile Include="Controls\VerticalProgressBar.cs">
       <SubType>Component</SubType>
@@ -229,22 +247,16 @@
     <Compile Include="Forms\FormStart.designer.cs">
       <DependentUpon>FormStart.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\frmCopyMap.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\frmCopyMap.Designer.cs">
-      <DependentUpon>frmCopyMap.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\frmHelp.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\frmHelp.Designer.cs">
       <DependentUpon>frmHelp.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\frmImport.cs">
+    <Compile Include="RateMap\frmImport.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\frmImport.Designer.cs">
+    <Compile Include="RateMap\frmImport.Designer.cs">
       <DependentUpon>frmImport.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\frmLargeScreen.cs">
@@ -276,12 +288,6 @@
     </Compile>
     <Compile Include="Menu\frmMenuProfiles.Designer.cs">
       <DependentUpon>frmMenuProfiles.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Menu\frmMenuRateData.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Menu\frmMenuRateData.Designer.cs">
-      <DependentUpon>frmMenuRateData.cs</DependentUpon>
     </Compile>
     <Compile Include="Language\Lang.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -385,11 +391,11 @@
     <Compile Include="Menu\frmMenuData.Designer.cs">
       <DependentUpon>frmMenuData.cs</DependentUpon>
     </Compile>
-    <Compile Include="Menu\frmMenuDisplay.cs">
+    <Compile Include="Menu\frmMenuOptions.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Menu\frmMenuDisplay.Designer.cs">
-      <DependentUpon>frmMenuDisplay.cs</DependentUpon>
+    <Compile Include="Menu\frmMenuOptions.Designer.cs">
+      <DependentUpon>frmMenuOptions.cs</DependentUpon>
     </Compile>
     <Compile Include="Menu\frmMenuHelp.cs">
       <SubType>Form</SubType>
@@ -487,13 +493,8 @@
     <Compile Include="Menu\frmMenuPrimed.Designer.cs">
       <DependentUpon>frmMenuPrimed.cs</DependentUpon>
     </Compile>
-    <Compile Include="Menu\frmMenuRateMap.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Menu\frmMenuRateMap.Designer.cs">
-      <DependentUpon>frmMenuRateMap.cs</DependentUpon>
-    </Compile>
     <Compile Include="PGNs\PGN100.cs" />
+    <Compile Include="PGNs\PGN208.cs" />
     <Compile Include="PGNs\PGN229.cs" />
     <Compile Include="PGNs\PGN234.cs" />
     <Compile Include="PGNs\PGN235.cs" />
@@ -517,6 +518,14 @@
     <Compile Include="Forms\RCRestore.Designer.cs">
       <DependentUpon>RCRestore.cs</DependentUpon>
     </Compile>
+    <Compile Include="RateMap\CoverageTrail.cs" />
+    <Compile Include="RateMap\KmlLayerManager.cs" />
+    <Compile Include="RateMap\LegendManager.cs" />
+    <Compile Include="RateMap\MapController.cs" />
+    <Compile Include="RateMap\MapZone.cs" />
+    <Compile Include="RateMap\RateOverlayService.cs" />
+    <Compile Include="RateMap\RateReading.cs" />
+    <Compile Include="RateMap\ShapefileHelper.cs" />
     <EmbeddedResource Include="Forms\FormNumeric.resx">
       <DependentUpon>FormNumeric.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -525,20 +534,26 @@
       <DependentUpon>FormStart.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\frmCopyMap.resx">
-      <DependentUpon>frmCopyMap.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmHelp.resx">
       <DependentUpon>frmHelp.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\frmImport.resx">
+    <EmbeddedResource Include="RateMap\frmImport.resx">
       <DependentUpon>frmImport.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmJobReport.resx">
+      <DependentUpon>frmJobReport.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmLargeScreen.resx">
       <DependentUpon>frmLargeScreen.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="RateMap\frmMap.resx">
+      <DependentUpon>frmMap.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmRate.resx">
       <DependentUpon>frmRate.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmSpeedCal.resx">
+      <DependentUpon>frmSpeedCal.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmVersion.resx">
       <DependentUpon>frmVersion.cs</DependentUpon>
@@ -548,9 +563,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Menu\frmMenuProfiles.resx">
       <DependentUpon>frmMenuProfiles.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Menu\frmMenuRateData.resx">
-      <DependentUpon>frmMenuRateData.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Language\Lang.lt.resx" />
     <EmbeddedResource Include="Menu\frmMenu.resx">
@@ -621,8 +633,8 @@
     <EmbeddedResource Include="Menu\frmMenuData.resx">
       <DependentUpon>frmMenuData.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Menu\frmMenuDisplay.resx">
-      <DependentUpon>frmMenuDisplay.cs</DependentUpon>
+    <EmbeddedResource Include="Menu\frmMenuOptions.resx">
+      <DependentUpon>frmMenuOptions.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Menu\frmMenuHelp.resx">
       <DependentUpon>frmMenuHelp.cs</DependentUpon>
@@ -672,9 +684,6 @@
     <EmbeddedResource Include="Menu\frmMenuPrimed.resx">
       <DependentUpon>frmMenuPrimed.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Menu\frmMenuRateMap.resx">
-      <DependentUpon>frmMenuRateMap.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -688,6 +697,9 @@
     <EmbeddedResource Include="Forms\RCRestore.resx">
       <DependentUpon>RCRestore.cs</DependentUpon>
     </EmbeddedResource>
+    <None Include="Help\frmMap.pdf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Help\frmMenuCalibrate.pdf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -706,6 +718,9 @@
     <None Include="Help\frmMenuNetwork.pdf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="Help\frmMenuOptions.pdf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Help\frmMenuPressure.pdf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -716,12 +731,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Help\frmMenuRate.pdf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Help\frmMenuRateData.pdf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Help\frmMenuRateMap.pdf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Help\frmMenuRelays.pdf">
@@ -753,6 +762,19 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\x-square48.png" />
+    <None Include="Resources\x-square.png" />
+    <None Include="Resources\plus-square48.png" />
+    <None Include="Resources\minus-square48.png" />
+    <None Include="Resources\printer.png" />
+    <None Include="Resources\copy-small.png" />
+    <None Include="Resources\folder-open-small.png" />
+    <None Include="Resources\folder-simple-small.png" />
+    <None Include="Resources\folder-simple.png" />
+    <None Include="Resources\file-arrow-up.png" />
+    <None Include="Resources\file-arrow-down.png" />
+    <None Include="Resources\selection.png" />
+    <None Include="Resources\clock.png" />
     <None Include="Resources\caret-circle-up.png" />
     <None Include="Resources\file-cloud.png" />
     <None Include="Resources\plus-square.png" />
@@ -867,12 +889,9 @@
     <None Include="Resources\Save.jpg" />
     <None Include="Resources\ConS_SourcesRoll.png" />
     <None Include="Resources\OK64.png" />
-    <None Include="Resources\AutoSteerTeensy.ino.hex" />
     <None Include="Resources\mcp23017_Adafruit.jpg" />
     <None Include="Resources\7791659_language_speak_communication_speech_chat_icon.png" />
     <None Include="Resources\7504229_hamburger_menu_list_options_icon.png" />
-    <None Include="Resources\RCnano.ino.hex" />
-    <None Include="Resources\RCnanoOldBootLoader.ino.hex" />
     <None Include="Resources\UpLoad.png" />
     <None Include="Resources\3556117_arrow_ui_up_icon.png" />
     <None Include="Resources\wrench.png" />

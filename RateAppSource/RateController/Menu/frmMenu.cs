@@ -17,28 +17,30 @@ namespace RateController
         private const int SubFirstSpacing = 75;
         private const int SubOffset = 10;
         private const int SubSpacing = 55;
+
+        // Prevent intermediate repaints while updating visibility/positions
+        private const int WM_SETREDRAW = 0x000B;
+
         private clsProduct cCurrentProduct;
         private string cLastScreen = "";
         private bool cMenuNetworkHasRan = false;
         private bool Expanded = false;
-        private Button[] Items;
         private bool LoadLast = false;
         private FormStart mf;
         private Point MouseDownLocation;
-
 
         public frmMenu(FormStart cf, int ProductID, bool LoadLst = false)
         {
             InitializeComponent();
             this.mf = cf;
 
-            Items = new Button[] { butProfiles, butJobs,  butRate, butControl, butSettings, butMode, butMonitor,
-                butData, butSections, butRelays, butCalibrate, butNetwork, butConfig, butPins, butRelayPins, 
-                butValves, butDisplay, butPrimed, butSwitches, butLanguage, butColor,butRateData };
+            // Reduce flicker by enabling double buffering and painting optimizations
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+            this.UpdateStyles();
 
             ChangeProduct(ProductID);
             LoadLast = LoadLst;
-            Props.JobChanged += Props_JobChanged;
+            JobManager.JobChanged += Props_JobChanged;
         }
 
         public event EventHandler MenuMoved;
@@ -57,6 +59,108 @@ namespace RateController
 
         public bool MenuNetworkHasRan
         { get { return cMenuNetworkHasRan; } set { cMenuNetworkHasRan = value; } }
+
+        // Reduce flicker across parent/children by clipping and composited painting
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.Style |= 0x02000000;     // WS_CLIPCHILDREN
+                cp.ExStyle |= 0x02000000;   // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
+        public void butFile_Click(object sender, EventArgs e)
+        {
+            if (ClosedOwned())
+            {
+                using (new RedrawScope(this))
+                {
+                    // Suspend layout to avoid multiple repaints while changing many control properties
+                    this.SuspendLayout();
+                    try
+                    {
+                        butProfiles.Visible = !Expanded;
+                        butJobs.Visible = !Expanded;
+                        butMap.Visible = !Expanded;
+                        butDisplay.Visible = !Expanded;
+                        butLanguage.Visible = !Expanded;
+                        butColor.Visible = !Expanded;
+                        if (Expanded)
+                        {
+                            Expanded = false;
+                            butFile.Visible = true;
+                            butProducts.Visible = true;
+                            butMachine.Visible = true;
+                            butModules.Visible = true;
+                            butHelpScreen.Visible = true;
+                        }
+                        else
+                        {
+                            Expanded = true;
+                            butFile.Visible = true;
+                            butProducts.Visible = false;
+                            butMachine.Visible = false;
+                            butModules.Visible = false;
+                            butHelpScreen.Visible = false;
+
+                            int Pos = butFile.Top;
+                            butProfiles.Visible = true;
+                            butProfiles.Left = butFile.Left + SubOffset;
+                            Pos += SubFirstSpacing;
+                            butProfiles.Top = Pos;
+
+                            butJobs.Visible = true;
+                            butJobs.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butJobs.Top = Pos;
+
+                            butMap.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing + 5;
+                            butMap.Top = Pos;
+
+                            butDisplay.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing + 5;
+                            butDisplay.Top = Pos;
+
+                            butLanguage.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butLanguage.Top = Pos;
+
+                            butColor.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butColor.Top = Pos;
+
+                            butProfiles.PerformClick();
+                        }
+                    }
+                    finally
+                    {
+                        this.ResumeLayout(true);
+                    }
+                }
+            }
+        }
+
+        public void butJobs_Click(object sender, EventArgs e)
+        {
+            SaveLastScreen("frmMenuJobs");
+            HighlightButton(butJobs);
+            Form fs = Props.IsFormOpen(cLastScreen);
+
+            if (fs == null)
+            {
+                Form frm = new frmMenuJobs(mf, this);
+                frm.Owner = this;
+                frm.Show();
+            }
+            else
+            {
+                fs.Focus();
+            }
+        }
 
         public void ChangeProduct(int NewID, bool NoFans = false)
         {
@@ -91,7 +195,16 @@ namespace RateController
             string Nm = Props.CurrentFileName().Length <= max ? Props.CurrentFileName() : Props.CurrentFileName().Substring(0, max) + "...";
             lbFileName.Text = "[" + Nm + "]";
 
-            string job = Props.CurrentJobDescription;
+            if (Props.ReadOnly)
+            {
+                lbFileName.BackColor = Color.Red;
+            }
+            else
+            {
+                lbFileName.BackColor = Properties.Settings.Default.MainBackColour;
+            }
+
+            string job = JobManager.CurrentJobDescription;
             Nm = job.Length <= max ? job : job.Substring(0, max) + "...";
             lbJob.Text = "[" + Nm + "]";
         }
@@ -141,23 +254,48 @@ namespace RateController
         {
             base.OnPaint(e);
 
-            // Define the border color and thickness
+            // Draw border inside client rectangle; avoid overlap with controls at form edge
+            var rect = this.ClientRectangle;
+            if (rect.Width <= 0 || rect.Height <= 0) return;
+
             Color borderColor = Properties.Settings.Default.MainForeColour;
             int borderWidth = 1;
 
-            // Draw the border
-            using (Pen pen = new Pen(borderColor, borderWidth))
+            ControlPaint.DrawBorder(
+                e.Graphics,
+                rect,
+                borderColor, borderWidth, ButtonBorderStyle.Solid,
+                borderColor, borderWidth, ButtonBorderStyle.Solid,
+                borderColor, borderWidth, ButtonBorderStyle.Solid,
+                borderColor, borderWidth, ButtonBorderStyle.Solid
+            );
+        }
+
+        // Avoid background erase flicker; paint background ourselves
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            using (var b = new SolidBrush(Properties.Settings.Default.MainBackColour))
             {
-                e.Graphics.DrawRectangle(pen, 0, 0, this.ClientSize.Width - 1, this.ClientSize.Height - 1);
+                e.Graphics.FillRectangle(b, this.ClientRectangle);
             }
         }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            // Ensure border gets repainted after layout changes
+            this.Invalidate();
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         private void btnHelp_Click(object sender, EventArgs e)
         {
             string exeDirectory = AppDomain.CurrentDomain.BaseDirectory;
             string FileName = exeDirectory + "Help\\" + cLastScreen + ".pdf";
 
-            if (cLastScreen == "frmMenuPins"||cLastScreen== "frmMenuRelayPins")
+            if (cLastScreen == "frmMenuPins" || cLastScreen == "frmMenuRelayPins")
             {
                 FileName = exeDirectory + "Help\\frmMenuConfig.pdf";
             }
@@ -181,7 +319,7 @@ namespace RateController
 
         private void btnPressure_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuPressure";
+            SaveLastScreen("frmMenuPressure");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -195,7 +333,7 @@ namespace RateController
 
         private void butCalibrate_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuCalibrate";
+            SaveLastScreen("frmMenuCalibrate");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -214,7 +352,7 @@ namespace RateController
 
         private void butColor_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuColor";
+            SaveLastScreen("frmMenuColor");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -228,7 +366,7 @@ namespace RateController
 
         private void butConfig_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuConfig";
+            SaveLastScreen("frmMenuConfig");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -244,7 +382,7 @@ namespace RateController
         {
             if (CheckEdited())
             {
-                cLastScreen = "frmMenuControl";
+                SaveLastScreen("frmMenuControl");
                 if (sender is Button button) HighlightButton(button);
                 Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -259,7 +397,7 @@ namespace RateController
 
         private void butData_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuData";
+            SaveLastScreen("frmMenuData");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -273,63 +411,21 @@ namespace RateController
 
         private void butDisplay_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuDisplay";
+            SaveLastScreen("frmMenuOptions");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
             if (fs == null)
             {
-                Form frm = new frmMenuDisplay(mf, this);
+                Form frm = new frmMenuOptions(mf, this);
                 frm.Owner = this;
                 frm.Show();
             }
         }
 
-        private void butFile_Click(object sender, EventArgs e)
-        {
-            if (ClosedOwned())
-            {
-                butProfiles.Visible = !Expanded;
-                butJobs.Visible = !Expanded;
-                if (Expanded)
-                {
-                    Expanded = false;
-                    butFile.Visible = true;
-                    butProducts.Visible = true;
-                    butMachine.Visible = true;
-                    butModules.Visible = true;
-                    butOptions.Visible = true;
-                    butHelpScreen.Visible = true;
-                }
-                else
-                {
-                    Expanded = true;
-                    butFile.Visible = true;
-                    butProducts.Visible = false;
-                    butMachine.Visible = false;
-                    butModules.Visible = false;
-                    butOptions.Visible = false;
-                    butHelpScreen.Visible = false;
-
-                    int Pos = butFile.Top;
-                    butProfiles.Visible = true;
-                    butProfiles.Left = butFile.Left + SubOffset;
-                    Pos += SubFirstSpacing;
-                    butProfiles.Top = Pos;
-
-                    butJobs.Visible = true;
-                    butJobs.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butJobs.Top = Pos;
-
-                    butProfiles.PerformClick();
-                }
-            }
-        }
-
         private void butHelpScreen_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuHelp";
+            SaveLastScreen("frmMenuHelp");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -341,27 +437,9 @@ namespace RateController
             }
         }
 
-        private void butJobs_Click(object sender, EventArgs e)
-        {
-            cLastScreen = "frmMenuJobs";
-            if (sender is Button button) HighlightButton(button);
-            Form fs = Props.IsFormOpen(cLastScreen);
-
-            if (fs == null)
-            {
-                Form frm = new frmMenuJobs(mf, this);
-                frm.Owner = this;
-                frm.Show();
-            }
-            else
-            {
-                fs.Focus();
-            }
-        }
-
         private void butLanguage_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuLanguage";
+            SaveLastScreen("frmMenuLanguage");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -377,83 +455,93 @@ namespace RateController
         {
             if (ClosedOwned())
             {
-                butSections.Visible = !Expanded;
-                butRelays.Visible = !Expanded;
-                butCalibrate.Visible = !Expanded;
-                butSwitches.Visible = !Expanded;
-                butPrimed.Visible = !Expanded;
-                btnPressure.Visible = !Expanded;
-
-                if (Expanded)
+                using (new RedrawScope(this))
                 {
-                    Expanded = false;
-                    butFile.Visible = true;
-                    butProducts.Visible = true;
-                    butMachine.Visible = true;
-                    butModules.Visible = true;
-                    butOptions.Visible = true;
-                    butHelpScreen.Visible = true;
-                    butMachine.Top = (int)butMachine.Tag;
-                }
-                else
-                {
-                    Expanded = true;
-                    butFile.Visible = false;
-                    butProducts.Visible = false;
-                    butMachine.Visible = true;
-                    butModules.Visible = false;
-                    butOptions.Visible = false;
-                    butHelpScreen.Visible = false;
-                    butMachine.Tag = butMachine.Top;
-                    butMachine.Top = butFile.Top;
+                    // Suspend layout to avoid flicker while repositioning and showing submenu items
+                    this.SuspendLayout();
+                    try
+                    {
+                        butSections.Visible = !Expanded;
+                        butRelays.Visible = !Expanded;
+                        butCalibrate.Visible = !Expanded;
+                        butSwitches.Visible = !Expanded;
+                        butPrimed.Visible = !Expanded;
+                        btnPressure.Visible = !Expanded;
 
-                    int Pos = butFile.Top;
-                    butSections.Left = butFile.Left + SubOffset;
-                    Pos += SubFirstSpacing;
-                    butSections.Top = Pos;
+                        if (Expanded)
+                        {
+                            Expanded = false;
+                            butFile.Visible = true;
+                            butProducts.Visible = true;
+                            butMachine.Visible = true;
+                            butModules.Visible = true;
+                            butHelpScreen.Visible = true;
+                            butMachine.Top = (int)butMachine.Tag;
+                        }
+                        else
+                        {
+                            Expanded = true;
+                            butFile.Visible = false;
+                            butProducts.Visible = false;
+                            butMachine.Visible = true;
+                            butModules.Visible = false;
+                            butHelpScreen.Visible = false;
+                            butMachine.Tag = butMachine.Top;
+                            butMachine.Top = butFile.Top;
 
-                    butRelays.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butRelays.Top = Pos;
+                            int Pos = butFile.Top;
+                            butSections.Left = butFile.Left + SubOffset;
+                            Pos += SubFirstSpacing;
+                            butSections.Top = Pos;
 
-                    butSwitches.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butSwitches.Top = Pos;
+                            butRelays.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butRelays.Top = Pos;
 
-                    btnPressure.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    btnPressure.Top = Pos;
+                            butSwitches.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butSwitches.Top = Pos;
 
-                    butPrimed.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butPrimed.Top = Pos;
+                            btnPressure.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            btnPressure.Top = Pos;
 
-                    butCalibrate.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butCalibrate.Top = Pos;
+                            butPrimed.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butPrimed.Top = Pos;
 
-                    butSections.PerformClick();
+                            butCalibrate.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butCalibrate.Top = Pos;
+
+                            butSections.PerformClick();
+                        }
+                    }
+                    finally
+                    {
+                        this.ResumeLayout(true);
+                    }
                 }
             }
         }
 
         private void butMap_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuRateMap";
-            if (sender is Button button) HighlightButton(button);
-            Form fs = Props.IsFormOpen(cLastScreen);
-
+            Form fs = Props.IsFormOpen("frmMap");
             if (fs == null)
             {
-                Form frm = new frmMenuRateMap(mf, this);
-                frm.Owner = this;
-                frm.Show();
+                fs = new frmMap();
+                fs.Show();
+            }
+            else
+            {
+                fs.Focus();
             }
         }
 
         private void butMode_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuMode";
+            SaveLastScreen("frmMenuMode");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -473,69 +561,79 @@ namespace RateController
         {
             if (ClosedOwned())
             {
-                butNetwork.Visible = !Expanded;
-                butConfig.Visible = !Expanded;
-                butPins.Visible = !Expanded;
-                butRelayPins.Visible = !Expanded;
-                butValves.Visible = !Expanded;
-                butUpdateModules.Visible = !Expanded;
-
-                if (Expanded)
+                using (new RedrawScope(this))
                 {
-                    Expanded = false;
-                    butFile.Visible = true;
-                    butProducts.Visible = true;
-                    butMachine.Visible = true;
-                    butModules.Visible = true;
-                    butOptions.Visible = true;
-                    butHelpScreen.Visible = true;
-                    butModules.Top = (int)butModules.Tag;
-                }
-                else
-                {
-                    Expanded = true;
-                    butFile.Visible = false;
-                    butProducts.Visible = false;
-                    butMachine.Visible = false;
-                    butModules.Visible = true;
-                    butOptions.Visible = false;
-                    butHelpScreen.Visible = false;
-                    butModules.Tag = butModules.Top;
-                    butModules.Top = butFile.Top;
+                    // Suspend layout to prevent multiple layout passes while updating module submenu
+                    this.SuspendLayout();
+                    try
+                    {
+                        butNetwork.Visible = !Expanded;
+                        butConfig.Visible = !Expanded;
+                        butPins.Visible = !Expanded;
+                        butRelayPins.Visible = !Expanded;
+                        butValves.Visible = !Expanded;
+                        butUpdateModules.Visible = !Expanded;
 
-                    int Pos = butFile.Top;
-                    butNetwork.Left = butFile.Left + SubOffset;
-                    Pos += SubFirstSpacing;
-                    butNetwork.Top = Pos;
+                        if (Expanded)
+                        {
+                            Expanded = false;
+                            butFile.Visible = true;
+                            butProducts.Visible = true;
+                            butMachine.Visible = true;
+                            butModules.Visible = true;
+                            butHelpScreen.Visible = true;
+                            butModules.Top = (int)butModules.Tag;
+                        }
+                        else
+                        {
+                            Expanded = true;
+                            butFile.Visible = false;
+                            butProducts.Visible = false;
+                            butMachine.Visible = false;
+                            butModules.Visible = true;
+                            butHelpScreen.Visible = false;
+                            butModules.Tag = butModules.Top;
+                            butModules.Top = butFile.Top;
 
-                    butConfig.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butConfig.Top = Pos;
+                            int Pos = butFile.Top;
+                            butNetwork.Left = butFile.Left + SubOffset;
+                            Pos += SubFirstSpacing;
+                            butNetwork.Top = Pos;
 
-                    butPins.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butPins.Top = Pos;
+                            butConfig.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butConfig.Top = Pos;
 
-                    butRelayPins.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butRelayPins.Top = Pos;
+                            butPins.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butPins.Top = Pos;
 
-                    butValves.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butValves.Top = Pos;
+                            butRelayPins.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butRelayPins.Top = Pos;
 
-                    butUpdateModules.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butUpdateModules.Top = Pos;
+                            butValves.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butValves.Top = Pos;
 
-                    butNetwork.PerformClick();
+                            butUpdateModules.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butUpdateModules.Top = Pos;
+
+                            butNetwork.PerformClick();
+                        }
+                    }
+                    finally
+                    {
+                        this.ResumeLayout(true);
+                    }
                 }
             }
         }
 
         private void butMonitor_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuMonitoring";
+            SaveLastScreen("frmMenuMonitoring");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -554,7 +652,7 @@ namespace RateController
 
         private void butNetwork_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuNetwork";
+            SaveLastScreen("frmMenuNetwork");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -570,58 +668,9 @@ namespace RateController
             }
         }
 
-        private void butOptions_Click(object sender, EventArgs e)
-        {
-            if (ClosedOwned())
-            {
-                butDisplay.Visible = !Expanded;
-                butLanguage.Visible = !Expanded;
-                butColor.Visible = !Expanded;
-
-                if (Expanded)
-                {
-                    Expanded = false;
-                    butFile.Visible = true;
-                    butProducts.Visible = true;
-                    butMachine.Visible = true;
-                    butModules.Visible = true;
-                    butOptions.Visible = true;
-                    butHelpScreen.Visible = true;
-                    butOptions.Top = (int)butOptions.Tag;
-                }
-                else
-                {
-                    Expanded = true;
-                    butFile.Visible = false;
-                    butProducts.Visible = false;
-                    butMachine.Visible = false;
-                    butModules.Visible = false;
-                    butOptions.Visible = true;
-                    butHelpScreen.Visible = false;
-                    butOptions.Tag = butOptions.Top;
-                    butOptions.Top = butFile.Top;
-
-                    int Pos = butFile.Top;
-                    butDisplay.Left = butFile.Left + SubOffset;
-                    Pos += SubFirstSpacing;
-                    butDisplay.Top = Pos;
-
-                    butLanguage.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butLanguage.Top = Pos;
-
-                    butColor.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butColor.Top = Pos;
-
-                    butDisplay.PerformClick();
-                }
-            }
-        }
-
         private void butPins_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuPins";
+            SaveLastScreen("frmMenuPins");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -644,7 +693,7 @@ namespace RateController
 
         private void butPrimed_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuPrimed";
+            SaveLastScreen("frmMenuPrimed");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -664,79 +713,79 @@ namespace RateController
         {
             if (ClosedOwned())
             {
-                butRate.Visible = !Expanded;
-                butControl.Visible = !Expanded;
-                butSettings.Visible = !Expanded;
-                butMode.Visible = !Expanded;
-                butMonitor.Visible = !Expanded;
-                butData.Visible = !Expanded;
-                butMap.Visible = !Expanded;
-                butRateData.Visible = !Expanded;
-
-                if (Expanded)
+                using (new RedrawScope(this))
                 {
-                    Expanded = false;
-                    butFile.Visible = true;
-                    butProducts.Visible = true;
-                    butMachine.Visible = true;
-                    butModules.Visible = true;
-                    butOptions.Visible = true;
-                    butHelpScreen.Visible = true;
-                    butProducts.Top = (int)butProducts.Tag;
-                }
-                else
-                {
-                    Expanded = true;
-                    butFile.Visible = false;
-                    butProducts.Visible = true;
-                    butMachine.Visible = false;
-                    butModules.Visible = false;
-                    butOptions.Visible = false;
-                    butHelpScreen.Visible = false;
-                    butProducts.Tag = butProducts.Top;
-                    butProducts.Top = butFile.Top;
+                    // Suspend layout to reduce repaints while arranging product submenu
+                    this.SuspendLayout();
+                    try
+                    {
+                        butRate.Visible = !Expanded;
+                        butControl.Visible = !Expanded;
+                        butSettings.Visible = !Expanded;
+                        butMode.Visible = !Expanded;
+                        butMonitor.Visible = !Expanded;
+                        butData.Visible = !Expanded;
 
-                    int Pos = butFile.Top;
-                    butRate.Left = butFile.Left + SubOffset;
-                    Pos += SubFirstSpacing;
-                    butRate.Top = Pos;
+                        if (Expanded)
+                        {
+                            Expanded = false;
+                            butFile.Visible = true;
+                            butProducts.Visible = true;
+                            butMachine.Visible = true;
+                            butModules.Visible = true;
+                            butHelpScreen.Visible = true;
+                            butProducts.Top = (int)butProducts.Tag;
+                        }
+                        else
+                        {
+                            Expanded = true;
+                            butFile.Visible = false;
+                            butProducts.Visible = true;
+                            butMachine.Visible = false;
+                            butModules.Visible = false;
+                            butHelpScreen.Visible = false;
+                            butProducts.Tag = butProducts.Top;
+                            butProducts.Top = butFile.Top;
 
-                    butControl.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butControl.Top = Pos;
+                            int Pos = butFile.Top;
+                            butSettings.Left = butFile.Left + SubOffset;
+                            Pos += SubFirstSpacing;
+                            butSettings.Top = Pos;
 
-                    butSettings.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butSettings.Top = Pos;
+                            butRate.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butRate.Top = Pos;
 
-                    butMode.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butMode.Top = Pos;
+                            butControl.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butControl.Top = Pos;
 
-                    butMonitor.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butMonitor.Top = Pos;
+                            butMode.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butMode.Top = Pos;
 
-                    butData.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butData.Top = Pos;
+                            butMonitor.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butMonitor.Top = Pos;
 
-                    butMap.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butMap.Top = Pos;
+                            butData.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
+                            butData.Top = Pos;
 
-                    butRateData.Left = butFile.Left + SubOffset;
-                    Pos += SubSpacing;
-                    butRateData.Top = Pos;
-
-                    butRate.PerformClick();
+                            butSettings.PerformClick();
+                        }
+                    }
+                    finally
+                    {
+                        this.ResumeLayout(true);
+                    }
                 }
             }
         }
 
         private void butProfiles_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuProfiles";
+            SaveLastScreen("frmMenuProfiles");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -756,7 +805,7 @@ namespace RateController
         {
             if (CheckEdited())
             {
-                cLastScreen = "frmMenuRate";
+                SaveLastScreen("frmMenuRate");
                 if (sender is Button button) HighlightButton(button);
                 Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -773,23 +822,9 @@ namespace RateController
             }
         }
 
-        private void butRateData_Click(object sender, EventArgs e)
-        {
-            cLastScreen = "frmMenuRateData";
-            if (sender is Button button) HighlightButton(button);
-            Form fs = Props.IsFormOpen(cLastScreen);
-
-            if (fs == null)
-            {
-                Form frm = new frmMenuRateData(mf, this);
-                frm.Owner = this;
-                frm.Show();
-            }
-        }
-
         private void butRelayPins_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuRelayPins";
+            SaveLastScreen("frmMenuRelayPins");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -807,7 +842,7 @@ namespace RateController
 
         private void butRelays_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuRelays";
+            SaveLastScreen("frmMenuRelays");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -825,7 +860,7 @@ namespace RateController
 
         private void butSections_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuSections";
+            SaveLastScreen("frmMenuSections");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -843,7 +878,7 @@ namespace RateController
 
         private void butSettings_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuSettings";
+            SaveLastScreen("frmMenuSettings");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -861,7 +896,7 @@ namespace RateController
 
         private void butSwitches_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuSwitches";
+            SaveLastScreen("frmMenuSwitches");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -894,7 +929,7 @@ namespace RateController
 
         private void butValves_Click(object sender, EventArgs e)
         {
-            cLastScreen = "frmMenuValves";
+            SaveLastScreen("frmMenuValves");
             if (sender is Button button) HighlightButton(button);
             Form fs = Props.IsFormOpen(cLastScreen);
 
@@ -917,7 +952,7 @@ namespace RateController
             {
                 if ((bool)OwnedForm.Tag)
                 {
-                    var Hlp = new frmMsgBox(mf, "Unsaved Changes, Confirm Exit?", "Exit", true);
+                    var Hlp = new frmMsgBox("Unsaved Changes, Confirm Exit?", "Exit", true);
                     Hlp.TopMost = true;
 
                     Hlp.ShowDialog();
@@ -959,6 +994,8 @@ namespace RateController
             Props.LoadFormLocation(this);
             this.Width = SubMenuLayout.MainMenuWidth;
             this.Height = SubMenuLayout.MainMenuHeight;
+            // Leave a 1px padding so our custom border is not covered by edge-aligned controls
+            this.Padding = new Padding(1);
             StyleControls(this);
             butPowerOff.Left = 12;
             butPowerOff.Top = this.Height - 75;
@@ -1010,14 +1047,14 @@ namespace RateController
         {
             try
             {
-                string Last = Props.GetProp("LastScreen");
-                if (Props.IsFormNameValid(Last))
+                string Last = Props.CurrentMenuName;
+                if (Props.IsFormNameValid(Last) || Last == "")
                 {
                     Form fs;
                     switch (Last)
                     {
                         case "frmMenuProfiles":
-                            butFile.PerformClick(); // frmMenuProfiles opened by default
+                            butFile.PerformClick();
                             HighlightButton(butProfiles);
                             break;
 
@@ -1025,7 +1062,7 @@ namespace RateController
                             butFile.PerformClick();
                             fs = new frmMenuJobs(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butJobs);
                             fs.Show();
                             break;
@@ -1034,7 +1071,7 @@ namespace RateController
                             butProducts.PerformClick();
                             fs = new frmMenuControl(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butControl);
                             fs.Show();
                             break;
@@ -1043,7 +1080,7 @@ namespace RateController
                             butProducts.PerformClick();
                             fs = new frmMenuSettings(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butSettings);
                             fs.Show();
                             break;
@@ -1052,7 +1089,7 @@ namespace RateController
                             butProducts.PerformClick();
                             fs = new frmMenuMode(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butMode);
                             fs.Show();
                             break;
@@ -1061,7 +1098,7 @@ namespace RateController
                             butProducts.PerformClick();
                             fs = new frmMenuMonitoring(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butMonitor);
                             fs.Show();
                             break;
@@ -1070,26 +1107,8 @@ namespace RateController
                             butProducts.PerformClick();
                             fs = new frmMenuData(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butData);
-                            fs.Show();
-                            break;
-
-                        case "frmMenuRateMap":
-                            butProducts.PerformClick();
-                            fs = new frmMenuRateMap(mf, this);
-                            fs.Owner = this;
-                            cLastScreen = Last;
-                            HighlightButton(butMap);
-                            fs.Show();
-                            break;
-
-                        case "frmMenuRateData":
-                            butProducts.PerformClick();
-                            fs = new frmMenuRateData(mf, this);
-                            fs.Owner = this;
-                            cLastScreen = Last;
-                            HighlightButton(butRateData);
                             fs.Show();
                             break;
 
@@ -1102,7 +1121,7 @@ namespace RateController
                             butMachine.PerformClick();
                             fs = new frmMenuRelays(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butRelays);
                             fs.Show();
                             break;
@@ -1111,7 +1130,7 @@ namespace RateController
                             butMachine.PerformClick();
                             fs = new frmMenuPrimed(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butPrimed);
                             fs.Show();
                             break;
@@ -1120,7 +1139,7 @@ namespace RateController
                             butMachine.PerformClick();
                             fs = new frmMenuCalibrate(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butCalibrate);
                             fs.Show();
                             break;
@@ -1129,7 +1148,7 @@ namespace RateController
                             butMachine.PerformClick();
                             fs = new frmMenuSwitches(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butSwitches);
                             fs.Show();
                             break;
@@ -1143,8 +1162,8 @@ namespace RateController
                             butModules.PerformClick();
                             fs = new frmMenuConfig(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
-                            HighlightButton(butNetwork);
+                            SaveLastScreen(Last);
+                            HighlightButton(butConfig);
                             fs.Show();
                             break;
 
@@ -1152,7 +1171,7 @@ namespace RateController
                             butModules.PerformClick();
                             fs = new frmMenuPins(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butPins);
                             fs.Show();
                             break;
@@ -1161,7 +1180,7 @@ namespace RateController
                             butModules.PerformClick();
                             fs = new frmMenuRelayPins(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butRelayPins);
                             fs.Show();
                             break;
@@ -1170,39 +1189,43 @@ namespace RateController
                             butModules.PerformClick();
                             fs = new frmMenuValves(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butValves);
                             fs.Show();
                             break;
 
-                        case "frmMenuDisplay":
-                            butOptions.PerformClick();  // frmMenuDisplay opened by default
+                        case "frmMenuOptions":
+                            butFile.PerformClick();
+                            fs = new frmMenuOptions(mf, this);
+                            fs.Owner = this;
+                            SaveLastScreen(Last);
                             HighlightButton(butDisplay);
+                            fs.Show();
                             break;
 
                         case "frmMenuPressure":
                             butMachine.PerformClick();
                             fs = new frmMenuPressure(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(btnPressure);
                             fs.Show();
                             break;
 
                         case "frmMenuLanguage":
-                            butOptions.PerformClick();
+                            butFile.PerformClick();
                             fs = new frmMenuLanguage(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butLanguage);
                             fs.Show();
                             break;
 
                         case "frmMenuColor":
-                            butOptions.PerformClick();
+                            butFile.PerformClick();
                             fs = new frmMenuColor(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
                             HighlightButton(butColor);
                             fs.Show();
                             break;
@@ -1210,14 +1233,26 @@ namespace RateController
                         case "frmMenuHelp":
                             fs = new frmMenuHelp(mf, this);
                             fs.Owner = this;
-                            cLastScreen = Last;
+                            SaveLastScreen(Last);
+                            fs.Show();
+                            break;
+
+                        case "frmMenuRate":
+                            butProducts.PerformClick();
+                            fs = new frmMenuRate(mf, this);
+                            fs.Owner = this;
+                            SaveLastScreen(Last);
+                            HighlightButton(butRate);
                             fs.Show();
                             break;
 
                         default:
-                            // frmMenuRate
-                            butProducts.PerformClick(); // frmMenuRate opened by default
-                            HighlightButton(butRate);
+                            butFile.PerformClick();
+                            fs = new frmMenuLanguage(mf, this);
+                            fs.Owner = this;
+                            SaveLastScreen(Last);
+                            HighlightButton(butLanguage);
+                            fs.Show();
                             break;
                     }
                 }
@@ -1233,13 +1268,18 @@ namespace RateController
             ShowProfile();
         }
 
+        private void SaveLastScreen(string Name)
+        {
+            cLastScreen = Name;
+            Props.CurrentMenuName = cLastScreen;
+        }
+
         private void SetLanguage()
         {
             butFile.Text = Lang.lgFile;
             butProducts.Text = Lang.lgProductsMenu;
             butMachine.Text = Lang.lgMachine;
             butModules.Text = Lang.lgModules;
-            butOptions.Text = Lang.lgOptions;
             butHelpScreen.Text = Lang.lgHelp;
 
             butJobs.Text = Lang.lgJobs;
@@ -1251,7 +1291,6 @@ namespace RateController
             butMonitor.Text = Lang.lgMonitoring;
             butData.Text = Lang.lgData;
             butMap.Text = Lang.lgRateMap;
-            butRateData.Text = Lang.lgRateData;
 
             butSections.Text = Lang.lgSections;
             butRelays.Text = Lang.lgRelays;
@@ -1264,10 +1303,31 @@ namespace RateController
             butRelayPins.Text = Lang.lgRelayPins;
             butValves.Text = Lang.lgValves;
             butUpdateModules.Text = Lang.lgSend;
-            butDisplay.Text = Lang.lgDisplay;
+            butDisplay.Text = Lang.lgOptions;
             butLanguage.Text = Lang.lgLanguage;
             butColor.Text = Lang.lgColor;
             btnPressure.Text = Lang.lgPressure;
+        }
+
+        private sealed class RedrawScope : IDisposable
+        {
+            private readonly Control _control;
+
+            public RedrawScope(Control control)
+            {
+                _control = control;
+                if (control.IsHandleCreated)
+                    SendMessage(control.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+            }
+
+            public void Dispose()
+            {
+                if (_control != null && _control.IsHandleCreated)
+                {
+                    SendMessage(_control.Handle, WM_SETREDRAW, new IntPtr(1), IntPtr.Zero);
+                    _control.Refresh();
+                }
+            }
         }
     }
 }

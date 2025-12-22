@@ -20,13 +20,13 @@
 
 //rate control with ESP32, board: DOIT ESP32 DEVKIT V1
 # define InoDescription "RC_ESP32"
-const uint16_t InoID = 20115;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint16_t InoID = 30115;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
 
-const uint8_t MaxProductCount = 2;
 const uint8_t NC = 0xFF;		// Pin not connected
 const uint8_t ModStringLengths = 15;
+const uint32_t FlowTimeout = 4000;
 
 const uint16_t EEPROM_SIZE = 512;
 
@@ -42,13 +42,19 @@ const uint8_t PCF8574address = 0x20;
 #if defined(ESP32)
 const int PWM_BITS = 12;
 const int PWM_FREQ = 490;
+const uint8_t MaxProductCount = 6;
+const int MaxSampleSize = 25;
 #elif defined(ARDUINO_TEENSY41)
 const int PWM_BITS = 12;
 const int PWM_FREQ = 490;
+const uint8_t MaxProductCount = 6;
+const int MaxSampleSize = 25;
 #else // Nano & similar AVR
 const int PWM_BITS = 8;
 const int PWM_FREQ = 490;  // Default
 uint8_t ditherCounter = 0; // for Nano dithering
+const uint8_t MaxProductCount = 2;
+const int MaxSampleSize = 11;
 #endif
 
 enum ControlType
@@ -73,12 +79,14 @@ struct ModuleConfig	// about 130 bytes
 	uint8_t RelayControlPins[16] = { 8,9,10,11,12,25,26,27,NC,NC,NC,NC,NC,NC,NC,NC };		// pin numbers when GPIOs are used for relay control (1), default RC11
 	uint8_t RelayControl = 5;		// 0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
 	char APname[ModStringLengths] = "RateModule";
-	char APpassword[ModStringLengths] = "111222333";
+	char APpassword[ModStringLengths] = "";
 	uint8_t WorkPin = NC;
 	bool WorkPinIsMomentary = false;
 	bool Is3Wire = true;			// False - DRV8870 provides powered on/off with Output1/Output2, True - DRV8870 provides on/off with Output1 only, Output2 is off
 	uint8_t PressurePin = NC;		// NC - no pressure pin
 	bool ADS1115Enabled = true;
+	uint8_t WheelSpeedPin = NC;
+	float WheelCal = 0;
 };
 
 ModuleConfig MDL;
@@ -110,21 +118,21 @@ struct SensorConfig	// about 104 bytes
 	uint32_t TotalPulses;
 	float TargetUPM;
 	float MeterCal;
-	float ManualAdjust;
+	int16_t ManualAdjust;
 	float Hz;
-	float MaxPWM;
-	float MinPWM;
+	uint8_t MaxPWM;
+	uint8_t MinPWM;
 	float Kp;
 	float Ki;
 	float Deadband;
-	float BrakePoint;
-	float PIDslowAdjust;
-	float SlewRate;
+	uint8_t BrakePoint;
+	uint8_t PIDslowAdjust;
+	uint8_t SlewRate;
 	float MaxIntegral;
 	float TimedMinStart;
-	uint32_t TimedAdjust;
-	uint32_t TimedPause;
-	uint32_t PIDtime;
+	uint16_t TimedAdjust;
+	uint16_t TimedPause;
+	uint8_t PIDtime;
 	uint32_t PulseMin;
 	uint32_t PulseMax;
 	byte PulseSampleSize;
@@ -235,6 +243,8 @@ void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 bool CalibrationOn[] = { false,false };
+float WheelSpeed = 0;
+uint32_t WheelCounts = 0;
 
 void setup()
 {
@@ -255,6 +265,7 @@ void loop()
 		GetUPM();
 		AdjustFlow();
 		ReadAnalog();
+		if (MDL.WheelSpeedPin != NC) GetSpeed();
 	}
 	SendComm();
 	//Blink();
@@ -347,6 +358,41 @@ bool WorkPinOn()
 	return WrkOn;
 }
 
+uint32_t MedianFromArray(uint32_t buf[], int count)
+{
+	uint32_t Result = 0;
+	if (count > 0)
+	{
+		uint32_t sorted[MaxSampleSize];
+		for (int i = 0; i < count; i++) sorted[i] = buf[i];
+
+		// insertion sort
+		for (int i = 1; i < count; i++)
+		{
+			uint32_t key = sorted[i];
+			int j = i - 1;
+			while (j >= 0 && sorted[j] > key)
+			{
+				sorted[j + 1] = sorted[j];
+				j--;
+			}
+			sorted[j + 1] = key;
+		}
+
+		if (count % 2 == 1)
+		{
+			Result = sorted[count / 2];
+		}
+		else
+		{
+			int mid = count / 2;
+			// average of middle two
+			Result = (sorted[mid - 1] + sorted[mid]) / 2;
+		}
+	}
+	return Result;
+}
+
 //bool State = false;
 //uint32_t LastBlink;
 //uint32_t LastLoop;
@@ -364,14 +410,14 @@ bool WorkPinOn()
 //
 //		Serial.print(MaxLoopTime);
 //
-//		Serial.print(", ");
-//		Serial.print(debug1);
+//		//Serial.print(", ");
+//		//Serial.print(debug1);
+//
+//		//Serial.print(", ");
+//		//Serial.print(WifiMasterOn);
 //
 //		Serial.print(", ");
-//		Serial.print(WifiMasterOn);
-//
-//		Serial.print(", ");
-//		Serial.print(Button[0]);
+//		Serial.print(Sensor[0].TotalPulses);
 //
 //		Serial.println("");
 //

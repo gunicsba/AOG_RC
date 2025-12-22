@@ -1,26 +1,21 @@
-﻿using GMap.NET.MapProviders;
-using RateController.Forms;
+﻿using RateController.Forms;
 using RateController.Language;
-using RateController.Menu;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Media;
 using System.Reflection;
-using System.Security.Policy;
 using System.Windows.Forms;
 
 namespace RateController.Classes
 {
     public enum ApplicationMode
     { ControlledUPM, ConstantUPM, DocumentApplied, DocumentTarget }
-
-    public enum CalibrationMode
-    { Off, SettingPWM, TestingRate }
 
     public enum ControlTypeEnum
     { Valve, ComboClose, Motor, MotorWeights, Fan, ComboCloseTimed }
@@ -43,8 +38,8 @@ namespace RateController.Classes
     public enum RelayTypes
     { Section, Slave, Master, Power, Invert_Section, HydUp, HydDown, TramRight, TramLeft, GeoStop, Switch, None, Invert_Master };
 
-    public enum SimType
-    { Sim_None, Sim_Speed }
+    public enum SpeedType
+    { GPS, Wheel, Simulated }
 
     public enum SwIDs
     {
@@ -62,40 +57,36 @@ namespace RateController.Classes
         public static readonly int MaxSections = 128;
         public static readonly int MaxSensorsPerModule = 16;
         public static readonly int MaxSwitches = 16;
-        public static readonly double MPHtoKPH = 1.6092;
+        public static readonly double MPHtoKPH = 1.609344;
         public static bool cShowCoverageRemaining;
         public static bool cShowQuantityRemaining;
         private static string cActivityFileName = "";
-        private static string cAppDate = "19-Oct-2025";
+        private static string cAppDate = "17-Dec-2025";
         private static string cApplicationFolder;
         private static string cAppName = "RateController";
-        private static string cAppVersion = "4.1.0";
+        private static SortedDictionary<string, string> cAppProps = new SortedDictionary<string, string>();
+        private static string cAppPropsFileName = "";
+        private static string cAppVersion = "4.1.5";
+        private static string cCurrentMenuName = "";
+        private static string cDefaultDir;
         private static int cDefaultProduct;
         private static string cErrorsFileName = "";
         private static string cFieldNames;
-        private static SortedDictionary<string, string> cFormProps = new SortedDictionary<string, string>();
-        private static string cFormPropsFileName = "";
-        private static string cJobsDataPath;
-        private static string cJobsFolder;
-        private static bool cMapShowRates;
-        private static bool cMapShowTiles;
-        private static bool cMapShowZones;
         private static MasterSwitchMode cMasterSwitchMode = MasterSwitchMode.ControlAll;
         private static int cPrimeDelay = 3;
         private static double cPrimeTime = 0;
         private static string cProfilesFolder;
         private static SortedDictionary<string, string> cProps = new SortedDictionary<string, string>();
         private static bool cRateCalibrationOn = false;
-        private static double cRateDisplayResolution;
         private static bool cRateRecordEnabled;
-        private static double cRateRecordInterval;
         private static int cRateType;
         private static bool cReadOnly = false;
         private static bool cResumeAfterPrime;
+        private static int cSensorSettingsMaxID = -1;
         private static bool cShowPressure;
         private static bool cShowSwitches;
-        private static SimType cSimMode = SimType.Sim_None;
         private static double cSimSpeed = 0;
+        private static SpeedType cSpeedMode = SpeedType.GPS;
         private static bool cUseDualAuto;
         private static bool cUseLargeScreen = false;
         private static bool cUseMetric;
@@ -104,7 +95,7 @@ namespace RateController.Classes
         private static bool cUseVariableRate = false;
         private static bool cUseZones = false;
         private static string lastMessage = "";
-        private static DateTime lastMessageTime=DateTime.MinValue;
+        private static DateTime lastMessageTime = DateTime.MinValue;
         private static FormStart mf;
         private static frmPressureDisplay PressureDisplay;
         private static frmRate RateDisplay;
@@ -127,26 +118,28 @@ namespace RateController.Classes
 
         public static readonly byte BrakePointDefault = 35;
         public static readonly byte DeadbandDefault = 15;
-        public static readonly byte KIdefault = 5;
-        public static readonly byte KPdefault = 35;
-        public static readonly byte MaxIntegralDefault = 1;
+        public static readonly byte KIdefault = 65;
+        public static readonly byte KPdefault = 65;
+        public static readonly byte MaxIntegralDefault = 250;
         public static readonly byte MaxPWMdefault = 100;
-        public static readonly byte MinPWMdefault = 0;
-        public static readonly byte PIDslowAdjustDefault = 30;
+        public static readonly byte MinPWMdefault = 5;
+        public static readonly byte PIDslowAdjustDefault = 80;
         public static readonly byte PIDtimeDefault = 100;
         public static readonly UInt16 PulseMaxHzDefault = 3000;
         public static readonly byte PulseMinHzDefault = 10;
         public static readonly byte PulseSampleSizeDefault = 12;
-        public static readonly byte SlewRateDefault = 15;
+        public static readonly byte SlewRateDefault = 25;
         public static readonly byte TimedAdjustDefault = 80;
-        public static readonly byte TimedMinStartDefault = 3;
+        public static readonly byte TimedMinStartDefault = 50;
         public static readonly UInt16 TimedPauseDefault = 400;
 
         #endregion flow adjustment defaults
 
-        public static event EventHandler JobChanged;
+        public static event EventHandler AppExit;
 
-        public static event EventHandler RateDataSettingsChanged;
+        public static event EventHandler ProductSettingsChanged;
+
+        public static event EventHandler ProfileChanged;
 
         public static event EventHandler ScreensSwitched;
 
@@ -154,61 +147,22 @@ namespace RateController.Classes
 
         #region MainProperties
 
-        public static event EventHandler ResolutionChanged;
+        private static clsJobDataCollector cJobCollector;
 
         public static string ApplicationFolder
         { get { return cApplicationFolder; } }
 
-        public static string CurrentJobDescription
+        public static string CurrentMenuName
         {
-            get
-            {
-                Job current = JobManager.SearchJob(Props.CurrentJobID);
-                string fld = "";
-                Parcel currentParcel = ParcelManager.SearchParcel(current.FieldID);
-                if (currentParcel != null) fld = currentParcel.Name;
-                return current.Name + " - " + fld;
-            }
-        }
-
-        public static int CurrentJobID
-        {
-            get
-            {
-                Job current = JobManager.SearchJob(Properties.Settings.Default.CurrentJob);
-                if (current == null)
-                {
-                    Properties.Settings.Default.CurrentJob = 0;
-                    Properties.Settings.Default.Save();
-                    current = JobManager.SearchJob(0);
-                    SaveJobInfo();
-                }
-                return Properties.Settings.Default.CurrentJob;
-            }
+            get { return cCurrentMenuName; }
             set
             {
-                Properties.Settings.Default.CurrentJob = value;
-                Properties.Settings.Default.Save();
-                JobChanged?.Invoke(null, EventArgs.Empty);
-                SaveJobInfo();
+                cCurrentMenuName = value;
             }
         }
 
-        public static string CurrentMapPath
-        {
-            get
-            {
-                return JobManager.MapPath(Properties.Settings.Default.CurrentJob);
-            }
-        }
-
-        public static string CurrentRateDataPath
-        {
-            get
-            {
-                return JobManager.RateDataPath(Properties.Settings.Default.CurrentJob);
-            }
-        }
+        public static string DefaultDir
+        { get { return cDefaultDir; } }
 
         public static int DefaultProduct
         {
@@ -226,49 +180,19 @@ namespace RateController.Classes
         public static string FieldNamesPath
         { get { return cFieldNames; } }
 
-        public static string JobsDataPath
-        { get { return cJobsDataPath; } }
-
-        public static string JobsFolder
-        { get { return cJobsFolder; } }
+        public static clsJobDataCollector JobCollector
+        {
+            get
+            {
+                if (cJobCollector == null) cJobCollector = new clsJobDataCollector();
+                return cJobCollector;
+            }
+        }
 
         public static FormStart MainForm
         {
             get { return mf; }
             set { mf = value; }
-        }
-
-        public static string MapCache
-        { get { return cApplicationFolder + "\\MapCache"; } }
-
-        public static bool MapShowRates
-        {
-            get { return cMapShowRates; }
-            set
-            {
-                cMapShowRates = value;
-                SetProp("MapShowRates", cMapShowRates.ToString());
-            }
-        }
-
-        public static bool MapShowTiles
-        {
-            get { return cMapShowTiles; }
-            set
-            {
-                cMapShowTiles = value;
-                SetProp("ShowTiles", cMapShowTiles.ToString());
-            }
-        }
-
-        public static bool MapShowZones
-        {
-            get { return cMapShowZones; }
-            set
-            {
-                cMapShowZones = value;
-                SetProp("MapShowZones", cMapShowZones.ToString());
-            }
         }
 
         public static MasterSwitchMode MasterSwitchMode
@@ -278,6 +202,16 @@ namespace RateController.Classes
             {
                 cMasterSwitchMode = value;
                 SetProp("MasterSwitchMode", cMasterSwitchMode.ToString());
+            }
+        }
+
+        public static int NextSensorSettingsID
+        {
+            get
+            {
+                cSensorSettingsMaxID++;
+                SetProp("SensorSettingsMaxID", cSensorSettingsMaxID.ToString());
+                return cSensorSettingsMaxID;
             }
         }
 
@@ -307,6 +241,11 @@ namespace RateController.Classes
             }
         }
 
+        public static bool ProductsAreOn
+        {
+            get { return mf.Products.ProductsAreOn(); }
+        }
+
         public static string ProfilesFolder
         { get { return cProfilesFolder; } }
 
@@ -314,43 +253,6 @@ namespace RateController.Classes
         {
             get { return cRateCalibrationOn; }
             set { cRateCalibrationOn = value; }
-        }
-
-        public static int RateDisplayProduct
-        {
-            get { return int.TryParse(GetProp("RatesProduct"), out int rs) ? rs : 0; }
-            set { SetProp("RatesProduct", value.ToString()); }
-        }
-
-        public static double RateDisplayResolution
-        {
-            get { return double.TryParse(GetProp("RateDisplayResolution"), out double rs) ? rs : 0.5; }
-            set
-            {
-                SetProp("RateDisplayResolution", value.ToString());
-
-                if (cRateDisplayResolution != value)
-                {
-                    cRateDisplayResolution = value;
-                    ResolutionChanged?.Invoke(null, EventArgs.Empty);
-                }
-            }
-        }
-
-        public static RateType RateDisplayType
-        {
-            get { return Enum.TryParse(GetProp("RateDisplayType"), out RateType tp) ? tp : RateType.Applied; }
-            set { SetProp("RateDisplayType", value.ToString()); }
-        }
-
-        public static bool RateRecordEnabled
-        {
-            get { return cRateRecordEnabled; }
-            set
-            {
-                cRateRecordEnabled = value;
-                SetProp("RecordRates", value.ToString());
-            }
         }
 
         public static bool ReadOnly
@@ -390,7 +292,7 @@ namespace RateController.Classes
             set
             {
                 cShowPressure = value;
-                SetProp("ShowPressure", value.ToString());
+                SetAppProp("ShowPressure", value.ToString());
                 DisplayPressure();
             }
         }
@@ -411,22 +313,12 @@ namespace RateController.Classes
             set
             {
                 cShowSwitches = value;
-                Props.SetProp("ShowSwitches", cShowSwitches.ToString());
+                Props.SetAppProp("ShowSwitches", cShowSwitches.ToString());
                 DisplaySwitches();
             }
         }
 
-        public static SimType SimMode
-        {
-            get { return cSimMode; }
-            set
-            {
-                cSimMode = value;
-                SetProp("SimMode", cSimMode.ToString());
-            }
-        }
-
-        public static double SimSpeed
+        public static double SimSpeed_KMH
         {
             get { return cSimSpeed; }
             set
@@ -434,8 +326,56 @@ namespace RateController.Classes
                 if (value >= 0 && value < 40)
                 {
                     cSimSpeed = value;
-                    SetProp("SimSpeed", cSimSpeed.ToString());
+                    SetAppProp("SimSpeed", cSimSpeed.ToString());
                 }
+            }
+        }
+
+        public static double Speed_KMH
+        {
+            get
+            {
+                double Result = 0;
+                if (mf.SectionControl.PrimeOn)
+                {
+                    Result = SimSpeed_KMH;
+                }
+                else
+                {
+                    switch (cSpeedMode)
+                    {
+                        case SpeedType.Wheel:
+                            if (UseMetric)
+                            {
+                                Result = mf.ModulesStatus.WheelSpeed(mf.WheelSpeed.WheelModule);
+                            }
+                            else
+                            {
+                                Result = mf.ModulesStatus.WheelSpeed(mf.WheelSpeed.WheelModule) * MPHtoKPH;
+                            }
+                            break;
+
+                        case SpeedType.Simulated:
+                            Result = SimSpeed_KMH;
+                            break;
+
+                        default:
+                            Result = mf.GPS.Speed_KMH;
+                            break;
+                    }
+                }
+                if (Result < 0 || Result > 10000) Result = 0;
+                return Result;
+            }
+        }
+
+        public static SpeedType SpeedMode
+        {
+            get { return cSpeedMode; }
+            set
+            {
+                cSpeedMode = value;
+                SetAppProp("SpeedMode", cSpeedMode.ToString());
             }
         }
 
@@ -445,7 +385,7 @@ namespace RateController.Classes
             set
             {
                 cUseDualAuto = value;
-                SetProp("UseDualAuto", cUseDualAuto.ToString());
+                SetAppProp("UseDualAuto", cUseDualAuto.ToString());
             }
         }
 
@@ -457,7 +397,7 @@ namespace RateController.Classes
                 if (cUseLargeScreen != value)
                 {
                     cUseLargeScreen = value;
-                    SetProp("UseLargeScreen", cUseLargeScreen.ToString());
+                    SetAppProp("UseLargeScreen", cUseLargeScreen.ToString());
                     SwitchScreens();
                 }
             }
@@ -471,7 +411,7 @@ namespace RateController.Classes
                 if (cUseMetric != value)
                 {
                     cUseMetric = value;
-                    SetProp("UseMetric", cUseMetric.ToString());
+                    SetAppProp("UseMetric", cUseMetric.ToString());
                     UnitsChanged?.Invoke(null, EventArgs.Empty);
                 }
             }
@@ -483,7 +423,7 @@ namespace RateController.Classes
             set
             {
                 cUseRateDisplay = value;
-                SetProp("UseRateDisplay", cUseRateDisplay.ToString());
+                SetAppProp("UseRateDisplay", cUseRateDisplay.ToString());
                 DisplayRate();
             }
         }
@@ -509,7 +449,7 @@ namespace RateController.Classes
             set
             {
                 cUseTransparent = value;
-                SetProp("UseTransparent", cUseTransparent.ToString());
+                SetAppProp("UseTransparent", cUseTransparent.ToString());
             }
         }
 
@@ -570,20 +510,9 @@ namespace RateController.Classes
             return Result;
         }
 
-        public static string CurrentDir()
-        {
-            return Path.GetDirectoryName(Properties.Settings.Default.CurrentFile);
-        }
-
         public static string CurrentFileName()
         {
             return Path.GetFileNameWithoutExtension(Properties.Settings.Default.CurrentFile);
-        }
-
-        public static string CurrentPressureFile()
-        {
-            string name = CurrentDir() + "\\" + CurrentFileName() + "PressureData.csv";
-            return name;
         }
 
         public static string ParseDate(string input)
@@ -605,9 +534,7 @@ namespace RateController.Classes
             return Result;
         }
 
-        public static void ShowMessage(string Message, string Title = "Help",
-                                                                                                                                                                                                                                                                                                                                                                            int timeInMsec = 20000, bool LogError = false, bool Modal = false
-            , bool PlayErrorSound = false)
+        public static void ShowMessage(string Message, string Title = "Help", int timeInMsec = 20000, bool LogError = false, bool Modal = false, bool PlayErrorSound = false)
         {
             if (!LogError || Message != lastMessage || (DateTime.Now - lastMessageTime).TotalSeconds > 60)
             {
@@ -634,18 +561,6 @@ namespace RateController.Classes
             return cAppDate;
         }
 
-        private static void SaveJobInfo()
-        {
-            string InfoPath = cJobsFolder + "\\CurrentJob.txt";
-            string JobPath = "";
-            Job current = JobManager.SearchJob(Properties.Settings.Default.CurrentJob);
-            if (current != null)
-            {
-                JobPath = current.JobFolder;
-            }
-            File.WriteAllText(InfoPath, JobPath);
-        }
-
         #endregion MainProperties
 
         public static bool CheckFolders()
@@ -654,7 +569,7 @@ namespace RateController.Classes
             try
             {
                 // check for default dir and files
-                string cDefaultDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\" + cAppName;
+                cDefaultDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\" + cAppName;
                 if (!Directory.Exists(cDefaultDir)) Directory.CreateDirectory(cDefaultDir);
 
                 // application folder
@@ -674,43 +589,18 @@ namespace RateController.Classes
 
                 string ExampleProfile = name + "\\" + "Example";
                 if (!Directory.Exists(ExampleProfile)) Directory.CreateDirectory(ExampleProfile);
-                if (!File.Exists(ExampleProfile + "\\Example.rcs")) File.WriteAllBytes(ExampleProfile + "\\Example.rcs", Properties.Resources.Default);
+                if (!File.Exists(ExampleProfile + "\\Example.rcs")) File.WriteAllBytes(ExampleProfile + "\\Example.rcs", Properties.Resources.Example);
                 if (!File.Exists(ExampleProfile + "\\ExamplePressureData.csv")) File.WriteAllText(ExampleProfile + "\\ExamplePressureData.csv", string.Empty);
 
                 // check user files, current profile
                 if (!File.Exists(Properties.Settings.Default.CurrentFile))
                 {
-                    Properties.Settings.Default.CurrentFile = DefaultProfile + "\\Default.rcs";
-                    Properties.Settings.Default.UseJobs = true;
+                    Properties.Settings.Default.CurrentFile = ExampleProfile + "\\Example.rcs";
                     Properties.Settings.Default.Save();
-                }
-
-                // jobs folder
-                name = cDefaultDir + "\\Jobs";
-                if (!Directory.Exists(name)) Directory.CreateDirectory(name);
-                cJobsFolder = name;
-
-                cJobsDataPath = cJobsFolder + "\\JobsData.jbs";
-                if (!File.Exists(cJobsDataPath)) File.WriteAllText(cJobsDataPath, string.Empty);
-
-                // check for default job
-                JobManager.CheckDefaultJob();
-
-                // check user files, current job
-                int CurrentJob = Props.CurrentJobID;
-                if (JobManager.SearchJob(CurrentJob) == null)
-                {
-                    Props.CurrentJobID = 0;
-                }
-                else
-                {
-                    Props.CurrentJobID = Properties.Settings.Default.CurrentJob;
                 }
 
                 // create field names path
                 cFieldNames = Path.Combine(ApplicationFolder, "FieldNames.txt");
-
-                SaveJobInfo();
 
                 Result = true;
             }
@@ -718,26 +608,6 @@ namespace RateController.Classes
             {
             }
             return Result;
-        }
-
-        public static bool CheckOnScreen(Form form, bool MakeOnScreen = true)
-        {
-            bool IsOnScreen = false;
-            try
-            {
-                // Create rectangle
-                Rectangle formRectangle = new Rectangle(form.Left, form.Top, form.Width, form.Height);
-
-                // Test
-                IsOnScreen = Screen.AllScreens.Any(s => s.WorkingArea.IntersectsWith(formRectangle));
-
-                if (!IsOnScreen && MakeOnScreen) CenterForm(form);
-            }
-            catch (Exception ex)
-            {
-                WriteErrorLog("Props/CheckOnScreen: " + ex.Message);
-            }
-            return IsOnScreen;
         }
 
         public static void DisplayPressure()
@@ -793,45 +663,52 @@ namespace RateController.Classes
             }
         }
 
-        public static void DrawGroupBox(GroupBox box, Graphics g, Color BackColor, Color textColor, Color borderColor)
+        public static void DrawGroupBox(GroupBox box, Graphics g, Color BackColor, Color textColor, Color borderColor, float borderWidth = 1)
         {
             // useage:
             // point the Groupbox paint event to this sub:
-            //private void GroupBoxPaint(object sender, PaintEventArgs e)
+            // private void groupBox1_Paint(object sender, PaintEventArgs e)
             //{
             //    GroupBox box = sender as GroupBox;
-            //    Props.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, Color.Blue);
+            // mf.Tls.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, Color.Red, 3); // Red border with thickness 3
             //}
-
             if (box != null)
             {
-                Brush textBrush = new SolidBrush(textColor);
-                Brush borderBrush = new SolidBrush(borderColor);
-                Pen borderPen = new Pen(borderBrush);
-                SizeF strSize = g.MeasureString(box.Text, box.Font);
-                Rectangle rect = new Rectangle(box.ClientRectangle.X,
-                                               box.ClientRectangle.Y + (int)(strSize.Height / 2),
-                                               box.ClientRectangle.Width - 1,
-                                               box.ClientRectangle.Height - (int)(strSize.Height / 2) - 1);
+                using (Brush textBrush = new SolidBrush(textColor))
+                using (Pen borderPen = new Pen(borderColor, borderWidth))
+                {
+                    SizeF strSize = g.MeasureString(box.Text, box.Font);
+                    Rectangle rect = new Rectangle(box.ClientRectangle.X,
+                                                   box.ClientRectangle.Y + (int)(strSize.Height / 2),
+                                                   box.ClientRectangle.Width - 1,
+                                                   box.ClientRectangle.Height - (int)(strSize.Height / 2) - 1);
 
-                // Clear text and border
-                g.Clear(BackColor);
+                    // Clear text and border
+                    g.Clear(BackColor);
 
-                // Draw text
-                g.DrawString(box.Text, box.Font, textBrush, box.Padding.Left, 0);
+                    // Draw text
+                    g.DrawString(box.Text, box.Font, textBrush, box.Padding.Left, 0);
 
-                // Drawing Border
-                //Left
-                g.DrawLine(borderPen, rect.Location, new Point(rect.X, rect.Y + rect.Height));
-                //Right
-                g.DrawLine(borderPen, new Point(rect.X + rect.Width, rect.Y), new Point(rect.X + rect.Width, rect.Y + rect.Height));
-                //Bottom
-                g.DrawLine(borderPen, new Point(rect.X, rect.Y + rect.Height), new Point(rect.X + rect.Width, rect.Y + rect.Height));
-                //Top1
-                g.DrawLine(borderPen, new Point(rect.X, rect.Y), new Point(rect.X + box.Padding.Left, rect.Y));
-                //Top2
-                g.DrawLine(borderPen, new Point(rect.X + box.Padding.Left + (int)(strSize.Width), rect.Y), new Point(rect.X + rect.Width, rect.Y));
+                    // Drawing Border
+                    // Left
+                    g.DrawLine(borderPen, rect.Location, new Point(rect.X, rect.Y + rect.Height));
+                    // Right
+                    g.DrawLine(borderPen, new Point(rect.X + rect.Width, rect.Y), new Point(rect.X + rect.Width, rect.Y + rect.Height));
+                    // Bottom
+                    g.DrawLine(borderPen, new Point(rect.X, rect.Y + rect.Height), new Point(rect.X + rect.Width, rect.Y + rect.Height));
+                    // Top1
+                    g.DrawLine(borderPen, new Point(rect.X, rect.Y), new Point(rect.X + box.Padding.Left, rect.Y));
+                    // Top2
+                    g.DrawLine(borderPen, new Point(rect.X + box.Padding.Left + (int)(strSize.Width), rect.Y), new Point(rect.X + rect.Width, rect.Y));
+                }
             }
+        }
+
+        public static String GetAppProp(string key)
+        {
+            return cAppProps.TryGetValue(key, out var value) ? value : string.Empty;
+            //string prop = cAppProps.TryGetValue(key, out var value) ? value : string.Empty;
+            //return int.TryParse(prop, out var vl) ? vl : -1;
         }
 
         public static double GetPressureCal(int Index)
@@ -863,21 +740,64 @@ namespace RateController.Classes
                 {
                     Result = frm;
                     if (SetFocus) frm.Focus();
+                    break;
                 }
             }
             return Result;
         }
 
-        public static bool IsPathSafeToDelete(string candidatePath)
+        public static bool IsOnScreen(Control Ctrl, bool MakeOnScreen = true)
+        {
+            bool Result = false;
+            try
+            {
+                if (Ctrl == null)
+                {
+                    // false
+                }
+                else if (!(Ctrl is Form) && !Ctrl.IsHandleCreated)
+                {
+                    // If handle not created yet (e.g., before Show), assume it will be valid.
+                    Result = true;
+                }
+                else
+                {
+                    Rectangle rect;
+                    if (Ctrl is Form frm)
+                    {
+                        rect = new Rectangle(frm.Left, frm.Top, frm.Width, frm.Height);
+                    }
+                    else
+                    {
+                        // Convert control client rectangle to screen coordinates
+                        rect = Ctrl.RectangleToScreen(new Rectangle(Point.Empty, Ctrl.Size));
+                    }
+
+                    Result = Screen.AllScreens.Any(s => s.WorkingArea.IntersectsWith(rect));
+
+                    if (!Result && MakeOnScreen && Ctrl is Form TheForm)
+                    {
+                        CenterForm(TheForm);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteErrorLog("Props/IsOnScreen: " + ex.Message);
+            }
+            return Result;
+        }
+
+        public static bool IsPathSafe(string candidatePath)
         {
             bool result = false;
             try
             {
-                string myDocuments = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string baseFolder = Path.Combine(myDocuments, "RateController");
-
                 if (!string.IsNullOrEmpty(candidatePath))
                 {
+                    string myDocuments = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    string baseFolder = Path.Combine(myDocuments, "RateController");
+
                     string candidateFullPath = Path.GetFullPath(candidatePath);
                     string safeBaseFullPath = Path.GetFullPath(baseFolder);
 
@@ -898,7 +818,7 @@ namespace RateController.Classes
             }
             catch (Exception ex)
             {
-                WriteErrorLog("Props/SafeToDelete: " + ex.Message);
+                WriteErrorLog("Props/IsPathSafe: " + ex.Message);
             }
             return result;
         }
@@ -908,10 +828,10 @@ namespace RateController.Classes
             try
             {
                 string name = frm.Name + Instance + ".Left";
-                int Left = GetFormProp(name);
+                int Left = int.TryParse(GetAppProp(name), out int vl) ? vl : -1;
 
                 name = frm.Name + Instance + ".Top";
-                int Top = GetFormProp(name);
+                int Top = int.TryParse(GetAppProp(name), out int tp) ? tp : -1;
 
                 if (Left == -1 || Top == -1)
                 {
@@ -922,7 +842,7 @@ namespace RateController.Classes
                     frm.Left = Left;
                     frm.Top = Top;
                 }
-                CheckOnScreen(frm);
+                IsOnScreen(frm);
             }
             catch (Exception ex)
             {
@@ -932,6 +852,7 @@ namespace RateController.Classes
 
         public static void LoadProperties()
         {
+            // profile properties
             cReadOnly = bool.TryParse(GetProp("ReadOnly"), out bool rd) ? rd : false;
             cUseVariableRate = bool.TryParse(GetProp("UseVariableRate_" + CurrentFileName()), out bool vr) ? vr : false;
             cMasterSwitchMode = Enum.TryParse(GetProp("MasterSwitchMode"), out MasterSwitchMode msm) ? msm : MasterSwitchMode.ControlAll;
@@ -940,25 +861,25 @@ namespace RateController.Classes
             cPrimeTime = int.TryParse(GetProp("PrimeTime"), out int pt) ? pt : 5;
             cRateType = int.TryParse(GetProp("UserRateType"), out int ut) ? ut : 0;
             cResumeAfterPrime = bool.TryParse(GetProp("ResumeAfterPrime"), out bool rp) ? rp : false;
-            cShowPressure = bool.TryParse(GetProp("ShowPressure"), out bool sp) ? sp : false;
-            cShowSwitches = bool.TryParse(GetProp("ShowSwitches"), out bool ss) ? ss : false;
-            cSimMode = Enum.TryParse(GetProp("SimMode"), out SimType sm) ? sm : SimType.Sim_None;
-            cSimSpeed = double.TryParse(GetProp("SimSpeed"), out double spd) ? spd : 0;
-            cUseDualAuto = bool.TryParse(GetProp("UseDualAuto"), out bool da) ? da : false;
-            cUseLargeScreen = bool.TryParse(GetProp("UseLargeScreen"), out bool ls) ? ls : false;
-            cUseTransparent = bool.TryParse(GetProp("UseTransparent"), out bool utr) ? utr : false;
             cUseZones = bool.TryParse(GetProp("UseZones"), out bool uz) ? uz : false;
             cShowQuantityRemaining = bool.TryParse(GetProp("ShowQuantityRemaining"), out bool qr) ? qr : false;
             cShowCoverageRemaining = bool.TryParse(GetProp("ShowCoverageRemaining"), out bool cr) ? cr : false;
-            cUseMetric = bool.TryParse(GetProp("UseMetric"), out bool mt) ? mt : false;
-            cRateRecordInterval = double.TryParse(GetProp("RateRecordInterval"), out double rr) ? rr : 10;
             cRateRecordEnabled = bool.TryParse(GetProp("RecordRates"), out bool rc) ? rc : true;
-            cMapShowTiles = bool.TryParse(GetProp("ShowTiles"), out bool st) ? st : true;
-            cMapShowZones = bool.TryParse(GetProp("MapShowZones"), out bool sz) ? sz : true;
-            cMapShowRates = bool.TryParse(GetProp("MapShowRates"), out bool sr) ? sr : false;
-            cUseRateDisplay = bool.TryParse(GetProp("UseRateDisplay"), out bool rtd) ? rtd : false;
+            cSensorSettingsMaxID = int.TryParse(GetProp("SensorSettingsMaxID"), out int mi) ? mi : 0;
+            cCurrentMenuName = GetProp("LastScreen");
 
-            for (int i = 0; i < 8; i++)
+            // application properties
+            cSimSpeed = double.TryParse(GetAppProp("SimSpeed"), out double spd) ? spd : 8;
+            cSpeedMode = Enum.TryParse(GetAppProp("SpeedMode"), out SpeedType spt) ? spt : SpeedType.GPS;
+            cUseMetric = bool.TryParse(GetAppProp("UseMetric"), out bool mt) ? mt : false;
+            cUseLargeScreen = bool.TryParse(GetAppProp("UseLargeScreen"), out bool ls) ? ls : false;
+            cUseTransparent = bool.TryParse(GetAppProp("UseTransparent"), out bool utr) ? utr : false;
+            cShowPressure = bool.TryParse(GetAppProp("ShowPressure"), out bool sp) ? sp : false;
+            cShowSwitches = bool.TryParse(GetAppProp("ShowSwitches"), out bool ss) ? ss : false;
+            cUseDualAuto = bool.TryParse(GetAppProp("UseDualAuto"), out bool da) ? da : false;
+            cUseRateDisplay = bool.TryParse(GetAppProp("UseRateDisplay"), out bool rtd) ? rtd : false;
+
+            for (int i = 0; i < 40; i++)
             {
                 string key = "PressureCal_" + i.ToString();
                 if (double.TryParse(GetProp(key), out double pc)) PressureCals[i] = pc;
@@ -985,15 +906,15 @@ namespace RateController.Classes
                 Load(cProps, Properties.Settings.Default.CurrentFile);
                 string CurrentDir = Path.GetDirectoryName(Properties.Settings.Default.CurrentFile);
 
-                cFormPropsFileName = Path.Combine(ApplicationFolder, "FormData.txt");
-                if (!File.Exists(cFormPropsFileName)) File.WriteAllText(cFormPropsFileName, "");
-                Load(cFormProps, cFormPropsFileName);
+                cAppPropsFileName = Path.Combine(ApplicationFolder, "AppData.txt");
+                if (!File.Exists(cAppPropsFileName)) File.WriteAllText(cAppPropsFileName, "");
+                Load(cAppProps, cAppPropsFileName);
 
                 cErrorsFileName = Path.Combine(ApplicationFolder, "Error Log.txt");
                 if (!File.Exists(cErrorsFileName)) File.WriteAllText(cErrorsFileName, "");
 
                 cActivityFileName = Path.Combine(ApplicationFolder, "Activity Log.txt");
-                if (!File.Exists(cErrorsFileName)) File.WriteAllText(cErrorsFileName, "");
+                if (!File.Exists(cActivityFileName)) File.WriteAllText(cActivityFileName, "");
 
                 LoadProperties();
                 Result = true;
@@ -1002,23 +923,6 @@ namespace RateController.Classes
             {
             }
             return Result;
-        }
-
-        public static bool ParseDateText(string input, out DateTime result)
-        {
-            int currentYear = DateTime.Now.Year;
-            if (IsDayMonthOnly(input)) input += " " + currentYear.ToString();
-
-            // Try to parse the date with different formats
-            string[] formats = {
-                "MM/dd/yyyy", "MM-dd-yyyy", "MM.dd.yyyy",
-                "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy",
-                "yyyy/MM/dd", "yyyy-MM-dd", "yyyy.MM.dd",
-                "MMM dd, yyyy", "dd MMM yyyy", "MMM dd yyyy",
-                "dd MMM yyyy"
-            };
-
-            return DateTime.TryParseExact(input, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out result);
         }
 
         public static double PressureReading(int ModuleID, double Reading)
@@ -1050,9 +954,19 @@ namespace RateController.Classes
             return Result;
         }
 
-        public static void RaiseRateDataSettingsChanged()
+        public static void RaiseApplicationExiting()
         {
-            RateDataSettingsChanged?.Invoke(null, EventArgs.Empty);
+            AppExit?.Invoke(null, EventArgs.Empty);
+        }
+
+        public static void RaiseEventProfileChanged()
+        {
+            ProfileChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        public static void RaiseProductSettingsChanged()
+        {
+            ProductSettingsChanged?.Invoke(null, EventArgs.Empty);
         }
 
         public static void SaveFormLocation(Form frm, string Instance = "")
@@ -1062,15 +976,34 @@ namespace RateController.Classes
                 if (frm.WindowState == FormWindowState.Normal)
                 {
                     string name = frm.Name + Instance + ".Left";
-                    SetFormProp(name, frm.Left.ToString());
+                    SetAppProp(name, frm.Left.ToString());
 
                     name = frm.Name + Instance + ".Top";
-                    SetFormProp(name, frm.Top.ToString());
+                    SetAppProp(name, frm.Top.ToString());
                 }
             }
             catch (Exception ex)
             {
                 WriteErrorLog("Props/SaveFormLocation: " + ex.Message);
+            }
+        }
+
+        public static void SetAppProp(string key, string value)
+        {
+            try
+            {
+                if (value != null)
+                {
+                    if (!cAppProps.TryGetValue(key, out var existingValue) || existingValue != value)
+                    {
+                        cAppProps[key] = value;
+                        Save(cAppProps, cAppPropsFileName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteErrorLog("SetAppProp: " + ex.Message);
             }
         }
 
@@ -1119,55 +1052,15 @@ namespace RateController.Classes
             return Result;
         }
 
-        public static void SwitchScreens(bool SingleProduct = false)
+        public static void SwitchScreens()
         {
             try
             {
-                Form fs = IsFormOpen("frmLargeScreen");
+                bool LargeScreenOpen = mf?.Lscrn != null && !mf.Lscrn.IsDisposed && mf.Lscrn.Visible;
+
                 if (cUseLargeScreen)
                 {
-                    if (SingleProduct)
-                    {
-                        // hide unused items, set product 4 as default, set product 4 id to 0
-                        foreach (clsProduct Prd in mf.Products.Items)
-                        {
-                            Prd.OnScreen = false;
-                        }
-                        clsProduct P0 = mf.Products.Items[0];
-                        clsProduct P3 = mf.Products.Items[3];
-
-                        P3.ProductName = P0.ProductName;
-                        P3.ControlType = P0.ControlType;
-                        P3.QuantityDescription = P0.QuantityDescription;
-                        P3.CoverageUnits = P0.CoverageUnits;
-                        P3.MeterCal = P0.MeterCal;
-                        P3.ProdDensity = P0.ProdDensity;
-                        P3.EnableProdDensity = P0.EnableProdDensity;
-                        P3.RateSet = P0.RateSet;
-                        P3.RateAlt = P0.RateAlt;
-                        P3.TankSize = P0.TankSize;
-                        P3.TankStart = P0.TankStart;
-
-                        P3.MaxPWMadjust = P0.MaxPWMadjust;
-                        P3.MinPWMadjust = P0.MinPWMadjust;
-                        P3.KP = P0.KP;
-
-                        mf.Products.Item(2).BumpButtons = false;
-                        P0.EditSensorIDs(6, 0);
-                        P3.LoadSensor(0, 0);
-                        P3.OnScreen = true;
-                        P3.AppMode = P0.AppMode;
-                        P3.UseOffRateAlarm = P0.UseOffRateAlarm;
-                        P3.OffRateSetting = P0.OffRateSetting;
-                        P3.MinUPM = P0.MinUPM;
-                        P3.BumpButtons = false;
-
-                        P3.CountsRev = P0.CountsRev;
-                        Props.DefaultProduct = 3;
-                        UseTransparent = true;
-                    }
-
-                    if (fs == null)
+                    if (!LargeScreenOpen)
                     {
                         mf.LargeScreenExit = false;
                         mf.Restart = false;
@@ -1182,7 +1075,7 @@ namespace RateController.Classes
                 else
                 {
                     // use standard screen
-                    if (fs != null) mf.Lscrn.SwitchToStandard();
+                    if (LargeScreenOpen) mf.Lscrn.SwitchToStandard();
                 }
                 ScreensSwitched?.Invoke(null, EventArgs.Empty);
             }
@@ -1287,34 +1180,6 @@ namespace RateController.Classes
             }
         }
 
-        private static int GetFormProp(string key)
-        {
-            string prop = cFormProps.TryGetValue(key, out var value) ? value : string.Empty;
-            return int.TryParse(prop, out var vl) ? vl : -1;
-        }
-
-        private static bool IsDayMonthOnly(string input)
-        {
-            bool Result = false;
-            // Check if the input matches day and month formats
-            string[] dayMonthFormats = {
-                "MM/dd", "MM-dd", "MM.dd",
-                "dd/MM", "dd-MM", "dd.MM",
-                "MMM dd", "dd MMM"
-            };
-
-            foreach (var format in dayMonthFormats)
-            {
-                if (DateTime.TryParseExact(input, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
-                {
-                    Result = true;
-                    break;
-                }
-            }
-
-            return Result;
-        }
-
         private static void Load(SortedDictionary<string, string> PropsDct, string DctPath)
         {
             try
@@ -1355,25 +1220,6 @@ namespace RateController.Classes
             catch (Exception ex)
             {
                 WriteErrorLog("Props/Save: " + ex.Message);
-            }
-        }
-
-        private static void SetFormProp(string key, string value)
-        {
-            try
-            {
-                if (value != null)
-                {
-                    if (!cFormProps.TryGetValue(key, out var existingValue) || existingValue != value)
-                    {
-                        cFormProps[key] = value;
-                        Save(cFormProps, cFormPropsFileName);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                WriteErrorLog("SetFormProp/Set: " + ex.Message);
             }
         }
 

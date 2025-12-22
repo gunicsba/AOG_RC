@@ -1,5 +1,6 @@
 ﻿using AgOpenGPS;
 using RateController.Classes;
+using RateController.Forms;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
@@ -45,8 +46,8 @@ namespace RateController.Menu
             try
             {
                 UpdateEditingJob();
-                UpdateForm();
                 SetButtons(false);
+                UpdateForm();
             }
             catch (Exception ex)
             {
@@ -94,7 +95,7 @@ namespace RateController.Menu
                     Job SelectedJob = lvJobs.SelectedItems[0].Tag as Job;
                     if (SelectedJob != null && SelectedJob.ID != 0)    // keep 0, default job
                     {
-                        var Hlp = new frmMsgBox(mf, "Confirm Delete [" + SelectedJob.Name + "] and all job data?", "Delete File", true);
+                        var Hlp = new frmMsgBox("Confirm Delete [" + SelectedJob.Name + "] and all job data?", "Delete File", true);
                         Hlp.TopMost = true;
 
                         Hlp.ShowDialog();
@@ -131,7 +132,7 @@ namespace RateController.Menu
                 if (Fld != null)
                 {
                     string FieldToDelete = Fld.Name;
-                    var Hlp = new frmMsgBox(mf, "Confirm Delete [" + FieldToDelete + "] from the Fields list?", "Delete Field", true);
+                    var Hlp = new frmMsgBox("Confirm Delete [" + FieldToDelete + "] from the Fields list?", "Delete Field", true);
                     Hlp.TopMost = true;
 
                     Hlp.ShowDialog();
@@ -161,6 +162,49 @@ namespace RateController.Menu
             {
                 Props.WriteErrorLog("frmMenuJobs/btnDeleteField_Click: " + ex.Message);
             }
+        }
+
+        private void btnExport_Click(object sender, EventArgs e)
+        {
+            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "Select a folder to export files.";
+                dialog.ShowNewFolderButton = true;
+
+                if (!string.IsNullOrEmpty(Properties.Settings.Default.LastFolder)) dialog.SelectedPath = Properties.Settings.Default.LastFolder;
+
+                DialogResult result = dialog.ShowDialog();
+
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
+                {
+                    Properties.Settings.Default.LastFolder = dialog.SelectedPath;
+                    int Count = JobManager.ExportJobs(dialog.SelectedPath);
+                    Props.ShowMessage(Count.ToString() + " jobs exported.");
+                }
+            }
+            HighlightCurrentJob();
+        }
+
+        private void btnImport_Click(object sender, EventArgs e)
+        {
+            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "Select a folder to import files.";
+                dialog.ShowNewFolderButton = false;
+
+                if (!string.IsNullOrEmpty(Properties.Settings.Default.LastFolder)) dialog.SelectedPath = Properties.Settings.Default.LastFolder;
+
+                DialogResult result = dialog.ShowDialog();
+
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
+                {
+                    Properties.Settings.Default.LastFolder = dialog.SelectedPath;
+                    int Count = JobManager.ImportJobs(dialog.SelectedPath);
+                    Props.ShowMessage(Count.ToString() + " jobs imported.");
+                    if (Count > 0) UpdateForm();
+                }
+            }
+            HighlightCurrentJob();
         }
 
         private void btnJobsDown_Click(object sender, EventArgs e)
@@ -200,7 +244,7 @@ namespace RateController.Menu
                     Job selectedJob = lvJobs.SelectedItems[0].Tag as Job;
                     if (selectedJob != null)
                     {
-                        Props.CurrentJobID = selectedJob.ID;
+                        JobManager.CurrentJobID = selectedJob.ID;
                         UpdateEditingJob();
                         UpdateForm();
                     }
@@ -245,9 +289,6 @@ namespace RateController.Menu
         {
             try
             {
-                Properties.Settings.Default.UseJobs = ckJobs.Checked;
-                Properties.Settings.Default.Save();
-
                 // save parcel
                 int? selectedFieldID = cbField.SelectedValue as int?;
                 Parcel selectedParcel = selectedFieldID.HasValue
@@ -258,7 +299,7 @@ namespace RateController.Menu
                 if (selectedParcel == null)
                 {
                     // Use the text from the combo as the new parcel name.
-                    selectedParcel = new Parcel { Name = cbField.Text };
+                    selectedParcel = new Parcel { Name = cbField.Text.Trim() };
                     ParcelManager.AddParcel(selectedParcel);
                 }
                 else
@@ -289,12 +330,8 @@ namespace RateController.Menu
                             JobToCopyFromID = -1;
                         }
                     }
-                    else
-                    {
-                        JobManager.EditJob(EditingJob);
-                    }
-
-                    Props.CurrentJobID = EditingJob.ID;
+                    JobManager.SaveJob(EditingJob);
+                    JobManager.CurrentJobID = EditingJob.ID;
                 }
 
                 SetButtons(false);
@@ -306,14 +343,51 @@ namespace RateController.Menu
             }
         }
 
+        private void btnResetField_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void butActivity_Click(object sender, EventArgs e)
+        {
+            Job JB = null;
+            if (lvJobs.SelectedItems.Count > 0)
+            {
+                JB = lvJobs.SelectedItems[0].Tag as Job;
+
+                Form fs = Props.IsFormOpen("frmJobReport");
+                if (fs != null) fs.Close();
+
+                fs = new frmJobReport(JB);
+                fs.Show();
+            }
+            else
+            {
+                Props.ShowMessage("Select a job.");
+            }
+        }
+
         private void cbSearchField_SelectedIndexChanged(object sender, EventArgs e)
         {
             FillJobsList();
         }
 
+        private void ckFilter_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!Initializing)
+            {
+                JobManager.JobFilter = ckFilter.Checked;
+                UpdateForm();
+            }
+        }
+
         private void ckJobs_CheckedChanged(object sender, EventArgs e)
         {
             SetButtons(true);
+        }
+
+        private void ckResume_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!Initializing) JobManager.ShowJobs = ckResume.Checked;
         }
 
         private void FillCombos()
@@ -371,26 +445,46 @@ namespace RateController.Menu
         {
             lvJobs.Items.Clear();
 
+            // Determine date range
+            DateTime startDate;
+            DateTime endDate;
+
             int yr;
-            if (!int.TryParse(tbSearchYear.Text, out yr)) yr = DateTime.Now.Year;
+            if (string.IsNullOrWhiteSpace(tbSearchYear.Text))
+            {
+                // No year filter -> include all dates
+                startDate = DateTime.MinValue;
+                endDate = DateTime.MaxValue;
+            }
+            else if (int.TryParse(tbSearchYear.Text, out yr))
+            {
+                startDate = new DateTime(yr, 1, 1);
+                endDate = new DateTime(yr, 12, 31);
+            }
+            else
+            {
+                // Fallback to current year if invalid input
+                yr = DateTime.Now.Year;
+                startDate = new DateTime(yr, 1, 1);
+                endDate = new DateTime(yr, 12, 31);
+            }
 
-            DateTime startDate = new DateTime(yr, 1, 1);
-            DateTime endDate = new DateTime(yr, 12, 31);
-
+            // Field filter: if nothing selected, pass null -> no field filtering
             Parcel selectedParcel = cbSearchField.SelectedItem as Parcel;
-            int? SelectedParcelID = selectedParcel?.ID;
+            int? SelectedParcelID = (cbSearchField.SelectedIndex > -1) ? selectedParcel?.ID : null;
 
-            List<Job> filteredJobs = JobManager.FilterJobs(startDate, endDate, SelectedParcelID)
-                             .OrderBy(job => job.Date)
-                             .ThenBy(job => job.Name)
-                             .ToList();
+            List<Job> filteredJobs = JobManager
+                .FilterJobs(startDate, endDate, SelectedParcelID)
+                .OrderBy(job => job.Date)
+                .ThenBy(job => job.Name)
+                .ToList();
 
             foreach (var job in filteredJobs)
             {
-                var item = new ListViewItem(job.Name);  // First column
-                item.SubItems.Add(job.Date.ToString("dd-MMM"));  // Second column
-
-                item.Tag = job;  // Store the Job object for later retrieval
+                var item = new ListViewItem(job.Name);
+                item.SubItems.Add(job.Date.ToString("dd-MMM-yy"));
+                item.SubItems.Add("Job_" + job.ID.ToString());
+                item.Tag = job;
                 lvJobs.Items.Add(item);
             }
         }
@@ -401,6 +495,11 @@ namespace RateController.Menu
             string timeFormat = culture.DateTimeFormat.ShortTimePattern;
             string format = "dd-MMM-yyyy   " + timeFormat;
             return date.ToString(format, culture);
+        }
+
+        private void frmMenuJobs_Activated(object sender, EventArgs e)
+        {
+            HighlightCurrentJob();
         }
 
         private void frmMenuJobs_Load(object sender, EventArgs e)
@@ -422,6 +521,11 @@ namespace RateController.Menu
             }
         }
 
+        private void frmMenuJobs_Shown(object sender, EventArgs e)
+        {
+            HighlightCurrentJob();
+        }
+
         private void gbCurrentJob_Paint(object sender, PaintEventArgs e)
         {
             GroupBox box = sender as GroupBox;
@@ -429,7 +533,7 @@ namespace RateController.Menu
             {
                 Color borderColor = cEdited ? Color.Blue : Color.Blue; // Change color based on cEdited
                 float borderWidth = cEdited ? 3 : 1; // Change thickness based on cEdited
-                mf.Tls.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, borderColor, borderWidth);
+                Props.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, borderColor, borderWidth);
             }
         }
 
@@ -440,7 +544,23 @@ namespace RateController.Menu
             {
                 Color borderColor = cEdited ? Color.Red : Color.Blue; // Change color based on cEdited
                 float borderWidth = cEdited ? 3 : 1; // Change thickness based on cEdited
-                mf.Tls.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, borderColor, borderWidth);
+                Props.DrawGroupBox(box, e.Graphics, this.BackColor, Color.Black, borderColor, borderWidth);
+            }
+        }
+
+        private void HighlightCurrentJob()
+        {
+            // highlight the current job in the list
+            if (lvJobs.Enabled) lvJobs.Focus();
+            foreach (ListViewItem item in lvJobs.Items)
+            {
+                if (item.Tag is Job job && job.ID == JobManager.CurrentJobID)
+                {
+                    item.Selected = true;
+                    lvJobs.FocusedItem = item;
+                    item.EnsureVisible();
+                    break;
+                }
             }
         }
 
@@ -484,8 +604,6 @@ namespace RateController.Menu
 
                 cEdited = Edited;
                 this.Tag = cEdited;
-                gbCurrentJob.Invalidate();
-                gbJobs.Invalidate();
             }
         }
 
@@ -526,7 +644,7 @@ namespace RateController.Menu
 
         private void UpdateEditingJob()
         {
-            int JobID = Props.CurrentJobID;
+            int JobID = JobManager.CurrentJobID;
             EditingJob = JobManager.SearchJob(JobID);
             if (EditingJob == null) EditingJob = JobManager.SearchJob(0);
             IsNewJob = false;
@@ -579,22 +697,23 @@ namespace RateController.Menu
 
                 tbNotes.SelectionStart = tbNotes.Text.Length;
                 tbNotes.ScrollToCaret();
-                ckJobs.Checked = Properties.Settings.Default.UseJobs;
+
+                if (!JobManager.JobFilter)
+                {
+                    // Clear field and year filters
+                    cbSearchField.SelectedIndex = -1;
+                    tbSearchYear.Text = string.Empty;
+                    FillJobsList();
+                }
+
+                ckResume.Checked = JobManager.ShowJobs;
+                ckFilter.Checked = JobManager.JobFilter;
 
                 // Trigger a repaint
-                gbCurrentJob.Invalidate();
-                gbJobs.Invalidate();
+                gbCurrentJob.Refresh();
+                gbJobs.Refresh();
 
-                // highlight the current job in the list
-                foreach (ListViewItem item in lvJobs.Items)
-                {
-                    if (item.Tag is Job job && job.ID == Props.CurrentJobID)
-                    {
-                        item.Selected = true;
-                        item.EnsureVisible();
-                        break;
-                    }
-                }
+                HighlightCurrentJob();
 
                 Initializing = false;
             }

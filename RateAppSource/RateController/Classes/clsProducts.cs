@@ -46,6 +46,23 @@ namespace RateController
             return cAlarmOn;
         }
 
+        public double[] BaseRates()
+        {
+            double[] Result = new double[Props.MaxProducts - 2];
+            for (int i = 0; i < Props.MaxProducts - 2; i++)
+            {
+                if (cProducts[i].Enabled && cProducts[i].BumpButtons == false)
+                {
+                    Result[i] = cProducts[i].RateSet;
+                }
+                else
+                {
+                    Result[i] = 0;
+                }
+            }
+            return Result;
+        }
+
         public bool Connected()
         {
             bool Result = false;
@@ -83,23 +100,21 @@ namespace RateController
             return cProducts[IDX];
         }
 
-        public void Load(bool Reset = false)
+        public void Load()
         {
             cProducts.Clear();
 
             for (int i = 0; i < Props.MaxProducts; i++)
             {
-                clsProduct Prod = new clsProduct(mf, i);
-                cProducts.Add(Prod);
-                Prod.Load();
-            }
+                clsProduct Prd = new clsProduct(mf, i);
+                cProducts.Add(Prd);
+                Prd.Load();
 
-            for (int i = 0; i < Props.MaxProducts; i++)
-            {
-                clsProduct Prd = cProducts[i];
-                if (Prd.IsNew() || Reset)
+                if (Prd.IsNew())
                 {
-                    Prd.ProductName = "Product  " + (char)(65 + i);
+                    AssignNextUnusedModSen(Prd);
+
+                    Prd.ProductName = "Prod  " + (char)(65 + i);
                     Prd.ControlType = ControlTypeEnum.Valve;
                     Prd.QuantityDescription = "Gallons";
                     Prd.CoverageUnits = 0;
@@ -110,31 +125,48 @@ namespace RateController
                     Prd.RateAlt = 100;
                     Prd.TankSize = 1000;
                     Prd.TankStart = 1000;
-                    Prd.LoadSensor(i / 2, (byte)(i % 2));
-                    Prd.OnScreen = true;
+                    Prd.LoadSensorSettings();
                     Prd.AppMode = ApplicationMode.ControlledUPM;
                     Prd.OffRateSetting = 0;
                     Prd.MinUPM = 0;
                     Prd.BumpButtons = false;
                     Prd.CountsRev = 1;
+                    Prd.Enabled = false;
                     Prd.Save();
-
-                    Props.DefaultProduct = 0;
                 }
             }
+            SetEnabledDefault();
         }
 
-        public bool ProductsAreOn()
+        public int NextEnabledProduct(int CurrentProduct)
         {
-            bool Result = false;
-            for (int i = 0; i < Props.MaxProducts; i++)
+            int Result = CurrentProduct;
+            int EnabledID = -1;
+            for (int i = CurrentProduct + 1; i < Props.MaxProducts - 2; i++)
             {
-                if (cProducts[i].ProductOn())
+                if (cProducts[i].Enabled)
                 {
-                    Result = true;
+                    EnabledID = i;
                     break;
                 }
             }
+            if (EnabledID != -1) Result = EnabledID;
+            return Result;
+        }
+
+        public int PreviousEnabledProduct(int CurrentProduct)
+        {
+            int Result = CurrentProduct;
+            int EnabledID = -1;
+            for (int i = CurrentProduct - 1; i >= 0; i--)
+            {
+                if (cProducts[i].Enabled)
+                {
+                    EnabledID = i;
+                    break;
+                }
+            }
+            if (EnabledID != -1) Result = EnabledID;
             return Result;
         }
 
@@ -151,14 +183,15 @@ namespace RateController
             return Result;
         }
 
-        public double[] ProductTargetRates()
+        public bool ProductsAreOn()
         {
-            double[] Result = new double[Props.MaxProducts - 2];
-            for (int i = 0; i < Props.MaxProducts - 2; i++)
+            bool Result = false;
+            for (int i = 0; i < Props.MaxProducts; i++)
             {
-                if (cProducts[i].RateSensorData.Connected())
+                if (cProducts[i].ProductOn())
                 {
-                    Result[i] = cProducts[i].TargetRate();
+                    Result = true;
+                    break;
                 }
             }
             return Result;
@@ -198,13 +231,42 @@ namespace RateController
             }
         }
 
+        public void SetEnabledDefault()
+        {
+            // check for at least one product enabled and for default product
+            bool DefaultFound = false;
+            int EnabledID = -1;
+
+            for (int i = 0; i < Props.MaxProducts - 2; i++)
+            {
+                clsProduct Prod = cProducts[i];
+                if (Prod.Enabled && !Prod.BumpButtons)
+                {
+                    EnabledID = i;
+                    if (Props.DefaultProduct == i) DefaultFound = true;
+                }
+            }
+            if (EnabledID == -1)
+            {
+                // no enabled products found, enable product 0
+                cProducts[0].Enabled = true;
+                cProducts[0].Save();
+                EnabledID = 0;
+            }
+            if (!DefaultFound)
+            {
+                Props.DefaultProduct = EnabledID;
+                cProducts[EnabledID].BumpButtons = false;
+            }
+        }
+
         public bool UniqueModSen(int ModID, int SenID, int ProdID)
         {
             // checks if product module ID/sensor ID pair are unique
             bool Result = true;
-            for (int i = 0; i < Count(); i++)
+            for (int i = 0; i < Props.MaxProducts; i++)
             {
-                if ((cProducts[i].ID != ProdID) && (cProducts[i].ModuleID == ModID && cProducts[i].SensorID == SenID))
+                if (cProducts[i].Enabled && cProducts[i].ID != ProdID && cProducts[i].ModuleID == ModID && cProducts[i].SensorID == SenID)
                 {
                     Result = false;
                     break;
@@ -218,6 +280,45 @@ namespace RateController
             for (int i = 0; i < cProducts.Count; i++)
             {
                 if (cProducts[i].RateSensorData.Connected()) cProducts[i].SendSensorSettings();
+            }
+        }
+
+        private void AssignNextUnusedModSen(clsProduct product)
+        {
+            try
+            {
+                // Map used pairs
+                bool[,] used = new bool[Props.MaxModules, Props.MaxSensorsPerModule];
+                for (int i = 0; i < cProducts.Count; i++)
+                {
+                    int mod = cProducts[i].ModuleID;
+                    int sen = cProducts[i].SensorID;
+                    if (mod >= 0 && mod < Props.MaxModules && sen >= 0 && sen < Props.MaxSensorsPerModule)
+                    {
+                        used[mod, sen] = true;
+                    }
+                }
+
+                // Find the first available pair in Module-major, Sensor-minor order
+                for (int mod = 0; mod < Props.MaxModules; mod++)
+                {
+                    for (int sen = 0; sen < Props.MaxSensorsPerModule; sen++)
+                    {
+                        if (!used[mod, sen])
+                        {
+                            product.ModuleID = mod;
+                            product.SensorID = (byte)sen;
+                            return;
+                        }
+                    }
+                }
+
+                // No free pair found; leave as-is
+                Props.WriteErrorLog("AssignNextUnusedModSen: No available ModuleID/SensorID pair found.");
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("AssignNextUnusedModSen: " + ex.Message);
             }
         }
 

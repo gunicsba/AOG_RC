@@ -13,12 +13,14 @@ extern "C" {
 }
 
 # define InoDescription "RCteensy"
-const uint16_t InoID = 16105;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint16_t InoID = 25115;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 1;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 
 #define MaxProductCount 2
 #define NC 0xFF		// Pins not connected
 #define ModStringLengths 15
+const int MaxSampleSize = 25;
+const uint32_t FlowTimeout = 4000;
 
 const int16_t ADS1115_Address = 0x48;
 uint8_t MCP23017address;
@@ -60,6 +62,8 @@ struct ModuleConfig
 	bool Is3Wire = true;			// False - DRV8870 provides powered on/off with Output1/Output2, True - DRV8870 provides on/off with Output2 only, Output1 is off
 	uint8_t PressurePin = 40;		
 	bool ADS1115Enabled = false;
+	uint8_t WheelSpeedPin = NC;
+	float WheelCal = 0;
 };
 
 ModuleConfig MDL;
@@ -91,21 +95,21 @@ struct SensorConfig	// about 104 bytes
 	uint32_t TotalPulses;
 	float TargetUPM;
 	float MeterCal;
-	float ManualAdjust;
+	int16_t ManualAdjust;
 	float Hz;
-	float MaxPWM;
-	float MinPWM;
+	uint8_t MaxPWM;
+	uint8_t MinPWM;
 	float Kp;
 	float Ki;
 	float Deadband;
-	float BrakePoint;
-	float PIDslowAdjust;
-	float SlewRate;
+	uint8_t BrakePoint;
+	uint8_t PIDslowAdjust;
+	uint8_t SlewRate;
 	float MaxIntegral;
 	float TimedMinStart;
-	uint32_t TimedAdjust;
-	uint32_t TimedPause;
-	uint32_t PIDtime;
+	uint16_t TimedAdjust;
+	uint16_t TimedPause;
+	uint8_t PIDtime;
 	uint32_t PulseMin;
 	uint32_t PulseMax;
 	byte PulseSampleSize;
@@ -157,6 +161,8 @@ uint32_t buffer_addr, buffer_size;
 bool FirmwareUpdateMode = false;
 
 bool CalibrationOn[] = { false,false };
+float WheelSpeed = 0;
+uint32_t WheelCounts = 0;
 
 void setup()
 {
@@ -177,6 +183,7 @@ void loop()
 		GetUPM();
 		AdjustFlow();
 		ReadAnalog();
+		if (MDL.WheelSpeedPin != NC) GetSpeed();
 	}
 
 	SendComm();
@@ -270,13 +277,48 @@ bool WorkPinOn()
 	return WrkOn;
 }
 
+uint32_t MedianFromArray(uint32_t buf[], int count)
+{
+	uint32_t Result = 0;
+	if (count > 0)
+	{
+		uint32_t sorted[MaxSampleSize];
+		for (int i = 0; i < count; i++) sorted[i] = buf[i];
+
+		// insertion sort
+		for (int i = 1; i < count; i++)
+		{
+			uint32_t key = sorted[i];
+			int j = i - 1;
+			while (j >= 0 && sorted[j] > key)
+			{
+				sorted[j + 1] = sorted[j];
+				j--;
+			}
+			sorted[j + 1] = key;
+		}
+
+		if (count % 2 == 1)
+		{
+			Result = sorted[count / 2];
+		}
+		else
+		{
+			int mid = count / 2;
+			// average of middle two
+			Result = (sorted[mid - 1] + sorted[mid]) / 2;
+		}
+	}
+	return Result;
+}
+
 void Blink()
 {
 	static bool State = false;
 	static elapsedMillis BlinkTmr;
 	static elapsedMicros LoopTmr;
-	static byte Count = 0;
-	static uint32_t MaxLoopTime = 0;
+	//static byte Count = 0;
+	//static uint32_t MaxLoopTime = 0;
 
 	if (BlinkTmr > 1000)
 	{
@@ -284,23 +326,23 @@ void Blink()
 		State = !State;
 		digitalWrite(LED_BUILTIN, State);
 
-		if (!FirmwareUpdateMode)
-		{
-			Serial.print(" Micros: ");
-			Serial.print(MaxLoopTime);
+		//if (!FirmwareUpdateMode)
+		//{
+		//	Serial.print(" Micros: ");
+		//	Serial.print(MaxLoopTime);
 
-			Serial.print(", ");
-			Serial.print(Ethernet.localIP());
+		//	Serial.print(", ");
+		//	Serial.print(Ethernet.localIP());
 
-			Serial.println("");
-		}
+		//	Serial.println("");
+		//}
 
-		if (Count++ > 10)
-		{
-			Count = 0;
-			MaxLoopTime = 0;
-		}
+		//if (Count++ > 10)
+		//{
+		//	Count = 0;
+		//	MaxLoopTime = 0;
+		//}
 	}
-	if (LoopTmr > MaxLoopTime) MaxLoopTime = LoopTmr;
-	LoopTmr = 0;
+	//if (LoopTmr > MaxLoopTime) MaxLoopTime = LoopTmr;
+	//LoopTmr = 0;
 }

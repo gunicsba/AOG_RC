@@ -4,6 +4,7 @@ uint8_t ValidPins0[] = { 0,2,4,5,7,13,14,15,16,17,21,22,25,26,27,32,33,47 };	// 
 void DoSetup()
 {
 	uint8_t ErrorCount = 0;
+	bool WheelMatch = false;
 
 	Sensor[0].FlowEnabled = false;
 	Sensor[1].FlowEnabled = false;
@@ -140,6 +141,18 @@ void DoSetup()
 		case 1:
 			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
 			break;
+		case 2:
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR2, RISING);
+			break;
+		case 3:
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR3, RISING);
+			break;
+		case 4:
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR4, RISING);
+			break;
+		case 5:
+			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR5, RISING);
+			break;
 		}
 
 		// pwm frequency change from default 5000 Hz to 490 Hz, required for some valves to work
@@ -150,10 +163,19 @@ void DoSetup()
 		// DRV8870 IN2
 		ledcSetup(i * 2 + 1, PWM_FREQ, PWM_BITS);
 		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
+
+		if (Sensor[i].FlowPin == MDL.WheelSpeedPin) WheelMatch = true;
 	}
 
   pinMode(13, OUTPUT); //Cytron
   digitalWrite(13,HIGH);
+
+	// wheel speed sensor
+	if (MDL.WheelSpeedPin != NC && !WheelMatch)
+	{
+		pinMode(MDL.WheelSpeedPin, INPUT_PULLUP);
+		attachInterrupt(digitalPinToInterrupt(MDL.WheelSpeedPin), ISR_Speed, FALLING);
+	}
 
 	// Relays
 	switch (MDL.RelayControl)
@@ -361,7 +383,17 @@ void DoSetup()
 	AP += suffix;
 
 	WiFi.softAPConfig(AP_LocalIP, AP_GateWay, AP_Subnet);
-	WiFi.softAP(AP.c_str(), MDL.APpassword, 6, false, 4);
+	if (strlen(MDL.APpassword) >= 8) 
+	{
+		// WPA2-PSK
+		WiFi.softAP(AP.c_str(), MDL.APpassword, 6, false, 4);
+	}
+	else
+	{
+		// Fallback: invalid WPA passphrase length -> force open
+		WiFi.softAP(AP.c_str(), nullptr, 6, false, 4);
+	}
+
 	dnsServer.start(DNS_PORT, "*", AP_LocalIP);
 
 	UDP_Wifi.begin(ListeningPort);
@@ -422,7 +454,6 @@ void DoSetup()
 	Serial.println(MDL.SensorCount);
 	Serial.println("");
 	Serial.println("Sensor 1: ");
-	Serial.print("Enabled: ");
 	Serial.print("Flow Pin: ");
 	Serial.println(Sensor[0].FlowPin);
 	Serial.print("IN1 Pin: ");
@@ -440,20 +471,48 @@ void DoSetup()
 	Serial.println(Sensor[1].IN2);
 
 	Serial.println("");
-	Serial.print("Work Switch Pin: ");
-	Serial.println(MDL.WorkPin);
-	Serial.print("Pressure Pin: ");
-	Serial.println(MDL.PressurePin);
 
-	Serial.println("");
-	Serial.print("ADS1115 enabled: ");
-	if (ADSfound)
+	Serial.print("Work Switch Pin: ");
+	if (MDL.WorkPin == NC)
 	{
-		Serial.println("true");
+		Serial.println(F("Disabled"));
 	}
 	else
 	{
-		Serial.println("false");
+		Serial.println(MDL.WorkPin);
+	}
+
+	Serial.print("Pressure Pin: ");
+	if (MDL.PressurePin == NC)
+	{
+		Serial.println(F("Disabled"));
+	}
+	else
+	{
+		Serial.println(MDL.PressurePin);
+	}
+
+	Serial.print(F("Wheel Speed Pin: "));
+	if (WheelMatch)
+	{
+		Serial.println(F("error, duplicate flow pin"));
+	}
+	else if (MDL.WheelSpeedPin == NC)
+	{
+		Serial.println(F("Disabled"));
+	}
+	else
+	{
+		Serial.println(MDL.WheelSpeedPin);
+	}
+
+	if (ADSfound)
+	{
+		Serial.println(F("ADS1115: Enabled "));
+	}
+	else
+	{
+		Serial.println(F("ADS1115: Disabled "));
 	}
 
 	Serial.println("");
@@ -535,15 +594,15 @@ void LoadDefaults()
 	for (int i = 0; i < 2; i++)
 	{
 		Sensor[i].MaxPWM = 255;
-		Sensor[i].MinPWM = 10;
-		Sensor[i].Kp = 0.0003;	// gain 35
-		Sensor[i].Ki = 0.00123;	// integral 5
+		Sensor[i].MinPWM = 5;
+		Sensor[i].Kp = pow(1.1, 65 - 120);	// Kp = 65
+		Sensor[i].Ki = pow(1.1, 65 - 120);	// Ki = 65
 		Sensor[i].Deadband = 0.015;
-		Sensor[i].BrakePoint = 0.35;
-		Sensor[i].PIDslowAdjust = 0.3;
-		Sensor[i].SlewRate = 15;
-		Sensor[i].MaxIntegral = 0.1;
-		Sensor[i].TimedMinStart = 0.03;
+		Sensor[i].BrakePoint = 35;
+		Sensor[i].PIDslowAdjust = 30;
+		Sensor[i].SlewRate = 25;
+		Sensor[i].MaxIntegral = 25;
+		Sensor[i].TimedMinStart = 0.5;
 		Sensor[i].TimedAdjust = 80;
 		Sensor[i].TimedPause = 400;
 		Sensor[i].PIDtime = 100;
@@ -568,8 +627,10 @@ void LoadDefaults()
 	MDL.WorkPin = NC;
 	MDL.WorkPinIsMomentary = false;
 	MDL.Is3Wire = true;
-	MDL.ADS1115Enabled = true;
+	MDL.ADS1115Enabled = false;
 	MDL.PressurePin = NC;
+	MDL.WheelCal = 0;
+	MDL.WheelSpeedPin = NC;
 }
 
 bool ValidData()
@@ -600,6 +661,20 @@ bool ValidData()
 			for (int j = 0; j < sizeof(ValidPins0); j++)
 			{
 				if (MDL.PressurePin == ValidPins0[j])
+				{
+					Result = true;
+					break;
+				}
+			}
+			if (!Result) break;
+		}
+
+		// wheel speed pin
+		if (Result && MDL.WheelSpeedPin < NC)
+		{
+			for (int j = 0; j < sizeof(ValidPins0); j++)
+			{
+				if (MDL.WheelSpeedPin == ValidPins0[j])
 				{
 					Result = true;
 					break;

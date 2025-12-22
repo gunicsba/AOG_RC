@@ -82,11 +82,11 @@ void SendComm()
         //2     module ID
         //3     Pressure Lo
         //4     Pressure Hi
-        //5     -
-        //6     -
-        //7     -
-        //8     -
-        //9     -
+        //5     wheel speed Lo  actual * 10
+        //6     wheel speed Hi
+        //7     wheel count Lo
+        //8     wheel count mid
+        //9     wheel count Hi
         //10    InoType
         //11    InoID lo
         //12    InoID hi
@@ -103,20 +103,27 @@ void SendComm()
         Data[1] = 126;
         Data[2] = MDL.ID;
 
+        if (MDL.PressurePin == NC) PressureReading = 0;
         Data[3] = (byte)PressureReading;
         Data[4] = (byte)(PressureReading >> 8);
-        Data[5] = 0;
-        Data[6] = 0;
-        Data[7] = 0;
-        Data[8] = 0;
-        Data[9] = 0;
+
+        // wheel speed, 10 X actual
+        if (MDL.WheelSpeedPin == NC) WheelSpeed = 0;
+        uint32_t Speed = WheelSpeed * 10.0;
+        Data[5] = Speed;
+        Data[6] = Speed >> 8;
+
+        Data[7] = WheelCounts;
+        Data[8] = WheelCounts >> 8;
+        Data[9] = WheelCounts >> 16;
+
         Data[10] = InoType;
         Data[11] = (byte)InoID;
         Data[12] = InoID >> 8;
 
         // status
         Data[13] = 0;
-        if (WorkPinOn()) Data[13] |= 0b00000001;
+        if ((MDL.WorkPin != NC) && WorkPinOn()) Data[13] |= 0b00000001;
 
         if (Ethernet.linkStatus() == LinkON) Data[13] |= 0b00010000;
         if (GoodPins) Data[13] |= 0b00100000;

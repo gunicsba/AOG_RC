@@ -158,15 +158,22 @@ void ReadPGNs(byte data[], uint16_t len)
 					byte SensorID = ParseSenID(data[2]);
 					if (SensorID < MDL.SensorCount)
 					{
-						Sensor[SensorID].MaxPWM = (float)(255.0 * data[3] / 100.0);
-						Sensor[SensorID].MinPWM = (float)(255.0 * data[4] / 100.0);
+						Sensor[SensorID].MaxPWM = (255.0 * data[3] / 100.0);
+						Sensor[SensorID].MinPWM = (255.0 * data[4] / 100.0);
 
-						// 1.1 ^ (gain scroll bar value - 120) gives a scale range of 0.00001 to 0.1486
-						Sensor[SensorID].Kp = pow(1.1, data[5] - 120);
+						if (data[5] > 0)
+						{
+							// 1.1 ^ (gain scroll bar value - 120) gives a scale range of 0.00001 to 0.1486
+							Sensor[SensorID].Kp = pow(1.1, data[5] - 120);
+						}
+						else
+						{
+							Sensor[SensorID].Kp = 0;
+						}
 
 						if (data[6] > 0)
 						{
-							Sensor[SensorID].Ki = pow(1.06, data[6] - 120);
+							Sensor[SensorID].Ki = pow(1.1, data[6] - 120);
 						}
 						else
 						{
@@ -174,8 +181,8 @@ void ReadPGNs(byte data[], uint16_t len)
 						}
 
 						Sensor[SensorID].Deadband = data[7] / 1000.0;
-						Sensor[SensorID].BrakePoint = data[8] / 100.0;
-						Sensor[SensorID].PIDslowAdjust = data[9] / 100.0;
+						Sensor[SensorID].BrakePoint = data[8];
+						Sensor[SensorID].PIDslowAdjust = data[9];
 						Sensor[SensorID].SlewRate = data[10];
 						Sensor[SensorID].MaxIntegral = data[11] / 10.0;
 						Sensor[SensorID].TimedMinStart = data[13] / 100.0;
@@ -186,6 +193,7 @@ void ReadPGNs(byte data[], uint16_t len)
 						uint32_t tmp = data[20] | data[21] << 8;
 						Sensor[SensorID].PulseMin = 1000000 / tmp;
 						Sensor[SensorID].PulseSampleSize = data[22];
+						if (Sensor[SensorID].PulseSampleSize > MaxSampleSize) Sensor[SensorID].PulseSampleSize = MaxSampleSize;
 
 						SaveData();
 					}
@@ -221,6 +229,37 @@ void ReadPGNs(byte data[], uint16_t len)
 		}
 		break;
 
+	case 32504:
+		// PGN32504, Wheel Speed sensor settings from RC to module
+		//0     HeaderLo    248
+		//1     HeaderHi    126
+		//2     ModuleID    0-7
+		//3     GPIO pin    0-50
+		//4     Cal Lo       
+		//5     Cal Mid
+		//6     Cal Hi
+		//7     Commands
+		//          - bit 0, erase counts
+		//8     CRC
+
+		PGNlength = 9;
+
+		if (len > PGNlength - 1)
+		{
+			if (GoodCRC(data, PGNlength) && ParseModID(data[2]) == MDL.ID)
+			{
+				bool NewPin = (data[3] != MDL.WheelSpeedPin);
+
+				MDL.WheelSpeedPin = data[3];
+				MDL.WheelCal = (float)(data[4] | (uint32_t)data[5] << 8 | (uint32_t)data[6] << 16);
+				if ((data[7] & 1) == 1) WheelCounts = 0;
+
+				SaveData();
+				if (NewPin) SCB_AIRCR = 0x05FA0004;	// restart
+			}
+		}
+		break;
+
 	case 32700:
 		// module config
 		//0     HeaderLo    188
@@ -236,7 +275,7 @@ void ReadPGNs(byte data[], uint16_t len)
 		//      bit 5 - ADS1115 enabled
 		//5	    relay control type   0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017
 		//                           , 5 - PCA9685, 6 - PCF8574
-		//6	    wifi module serial port
+		//6	    -
 		//7	    Sensor 0, Flow pin
 		//8     Sensor 0, Dir pin
 		//9     Sensor 0, PWM pin

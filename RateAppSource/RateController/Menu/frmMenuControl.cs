@@ -49,8 +49,8 @@ namespace RateController.Menu
                 Boxes[i].Enter += BoxEnter;
                 Boxes[i].TextChanged += BoxTextChanged;
             }
-            BoxesMin = new double[] { .5, 5, 5, 1, .1, 0, 1, 10, .1, 1, 1, 10 };
-            BoxesMax = new double[] { 10, 50, 75, 50, 25, 50, 1000, 1000, 25, 3000, 25, 250 };
+            BoxesMin = new double[] { .5, 5, 5, 1, .1, 0, 1, 20, .1, 1, 1, 10 };
+            BoxesMax = new double[] { 10, 50, 100, 255, 25, 75, 1000, 2000, 25, 3000, 25, 250 };
             BoxesFormat = new string[] { "N1", "N0", "N0", "N0", "N1",  "N0", "F0", "F0",
                 "N1","F0","N0","N0" };
         }
@@ -228,10 +228,10 @@ namespace RateController.Menu
 
         private void btnPIDloadDefaults_Click(object sender, EventArgs e)
         {
-            HSmax.Value = Props.MaxPWMdefault;
-            HSmin.Value = Props.MinPWMdefault;
             HSscaling.Value = Props.KPdefault;
             HSintegral.Value = Props.KIdefault;
+            HSmax.Value = Props.MaxPWMdefault;
+            HSmin.Value = Props.MinPWMdefault;
 
             tbDeadband.Text = (Props.DeadbandDefault / 10.0).ToString("N1");
             tbBrakepoint.Text = Props.BrakePointDefault.ToString();
@@ -292,6 +292,11 @@ namespace RateController.Menu
         private void frmMenuControl_FormClosed(object sender, FormClosedEventArgs e)
         {
             Props.SaveFormLocation(this);
+        }
+
+        private void frmMenuControl_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            mf.Products.UpdateSensorSettings();
         }
 
         private void frmMenuControl_Load(object sender, EventArgs e)
@@ -390,6 +395,16 @@ namespace RateController.Menu
             }
         }
 
+        private void SetEnabled()
+        {
+            bool Enabled = MainMenu.CurrentProduct.Enabled;
+
+            pnlAdvanced.Enabled = Enabled;
+            pnlMain.Enabled = Enabled;
+            butGraph.Enabled = Enabled;
+            btnPIDloadDefaults.Enabled = Enabled;
+        }
+
         private void SetLanguage()
         {
             lbScaling.Text = Lang.lgScaling;
@@ -443,12 +458,9 @@ namespace RateController.Menu
             tbPIDtime.Text = MainMenu.CurrentProduct.PIDtime.ToString();
 
             SetAdvanced();
-            Initializing = false;
-        }
+            SetEnabled();
 
-        private void frmMenuControl_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            mf.Products.UpdateSensorSettings();
+            Initializing = false;
         }
     }
 }
