@@ -20,8 +20,8 @@ PR #3 attempted to merge `master` → `ESP32RC_refactor25` and encountered confl
 **Reason:** Contains valuable flashing instructions and library version information not present in master
 
 ### 2. RC_ESP32.ino.bin
-**Decision:** Kept ESP32RC_refactor25 version  
-**Reason:** Binary file specific to ESP32RC_refactor25 build; will need rebuild after other conflicts are resolved
+**Decision:** User will handle separately  
+**Reason:** Repository owner will manage binary file resolution independently.
 
 ### 3. RC_ESP32.ino (Line 23-27)
 **Conflict:**
@@ -120,10 +120,11 @@ Merge master into ESP32RC_refactor25
 
 Resolved conflicts:
 - Notes.txt: Kept ESP32RC_refactor25 version with flashing instructions
-- RC_ESP32.ino.bin: Kept ESP32RC_refactor25 binary
 - RC_ESP32.ino: Updated InoID to 30115 from master
 - Begin.ino: Kept custom ValidPins array, adopted master's ledcAttach API
 - PgNetwork.ino: Kept GetCssStyle() function approach
+
+Note: Binary file (RC_ESP32.ino.bin) handled separately by repository owner.
 
 Integration preserves:
 - Custom W5500 Ethernet support

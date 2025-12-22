@@ -44,7 +44,7 @@ Practical step-by-step guide including:
 | File | Conflict Type | Resolution | Reasoning |
 |------|---------------|------------|-----------|
 | Notes.txt | Documentation | Keep ESP32RC_refactor25 | Contains flashing instructions |
-| RC_ESP32.ino.bin | Binary | Keep ESP32RC_refactor25 | Will rebuild after changes |
+| RC_ESP32.ino.bin | Binary | User handles separately | Repository owner will manage |
 | RC_ESP32.ino | Version ID | Use master (30115) | Newer version number |
 | Begin.ino (1) | Pin array | Keep ESP32RC_refactor25 | Custom hardware pins |
 | Begin.ino (2) | PWM API | Use master | Modern API + wheel sensor |

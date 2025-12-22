@@ -36,7 +36,7 @@ This directory contains the complete analysis and resolution guide for merge con
 
 **Files Affected:**
 - Notes.txt (documentation)
-- RC_ESP32.ino.bin (binary)
+- RC_ESP32.ino.bin (binary - user will handle)
 - RC_ESP32.ino (main file)
 - Begin.ino (initialization)
 - PgNetwork.ino (web page)
@@ -89,6 +89,7 @@ git push origin ESP32RC_refactor25
 3. **Custom Pins**: Preserved (5, 7, 47) for custom hardware
 4. **Wheel Sensor**: Integrated from master
 5. **CSS**: Kept clean GetCssStyle() approach
+6. **Binary File**: User handles RC_ESP32.ino.bin separately
 
 ## 📞 Need Help?
 

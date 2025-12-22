@@ -25,14 +25,9 @@ git add "Modules/ESP32 Rate/Notes.txt"
 
 ## File 2: Modules/ESP32 Rate/RC_ESP32.ino.bin
 
-**Action:** Keep ESP32RC_refactor25 version (ours)
+**Action:** Skip - user will handle binary file separately
 
-```bash
-git checkout --ours "Modules/ESP32 Rate/RC_ESP32.ino.bin"
-git add "Modules/ESP32 Rate/RC_ESP32.ino.bin"
-```
-
-**Reason:** Binary file needs rebuild after source changes anyway.
+**Note:** The binary file conflict will be managed by the repository owner.
 
 ---
 
@@ -243,30 +238,30 @@ git merge master --no-commit --no-ff
 
 # 2. Resolve simple files (keep ours)
 git checkout --ours "Modules/ESP32 Rate/Notes.txt"
-git checkout --ours "Modules/ESP32 Rate/RC_ESP32.ino.bin"
 
 # 3. Edit files manually (see detailed instructions above)
 # - RC_ESP32.ino: Change InoID from 20115 to 30115
 # - Begin.ino: Keep ValidPins array, adopt new PWM API
 # - PgNetwork.ino: Keep GetCssStyle() call
+# Note: Skip RC_ESP32.ino.bin - user will handle binary separately
 
 # 4. Stage all resolved files
 git add "Modules/ESP32 Rate/Notes.txt"
-git add "Modules/ESP32 Rate/RC_ESP32.ino.bin"
 git add "Modules/ESP32 Rate/RC_ESP32/RC_ESP32.ino"
 git add "Modules/ESP32 Rate/RC_ESP32/Begin.ino"
 git add "Modules/ESP32 Rate/RC_ESP32/PgNetwork.ino"
+# Note: Binary file (RC_ESP32.ino.bin) handled separately by user
 
 # 5. Commit the merge
 git commit -m "Merge master into ESP32RC_refactor25
 
 Resolved conflicts:
 - Notes.txt: Kept ESP32RC_refactor25 version with flashing instructions
-- RC_ESP32.ino.bin: Kept ESP32RC_refactor25 binary
 - RC_ESP32.ino: Updated InoID to 30115 from master
 - Begin.ino: Kept custom ValidPins array, adopted master's ledcAttach API
 - PgNetwork.ino: Kept GetCssStyle() function approach
 
+Note: Binary file (RC_ESP32.ino.bin) handled separately.
 Integration preserves custom hardware features while incorporating upstream improvements."
 
 # 6. Push to remote
