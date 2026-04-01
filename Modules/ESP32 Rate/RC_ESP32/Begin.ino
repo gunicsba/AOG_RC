@@ -1,5 +1,5 @@
-// valid pins for each processor
-uint8_t ValidPins0[] = { 0,2,4,5,7,13,14,15,16,17,21,22,25,26,27,32,33,47 };	// SPI pins 5,18,19,23 excluded for ethernet module
+// valid pins - excludes ethernet pins 35,36,37,38,45,48
+uint8_t ValidPins0[] = { 0,2,3,4,5,7,9,10,11,12,13,14,15,16,17,21,22,25,26,27,32,33,34,39,40,47 };
 
 void DoSetup()
 {
@@ -620,13 +620,13 @@ void LoadDefaults()
 
 	// module settings
 	MDL.ID = 0;
-	MDL.SensorCount = 1;
+	MDL.SensorCount = 2;
 	MDL.InvertRelay = true;
-	MDL.InvertFlow = true;
+	MDL.InvertFlow = false;
 	MDL.RelayControl = 5;
 	MDL.WorkPin = NC;
 	MDL.WorkPinIsMomentary = false;
-	MDL.Is3Wire = true;
+	MDL.Is3Wire = false;
 	MDL.ADS1115Enabled = false;
 	MDL.PressurePin = NC;
 	MDL.WheelCal = 0;
@@ -764,7 +764,7 @@ void LoadNetworks()
 		MDLnetwork.Identifier = 9876;
 		MDLnetwork.IP0 = 192;
 		MDLnetwork.IP1 = 168;
-		MDLnetwork.IP2 = 1;
+		MDLnetwork.IP2 = 5;
 		MDLnetwork.IP3 = 50;
 		MDLnetwork.WifiModeUseStation = false;
 		strcpy(MDLnetwork.SSID, "Tractor");

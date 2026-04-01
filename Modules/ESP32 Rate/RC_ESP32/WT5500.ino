@@ -1,12 +1,19 @@
 #define ETH_MISO_PIN                    37
 #define ETH_MOSI_PIN                    35
 #define ETH_SCLK_PIN                    36
-#define ETH_CS_PIN                      38  ///???
+#define ETH_CS_PIN                      38
 #define ETH_INT_PIN                     45
 #define ETH_RST_PIN                     48
-#define ETH_ADDR                        1  ////???
+#define ETH_ADDR                        1
 
 void WT5500setup() {
+    // Reset Ethernet PHY to ensure clean state
+    pinMode(ETH_RST_PIN, OUTPUT);
+    digitalWrite(ETH_RST_PIN, LOW);
+    delay(10);
+    digitalWrite(ETH_RST_PIN, HIGH);
+    delay(10);
+    
     WiFi.onEvent(WiFiEvent);
 
     if (!ETH.beginSPI(ETH_MISO_PIN, ETH_MOSI_PIN, ETH_SCLK_PIN, ETH_CS_PIN, ETH_RST_PIN, ETH_INT_PIN)) {

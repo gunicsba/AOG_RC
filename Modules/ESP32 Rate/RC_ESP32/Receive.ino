@@ -1,3 +1,9 @@
+// Forward declarations
+bool IsValidPin(uint8_t pin);
+uint8_t AssignPin(const char* name, uint8_t& current, uint8_t newValue);
+
+// valid pins for each processor
+extern uint8_t ValidPins0[];
 
 void ReceiveUDP()
 {
@@ -232,6 +238,7 @@ void ReadPGNs(byte data[], uint16_t len)
                 MDLnetwork.IP2 = data[4];
 
                 SaveNetworks();
+                delay(500);
                 ESP.restart();
             }
         }
@@ -297,12 +304,18 @@ void ReadPGNs(byte data[], uint16_t len)
         //32    CRC
 
         PGNlength = 33;
-        if (len > PGNlength - 1)
+        if (len >= PGNlength - 1)
         {
             if (GoodCRC(data, PGNlength))
             {
-                MDL.ID = data[2];
-                MDL.SensorCount = data[3];
+                // Apply non-pin values
+                uint8_t newID = data[2];
+                if (newID > 15) {
+                    Serial.printf("WARNING: Invalid ID %d, keeping %d\n", newID, MDL.ID);
+                } else {
+                    MDL.ID = newID;
+                }
+                MDL.SensorCount = (data[3] > MaxProductCount) ? MaxProductCount : data[3];
 
                 byte tmp = data[4];
                 MDL.InvertRelay = ((tmp & 1) == 1);
@@ -310,24 +323,34 @@ void ReadPGNs(byte data[], uint16_t len)
                 MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
                 MDL.Is3Wire = ((tmp & 16) == 16);
                 MDL.ADS1115Enabled = ((tmp & 32) == 32);
-
                 MDL.RelayControl = data[5];
-                Sensor[0].FlowPin = data[7];
-                Sensor[0].IN1 = data[8];
-                Sensor[0].IN2 = data[9];
-                Sensor[1].FlowPin = data[10];
-                Sensor[1].IN1 = data[11];
-                Sensor[1].IN2 = data[12];
-
-                for (int i = 0; i < 16; i++)
-                {
-                    MDL.RelayControlPins[i] = data[13 + i];
+                
+                Serial.println("=== Configuration Received ===");
+                
+                // Apply sensor pins one by one
+                AssignPin("S0 Flow", Sensor[0].FlowPin, data[7]);
+                AssignPin("S0 IN1", Sensor[0].IN1, data[8]);
+                AssignPin("S0 IN2", Sensor[0].IN2, data[9]);
+                AssignPin("S1 Flow", Sensor[1].FlowPin, data[10]);
+                AssignPin("S1 IN1", Sensor[1].IN1, data[11]);
+                AssignPin("S1 IN2", Sensor[1].IN2, data[12]);
+                
+                // Apply relay pins with validation
+                for (int i = 0; i < 16; i++) {
+                    char name[12];
+                    snprintf(name, sizeof(name), "Relay%d", i);
+                    AssignPin(name, MDL.RelayControlPins[i], data[13 + i]);
                 }
-
-                MDL.WorkPin = data[29];
-                MDL.PressurePin = data[30];
-
+                
+                // Apply work and pressure pins
+                AssignPin("Work Pin", MDL.WorkPin, data[29]);
+                AssignPin("Pressure Pin", MDL.PressurePin, data[30]);
+                
+                Serial.println("==============================");
+                Serial.println("Saving configuration...");
                 SaveData(); 
+                Serial.println("Restarting ESP32...");
+                delay(500);
                 ESP.restart();
             }
         }
@@ -335,4 +358,36 @@ void ReadPGNs(byte data[], uint16_t len)
     }
 }
 
+// Validate if a pin number is in the allowed pins list
+bool IsValidPin(uint8_t pin)
+{
+    if (pin >= NC) return true;  // NC or higher means not used, always valid
+    
+    Serial.printf("Checking pin %d against valid list... ", pin);
+    for (int i = 0; i < sizeof(ValidPins0); i++)
+    {
+        if (pin == ValidPins0[i]) {
+            Serial.println("FOUND");
+            return true;
+        }
+    }
+    Serial.println("NOT FOUND");
+    return false;
+}
+
+// Assign pin only if valid, returns the value (either new or keeps old)
+uint8_t AssignPin(const char* name, uint8_t& current, uint8_t newValue)
+{
+    if (IsValidPin(newValue)) {
+        if (current != newValue) {
+            current = newValue;
+            Serial.printf("%s: %d OK (changed)\n", name, newValue);
+            return newValue;
+        }
+        Serial.printf("%s: %d OK (same)\n", name, newValue);
+        return newValue;
+    }
+    Serial.printf("WARNING: Invalid pin %d for %s - keeping %d\n", newValue, name, current);
+    return current;
+}
 
