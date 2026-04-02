@@ -1,3 +1,9 @@
+// Forward declarations
+bool IsValidPin(uint8_t pin);
+uint8_t AssignPin(const char* name, uint8_t& current, uint8_t newValue);
+
+// valid pins for each processor
+extern uint8_t ValidPins0[];
 
 void ReceiveUDP()
 {
@@ -5,7 +11,7 @@ void ReceiveUDP()
 
     if (ChipFound)
     {
-        if (Ethernet.linkStatus() == LinkON)
+        if (ETHconnected)
         {
             uint16_t len = UDP_Ethernet.parsePacket();
             if (len)
@@ -227,11 +233,30 @@ void ReadPGNs(byte data[], uint16_t len)
         {
             if (GoodCRC(data, PGNlength))
             {
+                Serial.println("=== PGN32503: Subnet change received ===");
+                Serial.print("Old IP: ");
+                Serial.print(MDLnetwork.IP0);
+                Serial.print(".");
+                Serial.print(MDLnetwork.IP1);
+                Serial.print(".");
+                Serial.print(MDLnetwork.IP2);
+                Serial.println(".X");
+                
                 MDLnetwork.IP0 = data[2];
                 MDLnetwork.IP1 = data[3];
                 MDLnetwork.IP2 = data[4];
+                
+                Serial.print("New IP: ");
+                Serial.print(MDLnetwork.IP0);
+                Serial.print(".");
+                Serial.print(MDLnetwork.IP1);
+                Serial.print(".");
+                Serial.print(MDLnetwork.IP2);
+                Serial.println(".X");
+                Serial.println("Saving and restarting...");
 
                 SaveNetworks();
+                delay(100);
                 ESP.restart();
             }
         }
@@ -336,6 +361,7 @@ void ReadPGNs(byte data[], uint16_t len)
                 AssignPin("PressurePin", MDL.PressurePin, data[30]);
 
                 SaveData(); 
+                delay(500);
                 ESP.restart();
             }
         }

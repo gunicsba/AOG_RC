@@ -1,13 +1,7 @@
 
-#include <Adafruit_SPIDevice.h>
-#include <Adafruit_I2CRegister.h>
-#include <Adafruit_I2CDevice.h>
-#include <Adafruit_GenericDevice.h>
-#include <Adafruit_BusIO_Register.h>
-#include <index_html.h>
 #include "PCA95x5_RC.h"		// modified from https://github.com/hideakitai/PCA95x5
 #include <PCF8574.h>		// https://github.com/RobTillaart/PCF8574
-#include "ESP2SOTA_RC/ESP2SOTA_RC.h"	// modified from https://github.com/pangodream/ESP2SOTA
+#include <ESP2SOTA.h>		// https://github.com/pangodream/ESP2SOTA
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -18,18 +12,17 @@
 #include <EEPROM.h> 
 #include <Wire.h>
 
-#include <SPI.h>
-#include <Ethernet_Generic.h>
+#include "ETHClass.h"
 #include <EthernetUdp.h>
 
-#include <Adafruit_PWMServoDriver.h>	// Adafruit PCA9685 PWM Servo Driver Library
+#include <elapsedMillis.h>
+#include <Adafruit_PWMServoDriver.h>
 
 //rate control with ESP32, board: DOIT ESP32 DEVKIT V1
 # define InoDescription "RC_ESP32"
-const uint16_t InoID = 26026;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint16_t InoID = 31036;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
-const uint8_t PCB_Type = 0;		// 0 - RC15
 
 const uint8_t NC = 0xFF;		// Pin not connected
 const uint8_t ModStringLengths = 15;
@@ -38,13 +31,13 @@ const uint32_t FlowTimeout = 4000;
 const uint16_t EEPROM_SIZE = 512;
 
 // servo driver
-const uint8_t OutputEnablePin = 27;
-const uint8_t PCA9685address = 0x55;	// RC15 1010101, 1 + A5-A0
+//const uint8_t OutputEnablePin = 27;
+const uint8_t PCA9685address = 0x40;	// RC15 1010101, 1 + A5-A0
+const uint8_t PCA9685Extaddress = 0x41;	// RC15 1010101, 1 + A5-A0
 
 const int16_t ADS1115_Address = 0x48;
 uint8_t MCP23017address;
 const uint8_t PCF8574address = 0x20;
-const uint8_t W5500_SS = 5;		// W5500 SPI SS
 
 #if defined(ESP32)
 const int PWM_BITS = 12;
@@ -73,11 +66,14 @@ enum ControlType
 	TimedCombo_ct = 5
 };
 
+#define Current1Pin 6 //CURRENT_SECTIONS
+#define Current2Pin 14 //CURRENT_CYTRON
+
 struct ModuleConfig	// about 130 bytes
 {
 	// RC15
 	uint8_t ID = 0;
-	uint8_t SensorCount = 1;        // up to 2 sensors, if 0 rate control will be disabled
+	uint8_t SensorCount = 2;        // up to 2 sensors, if 0 rate control will be disabled
 	bool InvertRelay = true;	    // value that turns on relays
 	bool InvertFlow = true;		// sets on value for flow valve or sets motor direction
 	uint8_t RelayControlPins[16] = { 8,9,10,11,12,25,26,27,NC,NC,NC,NC,NC,NC,NC,NC };		// pin numbers when GPIOs are used for relay control (1), default RC11
@@ -146,11 +142,12 @@ struct SensorConfig	// about 104 bytes
 SensorConfig Sensor[2];
 
 // ethernet
-EthernetUDP UDP_Ethernet;
+WiFiUDP UDP_Ethernet;
+static bool ETHconnected = false; //Ethernet.linkStatus() is too slow
 const uint16_t ListeningPort = 28888;
 const uint16_t DestinationPort = 29999;
 IPAddress Ethernet_DestinationIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);
-bool ChipFound;
+bool ChipFound = false;
 
 // wifi
 WiFiUDP UDP_Wifi;
@@ -158,12 +155,15 @@ IPAddress Wifi_DestinationIP(192, 168, 100, 255);
 WiFiClient client;
 WebServer server(80);
 DNSServer dnsServer;
-const byte AP_DNS_PORT = 53;
+const byte DNS_PORT = 53;
 
 // control page
 bool WifiMasterOn = false;
 bool Button[16];
 uint32_t WifiSwitchesTimer;
+bool disableMotor = false;
+bool disableFlow = false;
+bool b9threlay = false;
 
 // Relays
 volatile byte RelayLo = 0;	// sections 0-7
@@ -190,8 +190,11 @@ bool MCP23017_found = false;
 
 // PCA9685
 bool PCA9685_found = false;
-#define PCA9685Address 0x55
+#define PCA9685Address 0x40
 Adafruit_PWMServoDriver PWMServoDriver = Adafruit_PWMServoDriver(PCA9685Address);
+bool PCA9685Ext_found = false;
+#define PCA9685ExtAddress 0x41
+Adafruit_PWMServoDriver PWMServoDriverExt = Adafruit_PWMServoDriver(PCA9685ExtAddress);
 
 // analog
 int16_t PressureReading = 0;
@@ -200,8 +203,8 @@ bool ADSfound = false;
 bool GoodPins;	// pin configuration correct
 
 float TimedCombo(byte, bool);	// function prototype
-void  ISR0();		// function prototype
-void  ISR1();
+void IRAM_ATTR ISR0();		// function prototype
+void IRAM_ATTR ISR1();
 
 uint8_t DisconnectCount = 0;
 
