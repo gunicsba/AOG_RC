@@ -39,21 +39,22 @@ namespace RateController
             ChangeProduct(Props.CurrentProduct);
             LoadLast = LoadLst;
             JobManager.JobChanged += Props_JobChanged;
+            Core.ProfileChanged += Core_ProfileChanged;
         }
 
         public event EventHandler MenuMoved;
+
         public event EventHandler ModuleDefaultsSet;
+
         public event EventHandler ProductChanged;
+
         public event EventHandler ProductEnabled;
+
         public event EventHandler SelectionChanged;
 
         public clsProduct CurrentProduct
         {
             get { return cCurrentProduct; }
-        }
-        public void RaiseEventProductEnabled()
-        {
-            ProductEnabled?.Invoke(this, EventArgs.Empty);
         }
 
         public string LastScreen
@@ -189,6 +190,11 @@ namespace RateController
             {
                 butUpdateModules.FlatAppearance.BorderSize = 0;
             }
+        }
+
+        public void RaiseEventProductEnabled()
+        {
+            ProductEnabled?.Invoke(this, EventArgs.Empty);
         }
 
         public void ShowProfile()
@@ -363,6 +369,24 @@ namespace RateController
                 Form frm = new frmMenuColor(this);
                 frm.Owner = this;
                 frm.Show();
+            }
+        }
+
+        private void butComm_Click(object sender, EventArgs e)
+        {
+            SaveLastScreen("frmMenuComm");
+            if (sender is Button button) HighlightButton(button);
+            Form fs = Props.IsFormOpen(cLastScreen);
+
+            if (fs == null)
+            {
+                Form frm = new frmMenuComm(this);
+                frm.Owner = this;
+                frm.Show();
+            }
+            else
+            {
+                fs.Focus();
             }
         }
 
@@ -575,6 +599,7 @@ namespace RateController
                         butRelayPins.Visible = !Expanded;
                         butValves.Visible = !Expanded;
                         butUpdateModules.Visible = !Expanded;
+                        butComm.Visible = !Expanded;
 
                         if (Expanded)
                         {
@@ -598,8 +623,12 @@ namespace RateController
                             butModules.Top = butFile.Top;
 
                             int Pos = butFile.Top;
-                            butNetwork.Left = butFile.Left + SubOffset;
+                            butComm.Left = butFile.Left + SubOffset;
                             Pos += SubFirstSpacing;
+                            butComm.Top = Pos;
+
+                            butNetwork.Left = butFile.Left + SubOffset;
+                            Pos += SubSpacing;
                             butNetwork.Top = Pos;
 
                             butConfig.Left = butFile.Left + SubOffset;
@@ -622,7 +651,7 @@ namespace RateController
                             Pos += SubSpacing;
                             butUpdateModules.Top = Pos;
 
-                            butNetwork.PerformClick();
+                            butComm.PerformClick();
                         }
                     }
                     finally
@@ -687,7 +716,6 @@ namespace RateController
                 fs.Focus();
             }
         }
-
 
         private void butPrimed_Click(object sender, EventArgs e)
         {
@@ -933,7 +961,7 @@ namespace RateController
 
             if (fs == null)
             {
-                Form frm = new frmMenuValves( this);
+                Form frm = new frmMenuValves(this);
                 frm.Owner = this;
                 frm.Show();
             }
@@ -979,6 +1007,12 @@ namespace RateController
                 ownedForm.Close();
             }
             return !Convert.ToBoolean(OwnedForms.Length);    // check if all closed, could be unsaved data
+        }
+
+        private void Core_ProfileChanged(object sender, EventArgs e)
+        {
+            ChangeProduct(0);
+            ShowProfile();
         }
 
         private void frmMenu_FormClosed(object sender, FormClosedEventArgs e)
@@ -1149,9 +1183,18 @@ namespace RateController
                             fs.Show();
                             break;
 
+                        case "frmMenuComm":
+                            butModules.PerformClick();// frmMenuComm opened by default
+                            HighlightButton(butComm);
+                            break;
+
                         case "frmMenuNetwork":
-                            butModules.PerformClick();  // frmMenuNetwork opened by default
+                            butModules.PerformClick();
+                            fs = new frmMenuNetwork(this);
+                            fs.Owner = this;
+                            SaveLastScreen(Last);
                             HighlightButton(butNetwork);
+                            fs.Show();
                             break;
 
                         case "frmMenuConfig":
@@ -1210,7 +1253,7 @@ namespace RateController
 
                         case "frmMenuColor":
                             butFile.PerformClick();
-                            fs = new frmMenuColor(  this);
+                            fs = new frmMenuColor(this);
                             fs.Owner = this;
                             SaveLastScreen(Last);
                             HighlightButton(butColor);
@@ -1285,13 +1328,14 @@ namespace RateController
             butSwitches.Text = Lang.lgSwitches;
             butPrimed.Text = Lang.lgPrimedStart;
             butCalibrate.Text = Lang.lgCalibrate;
-            butNetwork.Text = Lang.lgNetwork;
+            butNetwork.Text = Lang.lgBoards;
             butConfig.Text = Lang.lgConfig;
             butPins.Text = Lang.lgPins;
             butRelayPins.Text = Lang.lgRelayPins;
             butValves.Text = Lang.lgValves;
             butUpdateModules.Text = Lang.lgSend;
             butDisplay.Text = Lang.lgOptions;
+            butComm.Text = Lang.lgCommMenu;
             butLanguage.Text = Lang.lgLanguage;
             butColor.Text = Lang.lgColor;
             btnPressure.Text = Lang.lgPressure;

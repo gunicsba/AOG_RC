@@ -1,4 +1,4 @@
-﻿using GMap.NET;
+using GMap.NET;
 using GMap.NET.WindowsForms;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Index.Strtree;
@@ -6,120 +6,285 @@ using RateController.Classes;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 namespace RateController.RateMap
 {
-    public class ContourLine
-    {
-        public double Level { get; set; }
-        public List<PointLatLng> Points { get; set; }
-    }
-
     public class ElevationOverlayCreator : IDisposable
     {
-        private readonly GMapOverlay _labelOverlay;
-        private readonly GMapOverlay ContourOverlay;
-        private readonly GMapControl gmap;
+        private readonly GMapControl _map;
+
+        // Legend hosted as a PictureBox on the GMapControl
+        private PictureBox _legendHost;
+        private Bitmap     _legendBitmap;
+
+        // Pixel map — a single Bitmap stretched over the field in the Paint handler
+        private Bitmap       _elevBitmap;
+        private PointLatLng  _topLeft;
+        private PointLatLng  _bottomRight;
 
         private bool _disposed;
+        private bool _enabled;
+        private string _elevationPath;
+        private STRtree<FieldSample> _tree;
+        private List<FieldSample>    _readings;
+        private List<FieldSample>    _cleanReadings;
 
-        // Index over FieldSample
-        private STRtree<FieldSample> _readingTree;
+        // IDW grid resolution — bitmap rendering cost is O(1) regardless of this value,
+        // so it can be much higher than the polygon cap without affecting pan/zoom performance.
+        // Build time scales linearly; ~20 000 takes under a second for typical field data.
+        private const int MaxCells = 20000;
 
-        private bool cEnabled = false;
-        private int gridCols;
-        private int gridRows;
+        // Number of discrete colour bands
+        public int ColorBands { get; set; } = 5;
 
-        // Use FieldSample instead of RateReading
-        private List<FieldSample> Readings;
+        // Kept for API compatibility; not currently used
+        public double ContourInterval { get; set; } = 1.0;
 
-        private bool UseSimulatedData = true;
+        // Colour palette — dark blue (low) → dark red (high), 5 bands
+        private static readonly Color[] BandColors =
+        {
+            Color.DarkBlue,
+            Color.Cyan,
+            Color.Green,
+            Color.Orange,
+            Color.DarkRed
+        };
 
         public ElevationOverlayCreator(GMapControl map)
         {
-            gmap = map;
-            ContourOverlay = new GMapOverlay("elevationContours");
-            cEnabled = bool.TryParse(Props.GetProp("MapShowElevation"), out bool sh) ? sh : false;
-            _labelOverlay = new GMapOverlay("elevationLabels");
+            _map = map;
+
+            // Subscribe to the map's own Paint event.
+            // GMapControl raises Paint after drawing tiles and overlays, so our bitmap
+            // lands on top. e.Graphics is the control's client-area surface — the same
+            // coordinate space that FromLatLngToLocal returns, so no offset ambiguity.
+            _map.Paint += OnMapPaint;
+
+            _legendHost = new PictureBox
+            {
+                BackColor = Color.Transparent,
+                SizeMode  = PictureBoxSizeMode.AutoSize,
+                Visible   = false
+            };
+            _map.Controls.Add(_legendHost);
+            _legendHost.BringToFront();
+
+            _enabled = bool.TryParse(Props.GetProp("MapShowElevation"), out bool sh) ? sh : false;
         }
 
-        public double ContourInterval { get; set; } = 0.5;
+        // The cleaned (non-zero, outlier-filtered) elevation readings used by the last Build().
+        // Null until Build() has run successfully at least once.
+        public IReadOnlyList<FieldSample> CleanReadings => _cleanReadings;
 
         public bool Enabled
         {
-            get { return cEnabled; }
+            get => _enabled;
             set
             {
-                cEnabled = value;
-                Props.SetProp("MapShowElevation", cEnabled.ToString());
-
-                if (cEnabled)
-                {
-                    Build();
-                }
-                else
-                {
-                    Reset();
-                }
+                _enabled = value;
+                Props.SetProp("MapShowElevation", _enabled.ToString());
+                if (_enabled) Build();
+                else Reset();
             }
         }
 
-        public double GridResolutionMeters { get; set; } = 10.0;
+        public bool HasData => _readings != null && _readings.Count > 0;
+
+        // Returns a short quality summary for display in the Files panel label.
+        public string GetQualitySummary()
+        {
+            if (_readings == null || _readings.Count == 0) return string.Empty;
+
+            List<FieldSample> nonZero = _readings.Where(r => r.ElevationMeters != 0.0).ToList();
+            if (nonZero.Count == 0) return string.Empty;
+
+            List<FieldSample> clean = FilterOutliers(nonZero);
+            int dropped = nonZero.Count - clean.Count;
+            if (clean.Count == 0) clean = nonZero;
+
+            double minElev = clean.Min(r => r.ElevationMeters);
+            double maxElev = clean.Max(r => r.ElevationMeters);
+            double range   = maxElev - minElev;
+
+            string rangeStr = Props.UseMetric
+                ? string.Format("{0:F1}m", range)
+                : string.Format("{0:F0}ft", range * 3.28084);
+
+            string flag        = (range < 0.5 || clean.Count < 15) ? " !" : "";
+            string outlierNote = dropped > 0 ? string.Format(" -{0}outliers", dropped) : "";
+            return string.Format("{0} pts  {1} range{2}{3}", clean.Count, rangeStr, flag, outlierNote);
+        }
+
+        // Generates a synthetic elevation CSV covering the given bounds.
+        public static void GenerateTestData(
+            string outputPath,
+            double minLat, double maxLat,
+            double minLon, double maxLon,
+            double baseElevation = 100.0)
+        {
+            const double spacingMeters = 25.0;
+            double latStep = spacingMeters / 111000.0;
+            double midLat  = (minLat + maxLat) / 2.0;
+            double lonStep = spacingMeters / (111000.0 * Math.Cos(midLat * Math.PI / 180.0));
+
+            double latRange = maxLat - minLat;
+            double lonRange = maxLon - minLon;
+
+            var rng = new Random(4219);
+            var sb  = new System.Text.StringBuilder();
+            sb.AppendLine("Lat,Lon,Elevation");
+
+            for (double lat = minLat; lat <= maxLat + latStep * 0.5; lat += latStep)
+            {
+                for (double lon = minLon; lon <= maxLon + lonStep * 0.5; lon += lonStep)
+                {
+                    double nx = latRange > 0 ? (lat - minLat) / latRange : 0.5;
+                    double ny = lonRange > 0 ? (lon - minLon) / lonRange : 0.5;
+
+                    double slope = 6.1 * (1.0 - ny);
+                    double roll  = 0.5 * Math.Sin(nx * Math.PI * 4.0)
+                                 + 0.3 * Math.Cos(ny * Math.PI * 3.0);
+                    double cross = 0.2 * Math.Sin((nx + ny) * Math.PI * 3.0);
+                    double noise = 0.1 * (rng.NextDouble() * 2.0 - 1.0);
+
+                    double elev = baseElevation + slope + roll + cross + noise;
+                    sb.AppendLine(string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        "{0:F6},{1:F6},{2:F3}", lat, lon, elev));
+                }
+            }
+
+            System.IO.File.WriteAllText(outputPath, sb.ToString());
+        }
+
+        public void LoadElevationFile(string filePath)
+        {
+            _elevationPath = filePath;
+            _readings = new List<FieldSample>();
+            if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath)) return;
+            try
+            {
+                string[] lines = System.IO.File.ReadAllLines(filePath);
+                for (int i = 1; i < lines.Length; i++)
+                {
+                    if (string.IsNullOrWhiteSpace(lines[i])) continue;
+                    string[] parts = lines[i].Split(',');
+                    if (parts.Length < 3) continue;
+                    if (!double.TryParse(parts[0], System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double lat)) continue;
+                    if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double lon)) continue;
+                    if (!double.TryParse(parts[2], System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double el)) continue;
+                    _readings.Add(new FieldSample(DateTime.MinValue, lat, lon, 0, 0, el));
+                }
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("ElevationOverlayCreator/LoadElevationFile: " + ex.Message);
+                _readings = new List<FieldSample>();
+            }
+        }
 
         public void Build()
         {
-            if (!cEnabled || _disposed)
-            {
-                return;
-            }
+            if (!_enabled || _disposed) return;
+
+            ClearBitmap();
+
+            if (!string.IsNullOrEmpty(_elevationPath) && !System.IO.File.Exists(_elevationPath))
+                _readings = null;
 
             try
             {
-                var yieldCreator = MapController.YieldCreator;
-                if ((yieldCreator == null || yieldCreator.FieldData == null || yieldCreator.FieldData.Count == 0) && !UseSimulatedData)
+                if (_readings == null || _readings.Count < 3)
                 {
-                    Reset();
+                    _map.Refresh();
                     return;
                 }
 
-                Readings = yieldCreator.FieldData
-                    .Where(f => !double.IsNaN(f.ElevationMeters))
-                    .ToList();
-
-                if (UseSimulatedData)
+                // Strip GPS zero-sentinels before outlier detection.
+                List<FieldSample> nonZero = _readings.Where(r => r.ElevationMeters != 0.0).ToList();
+                if (nonZero.Count < 3)
                 {
-                    ApplySimulatedElevations();
-                }
-
-                if (Readings == null || Readings.Count < 3)
-                {
-                    Reset();
+                    _map.Refresh();
                     return;
                 }
 
-                _readingTree = new STRtree<FieldSample>();
-                foreach (FieldSample r in Readings)
+                List<FieldSample> clean = FilterOutliers(nonZero);
+                if (clean.Count < 3) clean = nonZero;
+
+                _cleanReadings = clean;   // expose for ProductivityZoneCreator
+
+                double minElev = clean.Min(r => r.ElevationMeters);
+                double maxElev = clean.Max(r => r.ElevationMeters);
+
+                if (maxElev - minElev < 0.1)
                 {
-                    Envelope env = new Envelope(r.Longitude, r.Longitude, r.Latitude, r.Latitude);
-                    _readingTree.Insert(env, r);
+                    _map.Refresh();
+                    return;
                 }
 
-                var bounds = ComputeBounds();
-                double[,] grid = BuildGrid(bounds);
+                // Build spatial index for IDW lookups.
+                _tree = new STRtree<FieldSample>();
+                foreach (var r in clean)
+                    _tree.Insert(new Envelope(r.Longitude, r.Longitude, r.Latitude, r.Latitude), r);
 
-                grid = SmoothGrid(grid, passes: 1);
+                var bounds = ComputeBounds(clean);
 
-                List<ContourLine> contours = GenerateContours(grid, bounds);
+                // 5% padding so the grid covers the outer edge of the data.
+                double padLat = (bounds.maxLat - bounds.minLat) * 0.05;
+                double padLon = (bounds.maxLon - bounds.minLon) * 0.05;
+                bounds = (bounds.minLat - padLat, bounds.maxLat + padLat,
+                          bounds.minLon - padLon, bounds.maxLon + padLon);
 
-                DrawContours(contours);
+                // Adaptive resolution — cell count capped at MaxCells regardless of field size.
+                double midLat = (bounds.minLat + bounds.maxLat) / 2.0;
+                double fieldH = Haversine(bounds.minLat, 0, bounds.maxLat, 0);
+                double fieldW = Haversine(midLat, bounds.minLon, midLat, bounds.maxLon);
+                double res    = Math.Max(1.0, Math.Sqrt(fieldH * fieldW / MaxCells));
+                int    rows   = Math.Max(2, (int)(fieldH / res));
+                int    cols   = Math.Max(2, (int)(fieldW / res));
 
-                MapController.AddOverlay(ContourOverlay);
-                MapController.AddOverlay(_labelOverlay);
+                // Build pixel array — row 0 in the grid = minLat (south) = bottom of bitmap,
+                // so flip vertically so the bitmap's top matches the map's north edge.
+                int[] pixels = new int[rows * cols];
+                for (int r = 0; r < rows; r++)
+                {
+                    for (int c = 0; c < cols; c++)
+                    {
+                        double lat = bounds.minLat + (r + 0.5) / rows * (bounds.maxLat - bounds.minLat);
+                        double lon = bounds.minLon + (c + 0.5) / cols * (bounds.maxLon - bounds.minLon);
 
-                gmap.Refresh();
+                        double elev = IDW(lat, lon);
+                        double t    = (elev - minElev) / (maxElev - minElev);
+                        t = Math.Max(0, Math.Min(1, t));
+
+                        Color color = GetBandColor(t);
+                        // Flip row: bitmap row 0 = north (maxLat) = top of screen
+                        pixels[(rows - 1 - r) * cols + c] = Color.FromArgb(100, color).ToArgb();
+                    }
+                }
+
+                var bmp = new Bitmap(cols, rows, PixelFormat.Format32bppArgb);
+                var bmpData = bmp.LockBits(
+                    new Rectangle(0, 0, cols, rows),
+                    ImageLockMode.WriteOnly,
+                    PixelFormat.Format32bppArgb);
+                Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
+                bmp.UnlockBits(bmpData);
+
+                _elevBitmap  = bmp;
+                _topLeft     = new PointLatLng(bounds.maxLat, bounds.minLon);   // NW corner
+                _bottomRight = new PointLatLng(bounds.minLat, bounds.maxLon);   // SE corner
+
+                ShowLegend(minElev, maxElev);
+                _map.Refresh();
             }
             catch (Exception ex)
             {
@@ -127,559 +292,230 @@ namespace RateController.RateMap
             }
         }
 
+        public void Reset()
+        {
+            if (_disposed) return;
+            ClearBitmap();
+            HideLegend();
+            _map.Refresh();
+        }
+
         public void Dispose()
         {
-            if (_disposed)
-            {
-                return;
-            }
-
+            if (_disposed) return;
             try
             {
-                // Ensure overlays are removed from the map first
-                MapController.RemoveOverlay(ContourOverlay);
-                MapController.RemoveOverlay(_labelOverlay);
+                _map.Paint -= OnMapPaint;
 
-                ContourOverlay.Dispose();
-                _labelOverlay.Dispose();
+                ClearBitmap();
+                HideLegend();
+
+                if (_legendHost != null)
+                {
+                    if (_map.Controls.Contains(_legendHost))
+                        _map.Controls.Remove(_legendHost);
+                    _legendHost.Dispose();
+                    _legendHost = null;
+                }
             }
             catch (Exception ex)
             {
                 Props.WriteErrorLog("ElevationOverlayCreator/Dispose: " + ex.Message);
             }
-
             _disposed = true;
         }
 
-        public void Reset()
-        {
-            if (_disposed)
-            {
-                return;
-            }
+        // ── Paint handler ────────────────────────────────────────────────────────
 
-            MapController.RemoveOverlay(ContourOverlay);
-            MapController.RemoveOverlay(_labelOverlay);
-            ContourOverlay.Clear();
-            _labelOverlay.Clear();
-            gmap.Refresh();
+        // Called by GMapControl after it has finished drawing tiles and overlays.
+        // e.Graphics is the control's client-area surface — same coordinate space
+        // as FromLatLngToLocal — so the rectangle computed here is always correct
+        // regardless of zoom or pan level.
+        private void OnMapPaint(object sender, PaintEventArgs e)
+        {
+            if (_elevBitmap == null) return;
+
+            var tl = _map.FromLatLngToLocal(_topLeft);
+            var br = _map.FromLatLngToLocal(_bottomRight);
+            int x = (int)tl.X;
+            int y = (int)tl.Y;
+            int w = (int)(br.X - tl.X);
+            int h = (int)(br.Y - tl.Y);
+            if (w <= 0 || h <= 0) return;
+
+            var oldInterp = e.Graphics.InterpolationMode;
+            e.Graphics.InterpolationMode = InterpolationMode.Bilinear;
+            e.Graphics.DrawImage(_elevBitmap, new Rectangle(x, y, w, h));
+            e.Graphics.InterpolationMode = oldInterp;
         }
 
-        private void ApplySimulatedElevations()
+        // ── Legend ───────────────────────────────────────────────────────────────
+
+        private void ShowLegend(double minElev, double maxElev)
         {
-            if (Readings == null || Readings.Count == 0)
+            try
             {
-                return;
-            }
+                bool   metric = Props.UseMetric;
+                string unit   = metric ? "m" : "ft";
+                double scale  = metric ? 1.0 : 3.28084;
+                double lo     = minElev * scale;
+                double hi     = maxElev * scale;
+                double step   = (hi - lo) / ColorBands;
 
-            double minLat = Readings.Min(r => r.Latitude);
-            double maxLat = Readings.Max(r => r.Latitude);
-            double minLon = Readings.Min(r => r.Longitude);
-            double maxLon = Readings.Max(r => r.Longitude);
+                // Spacing constants matched to LegendManager
+                const int itemHeight   = 25;
+                const int leftMargin   = 10;
+                const int swatch       = 20;
+                const int gap          = 10;
+                const int rightMargin  = 10;
+                const int titlePadding = 8;
 
-            double latRange = maxLat - minLat;
-            double lonRange = maxLon - minLon;
-
-            Random rng = new Random(7895); // deterministic
-            List<FieldSample> simulatedReadings = new List<FieldSample>(Readings.Count);
-
-            foreach (FieldSample r in Readings)
-            {
-                double nx = (r.Longitude - minLon) / lonRange;
-                double ny = (r.Latitude - minLat) / latRange;
-
-                double baseElev = 300 + 2 * nx + 2 * ny;
-                double wave =
-                    1.5 * Math.Sin(nx * Math.PI * 2) +
-                    1.5 * Math.Cos(ny * Math.PI * 2);
-                double jitter = 0.5 * Math.Sin((nx + ny) * Math.PI * 1.5);
-
-                double simulated = baseElev + wave + jitter;
-
-                FieldSample newSample = new FieldSample(
-                    r.Timestamp,
-                    r.Latitude,
-                    r.Longitude,
-                    r.YieldKg,
-                    r.WidthMeters,
-                    simulated);
-
-                simulatedReadings.Add(newSample);
-            }
-
-            Readings = simulatedReadings;
-        }
-
-        private double[,] BuildGrid((double minLat, double maxLat, double minLon, double maxLon) b)
-        {
-            gridRows = (int)(MetersBetweenLat(b.minLat, b.maxLat) / GridResolutionMeters) + 1;
-            gridCols = (int)(MetersBetweenLon(b.minLon, b.maxLon, (b.minLat + b.maxLat) / 2) / GridResolutionMeters) + 1;
-
-            double[,] grid = new double[gridRows, gridCols];
-
-            for (int r = 0; r < gridRows; r++)
-            {
-                for (int c = 0; c < gridCols; c++)
+                using (var font      = new Font("Microsoft Sans Serif", 14))
+                using (var titleFont = new Font("Microsoft Sans Serif", 14, FontStyle.Underline))
                 {
-                    double lat = b.minLat + (r / (double)(gridRows - 1)) * (b.maxLat - b.minLat);
-                    double lon = b.minLon + (c / (double)(gridCols - 1)) * (b.maxLon - b.minLon);
+                    string title = string.Format("Elevation ({0})", unit);
 
-                    grid[r, c] = InterpolateElevation(lat, lon);
-                }
-            }
+                    float maxLabelW = 0;
+                    float titleW    = 0;
+                    float titleH    = 0;
 
-            return grid;
-        }
-
-        private bool Close(PointLatLng a, PointLatLng b, double tol)
-        {
-            return Math.Abs(a.Lat - b.Lat) < tol &&
-                   Math.Abs(a.Lng - b.Lng) < tol;
-        }
-
-        private (double minLat, double maxLat, double minLon, double maxLon) ComputeBounds()
-        {
-            return (
-                Readings.Min(r => r.Latitude),
-                Readings.Max(r => r.Latitude),
-                Readings.Min(r => r.Longitude),
-                Readings.Max(r => r.Longitude)
-            );
-        }
-
-        private void DrawContours(List<ContourLine> contours)
-        {
-            ContourOverlay.Clear();
-            _labelOverlay.Clear();
-
-            List<PointLatLng> allPlacedLabels = new List<PointLatLng>();
-            const double minLabelDistanceMeters = 50;
-
-            foreach (var group in contours.GroupBy(c => c.Level))
-            {
-                foreach (ContourLine contour in group)
-                {
-                    if (contour.Points.Count < 2)
+                    using (var tmp  = new Bitmap(1, 1))
+                    using (var gTmp = Graphics.FromImage(tmp))
                     {
-                        continue;
+                        for (int i = 0; i < ColorBands; i++)
+                        {
+                            string lbl = FormatBand(lo + i * step, lo + (i + 1) * step);
+                            maxLabelW = Math.Max(maxLabelW, gTmp.MeasureString(lbl, font).Width);
+                        }
+                        SizeF ts = gTmp.MeasureString(title, titleFont);
+                        titleW = ts.Width;
+                        titleH = ts.Height;
                     }
 
-                    ContourOverlay.Routes.Add(
-                        new GMapRoute(contour.Points, "contour")
-                        {
-                            Stroke = new Pen(Color.DarkRed, 2)
-                        });
-                }
+                    int contentW = swatch + gap + (int)Math.Ceiling(maxLabelW);
+                    int bmpW     = Math.Max((int)Math.Ceiling(titleW) + leftMargin * 2,
+                                           leftMargin + contentW + rightMargin);
+                    int bmpH     = (int)Math.Ceiling(titleH) + titlePadding * 2
+                                   + ColorBands * itemHeight + leftMargin;
 
-                var significantContours = group
-                    .Where(c => c.Points.Count > 10)
-                    .OrderByDescending(c => PolylineLengthMeters(c.Points));
+                    _legendBitmap?.Dispose();
+                    _legendBitmap = new Bitmap(bmpW, bmpH);
 
-                int labelCountThisLevel = 0;
-                foreach (ContourLine contour in significantContours)
-                {
-                    if (labelCountThisLevel >= 2)
+                    using (var g = Graphics.FromImage(_legendBitmap))
                     {
-                        break;
-                    }
+                        g.SmoothingMode = SmoothingMode.None;
+                        g.FillRectangle(Brushes.Black, 0, 0, bmpW, bmpH);
 
-                    var candidates = new[] { 0.3, 0.5, 0.7 }
-                        .Select(ratio => contour.Points[(int)(contour.Points.Count * ratio)])
-                        .ToList();
+                        SizeF ts = g.MeasureString(title, titleFont);
+                        g.DrawString(title, titleFont, Brushes.White,
+                            (bmpW - ts.Width) / 2f, titlePadding);
 
-                    foreach (PointLatLng labelPos in candidates)
-                    {
-                        bool tooClose = allPlacedLabels.Any(p =>
-                            Haversine(p.Lat, p.Lng, labelPos.Lat, labelPos.Lng) < minLabelDistanceMeters);
+                        int itemsTop = (int)Math.Ceiling(ts.Height) + titlePadding * 2;
+                        int anchorX  = Math.Max(leftMargin, (bmpW - contentW) / 2);
 
-                        if (!tooClose)
+                        // Highest band at top, lowest at bottom
+                        for (int i = ColorBands - 1; i >= 0; i--)
                         {
-                            _labelOverlay.Markers.Add(
-                                new TextMarker(labelPos, group.Key));
-                            allPlacedLabels.Add(labelPos);
-                            labelCountThisLevel++;
-                            break;
+                            int   row      = ColorBands - 1 - i;
+                            int   y        = itemsTop + row * itemHeight;
+                            Color c        = BandColors[i];
+                            int   swatchTop = y + (itemHeight - swatch) / 2;
+
+                            g.FillRectangle(new SolidBrush(c), anchorX, swatchTop, swatch, swatch);
+                            g.DrawRectangle(Pens.White,         anchorX, swatchTop, swatch, swatch);
+
+                            string lbl  = FormatBand(lo + i * step, lo + (i + 1) * step);
+                            SizeF  ls   = g.MeasureString(lbl, font);
+                            g.DrawString(lbl, font, Brushes.White,
+                                anchorX + swatch + gap, y + (itemHeight - ls.Height) / 2f);
                         }
                     }
                 }
+
+                _legendHost.Image   = _legendBitmap;
+                _legendHost.Visible = true;
+                _legendHost.Left    = 10;
+                _legendHost.Top     = 10;
+                _legendHost.BringToFront();
             }
-        }
-
-        private List<ContourLine> GenerateContours(
-            double[,] grid,
-            (double minLat, double maxLat, double minLon, double maxLon) b)
-        {
-            List<ContourLine> contours = new List<ContourLine>();
-
-            double minElev = Readings.Min(r => r.ElevationMeters);
-            double maxElev = Readings.Max(r => r.ElevationMeters);
-
-            double start = Math.Floor(minElev / ContourInterval) * ContourInterval;
-            double end = Math.Ceiling(maxElev / ContourInterval) * ContourInterval;
-
-            for (double level = start; level <= end + 1e-9; level += ContourInterval)
+            catch (Exception ex)
             {
-                List<List<PointLatLng>> lines = MarchingSquares(grid, b, level);
-
-                if (lines.Count < 1)
-                {
-                    continue;
-                }
-
-                foreach (List<PointLatLng> line in lines)
-                {
-                    contours.Add(new ContourLine
-                    {
-                        Level = level,
-                        Points = line
-                    });
-                }
+                Props.WriteErrorLog("ElevationOverlayCreator/ShowLegend: " + ex.Message);
             }
-
-            return contours;
         }
 
-        private List<PointLatLng> GetEdgeIntersections(
-            int r,
-            int c,
-            double v0,
-            double v1,
-            double v2,
-            double v3,
-            double level,
-            (double minLat, double maxLat, double minLon, double maxLon) b)
+        private void HideLegend()
         {
-            List<PointLatLng> pts = new List<PointLatLng>();
-
-            PointLatLng p0 = GridPoint(r, c, b);
-            PointLatLng p1 = GridPoint(r, c + 1, b);
-            PointLatLng p2 = GridPoint(r + 1, c + 1, b);
-            PointLatLng p3 = GridPoint(r + 1, c, b);
-
-            TryEdge(p0, p1, v0, v1, level, pts);
-            TryEdge(p1, p2, v1, v2, level, pts);
-            TryEdge(p2, p3, v2, v3, level, pts);
-            TryEdge(p3, p0, v3, v0, level, pts);
-
-            return pts;
+            if (_legendHost != null) _legendHost.Visible = false;
+            _legendBitmap?.Dispose();
+            _legendBitmap = null;
         }
 
-        private PointLatLng GridPoint(
-            int r,
-            int c,
-            (double minLat, double maxLat, double minLon, double maxLon) b)
+        // ── Private helpers ──────────────────────────────────────────────────────
+
+        private void ClearBitmap()
         {
-            double lat = b.minLat + r * (b.maxLat - b.minLat) / (gridRows - 1);
-            double lon = b.minLon + c * (b.maxLon - b.minLon) / (gridCols - 1);
-            return new PointLatLng(lat, lon);
+            _elevBitmap?.Dispose();
+            _elevBitmap = null;
         }
 
-        private double Haversine(double lat1, double lon1, double lat2, double lon2)
+        private static List<FieldSample> FilterOutliers(List<FieldSample> src)
         {
-            double R = 6371000;
+            double mean = src.Average(r => r.ElevationMeters);
+            double sd   = Math.Sqrt(src.Average(r => Math.Pow(r.ElevationMeters - mean, 2)));
+            double lo   = mean - 3 * sd;
+            double hi   = mean + 3 * sd;
+            return src.Where(r => r.ElevationMeters >= lo && r.ElevationMeters <= hi).ToList();
+        }
+
+        private double IDW(double lat, double lon)
+        {
+            var env = new Envelope(lon - 0.002, lon + 0.002, lat - 0.002, lat + 0.002);
+            var pts = _tree.Query(env);
+
+            if (pts.Count == 0)
+                return _readings.Where(r => r.ElevationMeters != 0.0).Average(r => r.ElevationMeters);
+
+            double vSum = 0, wSum = 0;
+            foreach (var p in pts.Take(8))
+            {
+                double d = Haversine(lat, lon, p.Latitude, p.Longitude);
+                double w = 1.0 / (d * d + 0.0001);
+                vSum += w * p.ElevationMeters;
+                wSum += w;
+            }
+            return vSum / wSum;
+        }
+
+        private Color GetBandColor(double t)
+        {
+            int band = (int)(t * ColorBands);
+            return BandColors[Math.Min(band, BandColors.Length - 1)];
+        }
+
+        private static string FormatBand(double lo, double hi)
+        {
+            return string.Format("{0} - {1}", (int)Math.Round(lo), (int)Math.Round(hi));
+        }
+
+        private static (double minLat, double maxLat, double minLon, double maxLon) ComputeBounds(
+            List<FieldSample> src) =>
+        (
+            src.Min(r => r.Latitude),
+            src.Max(r => r.Latitude),
+            src.Min(r => r.Longitude),
+            src.Max(r => r.Longitude)
+        );
+
+        private static double Haversine(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371000;
             double dLat = (lat2 - lat1) * Math.PI / 180;
             double dLon = (lon2 - lon1) * Math.PI / 180;
-
-            double a =
-                Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(lat1 * Math.PI / 180) *
-                Math.Cos(lat2 * Math.PI / 180) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
+            double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2)
+                     + Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180)
+                     * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
             return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        }
-
-        private double InterpolateElevation(double lat, double lon)
-        {
-            double delta = 0.0005;
-
-            Envelope queryEnv = new Envelope(lon - delta, lon + delta, lat - delta, lat + delta);
-            var candidates = _readingTree.Query(queryEnv);
-
-            if (candidates.Count == 0)
-            {
-                return Readings[0].ElevationMeters;
-            }
-
-            var nearest = candidates
-                .Select(r => new { r, Dist = Haversine(lat, lon, r.Latitude, r.Longitude) })
-                .OrderBy(x => x.Dist)
-                .Take(8)
-                .ToList();
-
-            if (nearest[0].Dist < 1)
-            {
-                return nearest[0].r.ElevationMeters;
-            }
-
-            double valueSum = 0;
-            double weightSum = 0;
-            foreach (var n in nearest)
-            {
-                double weight = 1.0 / (n.Dist * n.Dist);
-                valueSum += weight * n.r.ElevationMeters;
-                weightSum += weight;
-            }
-
-            return valueSum / weightSum;
-        }
-
-        private List<List<PointLatLng>> MarchingSquares(
-            double[,] grid,
-            (double minLat, double maxLat, double minLon, double maxLon) b,
-            double level)
-        {
-            List<Segment> segments = new List<Segment>();
-
-            int rows = grid.GetLength(0);
-            int cols = grid.GetLength(1);
-
-            for (int r = 0; r < rows - 1; r++)
-            {
-                for (int c = 0; c < cols - 1; c++)
-                {
-                    double v0 = grid[r, c];
-                    double v1 = grid[r, c + 1];
-                    double v2 = grid[r + 1, c + 1];
-                    double v3 = grid[r + 1, c];
-
-                    int idx = 0;
-                    if (v0 > level) idx |= 1;
-                    if (v1 > level) idx |= 2;
-                    if (v2 > level) idx |= 4;
-                    if (v3 > level) idx |= 8;
-
-                    if (idx == 0 || idx == 15)
-                    {
-                        continue;
-                    }
-
-                    List<PointLatLng> edges = GetEdgeIntersections(r, c, v0, v1, v2, v3, level, b);
-
-                    if (edges.Count == 2)
-                    {
-                        segments.Add(new Segment { A = edges[0], B = edges[1] });
-                    }
-                    else if (edges.Count == 4)
-                    {
-                        double center = (v0 + v1 + v2 + v3) / 4.0;
-
-                        if (center > level)
-                        {
-                            segments.Add(new Segment { A = edges[0], B = edges[3] });
-                            segments.Add(new Segment { A = edges[1], B = edges[2] });
-                        }
-                        else
-                        {
-                            segments.Add(new Segment { A = edges[0], B = edges[1] });
-                            segments.Add(new Segment { A = edges[2], B = edges[3] });
-                        }
-                    }
-                }
-            }
-
-            return StitchSegments(segments);
-        }
-
-        private double MetersBetweenLat(double lat1, double lat2)
-        {
-            return Haversine(lat1, 0, lat2, 0);
-        }
-
-        private double MetersBetweenLon(double lon1, double lon2, double lat)
-        {
-            return Haversine(lat, lon1, lat, lon2);
-        }
-
-        private double PolylineLengthMeters(List<PointLatLng> line)
-        {
-            double length = 0;
-
-            for (int i = 1; i < line.Count; i++)
-            {
-                length += Haversine(
-                    line[i - 1].Lat, line[i - 1].Lng,
-                    line[i].Lat, line[i].Lng);
-            }
-
-            return length;
-        }
-
-        private double[,] SmoothGrid(double[,] grid, int passes = 2)
-        {
-            int rows = grid.GetLength(0);
-            int cols = grid.GetLength(1);
-            double[,] result = (double[,])grid.Clone();
-
-            for (int p = 0; p < passes; p++)
-            {
-                double[,] temp = (double[,])result.Clone();
-                for (int r = 0; r < rows; r++)
-                {
-                    for (int c = 0; c < cols; c++)
-                    {
-                        double sum = 0;
-                        int count = 0;
-                        for (int dr = -1; dr <= 1; dr++)
-                        {
-                            for (int dc = -1; dc <= 1; dc++)
-                            {
-                                int rr = r + dr;
-                                int cc = c + dc;
-                                if (rr >= 0 && rr < rows && cc >= 0 && cc < cols)
-                                {
-                                    sum += result[rr, cc];
-                                    count++;
-                                }
-                            }
-                        }
-
-                        temp[r, c] = sum / count;
-                    }
-                }
-
-                result = temp;
-            }
-
-            return result;
-        }
-
-        private List<List<PointLatLng>> StitchSegments(List<Segment> segments)
-        {
-            List<List<PointLatLng>> lines = new List<List<PointLatLng>>();
-            double tol = 1e-7;
-
-            while (segments.Count > 0)
-            {
-                Segment seg = segments[0];
-                segments.RemoveAt(0);
-
-                List<PointLatLng> line = new List<PointLatLng> { seg.A, seg.B };
-                bool extended;
-
-                do
-                {
-                    extended = false;
-
-                    for (int i = segments.Count - 1; i >= 0; i--)
-                    {
-                        Segment s = segments[i];
-
-                        if (Close(line[line.Count - 1], s.A, tol))
-                        {
-                            line.Add(s.B);
-                            segments.RemoveAt(i);
-                            extended = true;
-                        }
-                        else if (Close(line[line.Count - 1], s.B, tol))
-                        {
-                            line.Add(s.A);
-                            segments.RemoveAt(i);
-                            extended = true;
-                        }
-                        else if (Close(line[0], s.B, tol))
-                        {
-                            line.Insert(0, s.A);
-                            segments.RemoveAt(i);
-                            extended = true;
-                        }
-                        else if (Close(line[0], s.A, tol))
-                        {
-                            line.Insert(0, s.B);
-                            segments.RemoveAt(i);
-                            extended = true;
-                        }
-                    }
-                } while (extended);
-
-                lines.Add(line);
-            }
-
-            return lines;
-        }
-
-        private void TryEdge(PointLatLng a, PointLatLng b, double va, double vb, double level, List<PointLatLng> pts)
-        {
-            if ((va - level) * (vb - level) >= 0)
-            {
-                return;
-            }
-
-            if (Math.Abs(vb - va) < 1e-9)
-            {
-                return;
-            }
-
-            double t = (level - va) / (vb - va);
-
-            pts.Add(new PointLatLng(
-                a.Lat + t * (b.Lat - a.Lat),
-                a.Lng + t * (b.Lng - a.Lng)));
-        }
-
-        private struct Segment
-        {
-            public PointLatLng A;
-            public PointLatLng B;
-        }
-    }
-
-    public class TextMarker : GMapMarker
-    {
-        private const int PadX = 3;
-        private const int PadY = 1;
-
-        private static readonly Brush BgBrush = new SolidBrush(Color.FromArgb(255, 255, 255, 200));
-        private static readonly Pen BorderPen = new Pen(Color.FromArgb(255, 160, 160, 120), 1);
-        private static readonly Brush TextBrush = new SolidBrush(Color.Black);
-        private static readonly Font TextFont = new Font("Segoe UI", 11, FontStyle.Bold);
-
-        public TextMarker(PointLatLng position, double elevationMeters)
-            : base(position)
-        {
-            ElevationMeters = elevationMeters;
-        }
-
-        public double ElevationMeters { get; }
-
-        public override void OnRender(Graphics g)
-        {
-            string text = GetDisplayText();
-            if (string.IsNullOrEmpty(text))
-            {
-                return;
-            }
-
-            var oldMode = g.CompositingMode;
-            g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
-
-            SizeF textSize = g.MeasureString(text, TextFont);
-
-            float w = textSize.Width + PadX * 2;
-            float h = textSize.Height + PadY * 2;
-
-            float x = LocalPosition.X - w / 2;
-            float y = LocalPosition.Y - h / 2;
-
-            RectangleF rect = new RectangleF(x, y, w, h);
-
-            g.FillRectangle(BgBrush, rect);
-
-            g.CompositingMode = oldMode;
-
-            g.DrawRectangle(BorderPen, rect.X, rect.Y, rect.Width, rect.Height);
-            g.DrawString(text, TextFont, TextBrush, rect.X + PadX, rect.Y + PadY);
-        }
-
-        private string GetDisplayText()
-        {
-            if (Props.UseMetric)
-            {
-                return string.Format("{0:F1} m", ElevationMeters);
-            }
-
-            double feet = ElevationMeters * 3.28084;
-            return string.Format("{0:0} ft", Math.Round(feet));
         }
     }
 }

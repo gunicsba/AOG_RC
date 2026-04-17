@@ -91,7 +91,7 @@ namespace RateController.Menu
                 if (lvJobs.SelectedItems.Count > 0)
                 {
                     Job SelectedJob = lvJobs.SelectedItems[0].Tag as Job;
-                    if (SelectedJob != null && SelectedJob.ID != 0)    // keep 0, default job
+                    if (SelectedJob != null && SelectedJob.ID >= 0)    // keep 0, default job
                     {
                         var Hlp = new frmMsgBox("Confirm Delete [" + SelectedJob.Name + "] and all job data?", "Delete File", true);
                         Hlp.TopMost = true;
@@ -287,6 +287,12 @@ namespace RateController.Menu
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(cbField.Text))
+                {
+                    Props.ShowMessage("A field name is required before saving a job.", "Save Job", 8000, true);
+                    return;
+                }
+
                 // save parcel
                 int? selectedFieldID = cbField.SelectedValue as int?;
                 Parcel selectedParcel = selectedFieldID.HasValue
@@ -504,6 +510,15 @@ namespace RateController.Menu
                 SetLanguage();
                 UpdateEditingJob();
                 UpdateForm();
+
+                if (JobManager.GetJobsList().Count == 0)
+                {
+                    EditingJob = new Job();
+                    EditingJob.Date = DateTime.Now;
+                    IsNewJob = true;
+                    SetButtons(true);
+                    UpdateForm();
+                }
             }
             catch (Exception ex)
             {
@@ -514,6 +529,13 @@ namespace RateController.Menu
         private void frmMenuJobs_Shown(object sender, EventArgs e)
         {
             HighlightCurrentJob();
+
+            if (JobManager.HasFieldlessJobs)
+            {
+                Props.ShowMessage(
+                    "One or more jobs have no field assigned. Load each job and assign a field before use.",
+                    "Field Required", 20000, true);
+            }
         }
 
         private void gbCurrentJob_Paint(object sender, PaintEventArgs e)

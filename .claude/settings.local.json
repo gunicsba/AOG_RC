@@ -65,7 +65,22 @@
       "Bash(perl:*)",
       "Bash(where pandoc:*)",
       "Read(//c/Program Files/**)",
-      "Read(//c/Users/CoxDa/AppData/Local/**)"
+      "Read(//c/Users/CoxDa/AppData/Local/**)",
+      "Bash(xargs head:*)",
+      "Bash(git -C \"F:/Documents/GitHub/RateControl/AOG_RC\" log --all --oneline -- RateAppSource/RateController/Classes/Core.cs)",
+      "Bash(git -C \"F:/Documents/GitHub/RateControl/AOG_RC\" show 6a85caab -- RateAppSource/RateController/Classes/Core.cs)",
+      "Bash(git -C \"F:/Documents/GitHub/RateControl/AOG_RC\" show 6a85caab:RateAppSource/RateController/Classes/Core.cs)",
+      "Bash(git -C \"F:/Documents/GitHub/RateControl/AOG_RC\" show 6a85caab:RateAppSource/RateController/Forms/frmMain.cs)",
+      "Bash(git:*)",
+      "Bash(wait)",
+      "Read(//tmp/**)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s https://raw.githubusercontent.com/ajayre/aggrade/master/Application/Data/MapGenerator.cs)",
+      "Read(//c/Users/CoxDa/Documents/RateController/**)",
+      "Read(//c/Users/CoxDa/**)",
+      "Bash(sort -t: -k2 -rn)"
     ]
   }
 }

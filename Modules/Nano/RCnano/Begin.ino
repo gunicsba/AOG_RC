@@ -3,8 +3,8 @@ void DoSetup()
 	uint8_t ErrorCount = 0;
 	bool WheelMatch = false;
 
-	Sensor[0].FlowEnabled = false;
-	Sensor[1].FlowEnabled = false;
+	Sensor[0].AdjustmentEnabled = false;
+	Sensor[1].AdjustmentEnabled = false;
 
 	Serial.begin(38400);
 	delay(3000);
@@ -268,6 +268,24 @@ void DoSetup()
 	}
 
 	Serial.println(F("ADS1115: Disabled "));
+
+	if (GoodPins)
+	{
+		Serial.println(F("Pin configuration correct."));
+	}
+	else
+	{
+		Serial.println(F("Pin configuration not correct."));
+	}
+
+	if (MDL.Is3Wire)
+	{
+		Serial.println(F("Valves are 3 wire."));
+	}
+	else
+	{
+		Serial.println(F("Valves are 2 wire."));
+	}
 
 	Serial.println("");
 	Serial.println(F("Finished setup."));

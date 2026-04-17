@@ -1,4 +1,5 @@
 ﻿using GMap.NET.WindowsForms;
+using Newtonsoft.Json;
 using RateController.Classes;
 using System;
 using System.Collections.Generic;
@@ -6,11 +7,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net.NetworkInformation;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using Newtonsoft.Json;
 
 namespace RateController.RateMap
 {
@@ -51,6 +48,8 @@ namespace RateController.RateMap
         private bool cLegendChanged = false;
         private int CurrentProduct = 0;
         private double LegendBaseValue = 0;
+        private double _yieldMin = 0;
+        private double _yieldMax = 1;
         private Bitmap legendBitmap;
         private Font legendFont;
         private PictureBox legendHost;
@@ -113,6 +112,14 @@ namespace RateController.RateMap
 
         public int BandIndex(double value)
         {
+            if (cIsYieldData)
+            {
+                double range = _yieldMax - _yieldMin;
+                if (range <= 0) return 0;
+                int band = (int)((value - _yieldMin) / range * 5);
+                return Math.Max(0, Math.Min(4, band));
+            }
+
             int Result = 0;
             if (LegendBaseValue > 0)
             {
@@ -130,6 +137,17 @@ namespace RateController.RateMap
                 }
             }
             return Result;
+        }
+
+        // Called by YieldOverlayCreator after computing min/max yield from the data.
+        // Sets up the yield colour bands and shows the legend.
+        public void SetYieldScale(double min, double max)
+        {
+            if (!cIsYieldData) return;
+            _yieldMin = min;
+            _yieldMax = max;
+            CreateYieldLegend(min, max);
+            Show();
         }
 
         public void Dispose()
@@ -398,6 +416,34 @@ namespace RateController.RateMap
             }
         }
 
+        private void CreateYieldLegend(double min, double max)
+        {
+            try
+            {
+                bool   metric = Props.UseMetric;
+                double scale  = metric ? 1.0 : 2.20462;   // kg → lb (simple; bushels need crop type)
+                string unit   = metric ? "kg" : "lb";
+                string title  = string.Format("Yield ({0})", unit);
+
+                double step = (max - min) / 5.0;
+                var bands = new Dictionary<string, Color>();
+                for (int i = 0; i < 5; i++)
+                {
+                    double lo  = (min + i * step) * scale;
+                    double hi  = (min + (i + 1) * step) * scale;
+                    string lbl = string.Format("{0:F0} - {1:F0}", lo, hi);
+                    bands[lbl] = Palette.GetColor(i, true, 255);
+                }
+
+                cCurrentLegend = new LegendObject { Bands = bands, Title = title };
+                cLegendChanged = true;
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("LegendManager/CreateYieldLegend: " + ex.Message);
+            }
+        }
+
         private void CreateLegend(double BaseValue, string NewTitle)
         {
             try
@@ -473,14 +519,17 @@ namespace RateController.RateMap
         private string LegendPath()
         {
             string Result = "";
-            var basePath = Path.ChangeExtension(JobManager.CurrentMapPath, null); // strip .shp
-            if (cIsYieldData)
+            Job job = JobManager.CurrentJob;
+            if (job != null)
             {
-                Result = basePath + "_YieldLegend.json";
-            }
-            else
-            {
-                Result = basePath + "_AppliedLegend.json";
+                if (cIsYieldData)
+                {
+                    Result = Path.Combine(job.JobFolder, "YieldLegend.json");
+                }
+                else
+                {
+                    Result = Path.Combine(job.JobFolder, "AppliedLegend.json");
+                }
             }
             return Result;
         }
@@ -543,7 +592,7 @@ namespace RateController.RateMap
                     }
                     else
                     {
-                        LegendBaseValue = Core.Products.Item(MapController.ProductFilter).TargetRate(true);
+                        LegendBaseValue = GetBaseValue();
                         string Title = Core.Products.Item(MapController.ProductFilter).ProductName;
                         CreateLegend(LegendBaseValue, Title);
                     }
@@ -634,6 +683,24 @@ namespace RateController.RateMap
             {
                 Props.WriteErrorLog("LegendManager/Save: " + ex.Message);
             }
+        }
+
+        private double GetBaseValue()
+        {
+            // Try to get base value from actual applied rate data
+            var readings = MapController.RateCollector.GetReadings();
+            double detectedBase = 0;
+            if (readings != null && readings.Count > 0)
+            {
+                int pf = MapController.ProductFilter;
+                var nonZero = readings
+                    .Where(r => r.AppliedRates != null && r.AppliedRates.Length > pf && r.AppliedRates[pf] > 0)
+                    .Select(r => r.AppliedRates[pf])
+                    .ToList();
+                if (nonZero.Count > 0)
+                    detectedBase = nonZero.Average();
+            }
+            return detectedBase > 0 ? detectedBase : Core.Products.Item(MapController.ProductFilter).TargetRate(true);
         }
     }
 

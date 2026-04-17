@@ -8,8 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RateController.RateMap
 {
@@ -730,6 +728,26 @@ namespace RateController.RateMap
             MapController.Refresh();
         }
 
+        // Adds auto-generated zones (e.g. from ProductivityZoneCreator) to the target layer,
+        // rebuilds the spatial index, enables the target overlay, and saves the map.
+        public void AddAutoZones(List<MapZone> zones)
+        {
+            try
+            {
+                foreach (var z in zones) cTargetZonesList.Add(z);
+                BuildTargetZonesIndex();
+                cShowTarget = true;
+                Props.SetProp("MapShowTargetOverlay", "True");
+                ShowTargetOverlay();
+                ZonesChanged?.Invoke(null, EventArgs.Empty);
+                MapController.SaveMap();
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("ZoneManager/AddAutoZones: " + ex.Message);
+            }
+        }
+
         public int TargetZoneCount()
         {
             return cTargetZonesList.Count;
@@ -1008,7 +1026,7 @@ namespace RateController.RateMap
             return new PointLatLng(origin.Lat + dLat, origin.Lng + dLng);
         }
 
-        private bool ZoneNameFound(string Name, MapZone ExcludeZone = null)
+        public bool ZoneNameFound(string Name, MapZone ExcludeZone = null)
         {
             bool Result = false;
             foreach (MapZone zn in cTargetZonesList)

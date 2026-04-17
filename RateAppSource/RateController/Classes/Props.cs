@@ -72,12 +72,12 @@ namespace RateController.Classes
             Lang.lgTramLeft,Lang.lgGeoStop,Lang.lgSwitch, Lang.lgNone,Lang.lgInvert_Master};
 
         private static string cActivityFileName = "";
-        private static string cAppDate = "27-Feb-2026";
+        private static string cAppDate = "16-Apr-2026";
         private static string cApplicationFolder;
         private static string cAppName = "RateController";
         private static SortedDictionary<string, string> cAppProps = new SortedDictionary<string, string>();
         private static string cAppPropsFileName = "";
-        private static string cAppVersion = "4.3.0";
+        private static string cAppVersion = "4.3.1";
         private static bool cCanEnabled = false;
         private static string cCanPort = "COM7";
         private static CanDriver cCurrentCanDriver = CanDriver.SLCAN;
@@ -104,7 +104,6 @@ namespace RateController.Classes
         private static bool cShowSwitches;
         private static double cSimSpeed = 0;
         private static SpeedType cSpeedMode = SpeedType.GPS;
-        private static bool cUseDualAuto;
         private static bool cUseMetric;
         private static bool cUseRateDisplay = false;
         private static bool cUseVariableRate = false;
@@ -112,6 +111,7 @@ namespace RateController.Classes
         private static string[] LanguageIDs = new string[] { "en", "de", "hu", "nl", "pl", "ru", "fr", "lt" };
         private static string lastMessage = "";
         private static DateTime lastMessageTime = DateTime.MinValue;
+        private static bool cMasterMaintained = false;
 
         #region pressure calibration
 
@@ -386,6 +386,17 @@ namespace RateController.Classes
             }
         }
 
+        public static bool MasterMaintained
+        {
+            // whether the master switch is momentary or maintained
+            get { return cMasterMaintained; }
+            set
+            {
+                cMasterMaintained = value;
+                SetAppProp("MasterMaintained", cMasterMaintained.ToString());
+            }
+        }
+
         public static double Speed_KMH
         {
             get
@@ -439,15 +450,6 @@ namespace RateController.Classes
             }
         }
 
-        public static bool UseDualAuto
-        {
-            get { return cUseDualAuto; }
-            set
-            {
-                cUseDualAuto = value;
-                SetAppProp("UseDualAuto", cUseDualAuto.ToString());
-            }
-        }
 
         public static bool UseMapPreview
         {
@@ -967,13 +969,13 @@ namespace RateController.Classes
             cUseMetric = bool.TryParse(GetAppProp("UseMetric"), out bool mt) ? mt : false;
             cShowPressure = bool.TryParse(GetAppProp("ShowPressure"), out bool sp) ? sp : false;
             cShowSwitches = bool.TryParse(GetAppProp("ShowSwitches"), out bool ss) ? ss : false;
-            cUseDualAuto = bool.TryParse(GetAppProp("UseDualAuto"), out bool da) ? da : false;
             cUseRateDisplay = bool.TryParse(GetAppProp("UseRateDisplay"), out bool rtd) ? rtd : false;
             cMapPreview = bool.TryParse(GetAppProp("MapPreview"), out bool mp) ? mp : false;
             cCurrentCanDriver = Enum.TryParse(GetAppProp("CanDriver"), out CanDriver dr) ? dr : CanDriver.SLCAN;
             cShowCanDiagnostics = bool.TryParse(GetAppProp("CanDiagnostics"), out bool di) ? di : false;
             string port = GetAppProp("CanPort");
             cCanPort = string.IsNullOrEmpty(port) ? "COM7" : port;
+            cMasterMaintained = bool.TryParse(GetAppProp("MasterMaintained"), out bool mm) ? mm : false;
 
             for (int i = 0; i < 40; i++)
             {
@@ -1124,12 +1126,21 @@ namespace RateController.Classes
             }
         }
 
-        public static bool ShowLog(string FileName)
+        public static bool ShowFile(string FileName, string Location = null)
         {
             bool Result = false;
             try
             {
-                string Name = cApplicationFolder + "\\" + FileName;
+                string Name = "";
+                if (Location == null)
+                {
+                    Name = cApplicationFolder + "\\" + FileName;
+                }
+                else
+                {
+                    Name = Location + "\\" + FileName;
+                }
+
                 if (File.Exists(Name))
                 {
                     Process.Start(new ProcessStartInfo(Name) { UseShellExecute = true });
@@ -1138,7 +1149,29 @@ namespace RateController.Classes
             }
             catch (Exception ex)
             {
-                WriteErrorLog("Tools: OpenTextFile: " + ex.Message);
+                WriteErrorLog("Tools: OpenFile: " + ex.Message);
+            }
+            return Result;
+        }
+
+        public static bool DeleteLogs()
+        {
+            bool Result = false;
+            try
+            {
+                string file1 = Path.Combine(cApplicationFolder, "Activity Log.txt");
+                string file2 = Path.Combine(cApplicationFolder, "Error Log.txt");
+                string file3 = Path.Combine(cApplicationFolder, "Ethernet Log.txt");
+
+                File.Create(file1);
+                File.Create(file2);
+                File.Create(file3);
+
+                Result = true;
+            }
+            catch (Exception ex)
+            {
+                WriteErrorLog("Props/DeleteFile: " + ex.Message);
             }
             return Result;
         }

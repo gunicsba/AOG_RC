@@ -1,5 +1,4 @@
 ﻿using RateController.Classes;
-using RateController.Forms;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -9,7 +8,6 @@ namespace RateController
     public partial class RCRestore : Form
     {
         private bool IsShutDown = false;
-        private MouseButtons MouseButtonClicked;
         private Point MouseDownLocation;
 
         public RCRestore()
@@ -45,17 +43,17 @@ namespace RateController
         private void mouseMove_MouseDown(object sender, MouseEventArgs e)
         {
             // Log the current window location and the mouse location.
-            MouseButtonClicked = e.Button;
-            if (e.Button == MouseButtons.Right) MouseDownLocation = e.Location;
+            if (e.Button == MouseButtons.Right || e.Button == MouseButtons.Left) MouseDownLocation = e.Location;
         }
 
         private void mouseMove_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Right) this.Location = new Point(this.Left + e.X - MouseDownLocation.X, this.Top + e.Y - MouseDownLocation.Y);
+            if (e.Button == MouseButtons.Right || e.Button == MouseButtons.Left) this.Location = new Point(this.Left + e.X - MouseDownLocation.X, this.Top + e.Y - MouseDownLocation.Y);
         }
 
         private void RCRestore_FormClosing(object sender, FormClosingEventArgs e)
         {
+            Props.SaveFormLocation(this);
             ShutDown();
         }
 
@@ -64,11 +62,8 @@ namespace RateController
             Core.ColorChanged += Core_ColorChanged;
             Core.AppExit += Core_AppExit;
 
-            frmMain FormToHide = Core.MainForm;
-            this.Top = FormToHide.Top + FormToHide.Height - this.Height;
-            this.Left = FormToHide.Left + FormToHide.Width - this.Width;
+            Props.LoadFormLocation(this);
 
-            FormToHide.WindowState = FormWindowState.Minimized;
             timer1.Enabled = true;
             SetColor();
             UpdateForm();
@@ -76,14 +71,7 @@ namespace RateController
 
         private void RestoreLC_Click(object sender, EventArgs e)
         {
-            if (MouseButtonClicked == MouseButtons.Left)
-            {
-                timer1.Enabled = false;
-
-                Core.MainForm.WindowState = FormWindowState.Normal;
-                Core.RaiseRestoreMain();
-                this.Close();
-            }
+            Core.SetMainDisplay(true);
         }
 
         private void SetColor()
@@ -98,6 +86,7 @@ namespace RateController
             {
                 Core.ColorChanged -= Core_ColorChanged;
                 Core.AppExit -= Core_AppExit;
+                timer1.Enabled = false;
 
                 IsShutDown = true;
             }

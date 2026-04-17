@@ -1,10 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace RateController.Classes
 {
@@ -12,12 +10,17 @@ namespace RateController.Classes
     {
         private static readonly string FilePath = Props.FieldNamesPath;
 
+        public static event EventHandler ElevationSelectionChanged;
+
+        public static event EventHandler YieldSelectionChanged;
+
         public static void AddParcel(Parcel NewParcel)
         {
             var mappings = GetParcels();
             NewParcel.ID = mappings.Any() ? mappings.Max(m => m.ID) + 1 : 0;
             mappings.Add(NewParcel);
             SaveParcels(mappings);
+            EnsureFieldFolders(NewParcel.ID);
         }
 
         public static bool DeleteParcel(int FieldID, out bool InUse)
@@ -39,6 +42,7 @@ namespace RateController.Classes
                         mappings.Remove(mappingToRemove);
                         SaveParcels(mappings);
                         Result = true;
+                        GetDefaultParcel();
                     }
                 }
             }
@@ -48,6 +52,8 @@ namespace RateController.Classes
             }
             return Result;
         }
+
+        public static string EcFolder(int id) => Path.Combine(FieldFolder(id), "EC");
 
         public static bool EditParcel(Parcel UpdatedParcel)
         {
@@ -61,6 +67,31 @@ namespace RateController.Classes
             }
             return false;
         }
+
+        public static string ElevationFolder(int id) => Path.Combine(FieldFolder(id), "Elevation");
+
+        // Backward-compat shim — returns the currently selected elevation path.
+        public static string ElevationPath(int id) => SelectedElevationPath(id);
+
+        public static void EnsureFieldFolders(int id)
+        {
+            foreach (string dir in new[]
+            {
+                FieldFolder(id), MapsFolder(id), YieldFolder(id),
+                ElevationFolder(id), KmlFolder(id), EcFolder(id)
+            })
+            {
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            }
+        }
+
+        public static string FieldFolder(int id) => Path.Combine(Props.DefaultDir, "Fields", $"Field_{id}");
+
+        public static List<string> GetEcFiles(int id) => GetFilenames(EcFolder(id), "*.csv");
+
+        public static List<string> GetElevationFiles(int id) => GetFilenames(ElevationFolder(id), "*.csv");
+
+        public static List<string> GetKmlFiles(int id) => GetFilenames(KmlFolder(id), "*.kml");
 
         public static List<Parcel> GetParcels()
         {
@@ -84,6 +115,20 @@ namespace RateController.Classes
             }
         }
 
+        public static List<string> GetPrescriptionFiles(int id) => GetFilenames(MapsFolder(id), "*.shp");
+
+        public static List<string> GetYieldFiles(int id) => GetFilenames(YieldFolder(id), "*.csv");
+
+        public static void Initialize()
+        {
+            GetDefaultParcel();
+        }
+
+        public static string KmlFolder(int id) => Path.Combine(FieldFolder(id), "Kml");
+
+        public static string MapsFolder(int id) =>
+                                                    Path.Combine(FieldFolder(id), "Maps");
+
         public static void SaveParcels(List<Parcel> mappings)
         {
             try
@@ -102,11 +147,104 @@ namespace RateController.Classes
         {
             return GetParcels().FirstOrDefault(p => p.ID == ID);
         }
+
+        public static string SelectedEcPath(int fieldID)
+        {
+            Parcel p = SearchParcel(fieldID);
+            string file = p?.SelectedEcFile;
+            if (file == null) return null;
+            string full = Path.Combine(EcFolder(fieldID), file);
+            return File.Exists(full) ? full : null;
+        }
+
+        public static string SelectedElevationPath(int fieldID)
+        {
+            Parcel p = SearchParcel(fieldID);
+            string file = p?.SelectedElevationFile;
+            if (file == null) return null;
+            string full = Path.Combine(ElevationFolder(fieldID), file);
+            return File.Exists(full) ? full : null;
+        }
+
+        public static string SelectedYieldPath(int fieldID)
+        {
+            Parcel p = SearchParcel(fieldID);
+            string file = p?.SelectedYieldFile;
+            if (file == null) return null;
+            string full = Path.Combine(YieldFolder(fieldID), file);
+            return File.Exists(full) ? full : null;
+        }
+
+        public static void SetSelectedEcPath(int fieldID, string path)
+        {
+            string file = path != null ? Path.GetFileName(path) : null;
+            var parcels = GetParcels();
+            var p = parcels.FirstOrDefault(m => m.ID == fieldID);
+            if (p != null) { p.SelectedEcFile = file; SaveParcels(parcels); }
+        }
+
+        public static void SetSelectedElevationPath(int fieldID, string path)
+        {
+            string file = path != null ? Path.GetFileName(path) : null;
+            var parcels = GetParcels();
+            var p = parcels.FirstOrDefault(m => m.ID == fieldID);
+            if (p != null)
+            {
+                p.SelectedElevationFile = file;
+                SaveParcels(parcels);
+            }
+            ElevationSelectionChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        public static void SetSelectedYieldPath(int fieldID, string path)
+        {
+            string file = path != null ? Path.GetFileName(path) : null;
+            var parcels = GetParcels();
+            var p = parcels.FirstOrDefault(m => m.ID == fieldID);
+            if (p != null)
+            {
+                p.SelectedYieldFile = file;
+                SaveParcels(parcels);
+            }
+            YieldSelectionChanged?.Invoke(null, EventArgs.Empty);
+        }
+
+        public static string YieldFolder(int id) => Path.Combine(FieldFolder(id), "Yield");
+
+        private static bool GetDefaultParcel()
+        {
+            bool Result = false;
+            var Flds = GetParcels();
+            if (Flds.FirstOrDefault(m => m.ID == 0) == null)
+            {
+                Parcel DefaultParcel = new Parcel();
+                DefaultParcel.ID = 0;
+                DefaultParcel.Name = "Default";
+                Flds.Add(DefaultParcel);
+                SaveParcels(Flds);
+                EnsureFieldFolders(DefaultParcel.ID);
+                Result = true;
+            }
+
+            return Result;
+        }
+
+        private static List<string> GetFilenames(string folder, string pattern)
+        {
+            if (!Directory.Exists(folder)) return new List<string>();
+            return Directory.GetFiles(folder, pattern)
+                .Select(Path.GetFileName)
+                .OrderByDescending(f => f)
+                .ToList();
+        }
     }
 
     public class Parcel
     {
         public int ID { get; set; }
         public string Name { get; set; }
+        public string SelectedEcFile { get; set; }
+        public string SelectedElevationFile { get; set; }
+        public string SelectedYieldFile { get; set; }
     }
 }

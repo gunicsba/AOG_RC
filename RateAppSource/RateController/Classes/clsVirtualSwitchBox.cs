@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RateController.Classes
 {
@@ -184,9 +180,17 @@ namespace RateController.Classes
             PGNdata[5] = Core.Tls.CRC(PGNdata, 5);
         }
 
+        public void PrimePressed()
+        {
+            PressSwitch(SwIDs.MasterOn);
+            ReleaseTimer.Enabled = true;
+            Core.SectionControl.StartPrime();
+        }
+
         public void RateDownPressed()
         {
             RateDownIsPressed = true;
+            PressSwitch(SwIDs.RateDown);
             SendTimer.Stop();   // reset to prevent double send
             SendTimer.Start();
             SendPGN();
@@ -196,11 +200,15 @@ namespace RateController.Classes
         public void RateDownReleased()
         {
             RateDownIsPressed = false;
+            PGNdata[2] = Core.Tls.BitClear(PGNdata[2], 4);
+            PGNdata[5] = Core.Tls.CRC(PGNdata, 5);
+            SendPGN();
         }
 
         public void RateUpPressed()
         {
             RateUpIsPressed = true;
+            PressSwitch(SwIDs.RateUp);
             SendTimer.Stop();   // reset to prevent double send
             SendTimer.Start();
             SendPGN();
@@ -210,6 +218,9 @@ namespace RateController.Classes
         public void RateUpReleased()
         {
             RateUpIsPressed = false;
+            PGNdata[2] = Core.Tls.BitClear(PGNdata[2], 3);
+            PGNdata[5] = Core.Tls.CRC(PGNdata, 5);
+            SendPGN();
         }
 
         private void Core_AppExit(object sender, EventArgs e)
@@ -232,12 +243,7 @@ namespace RateController.Classes
 
         private void SendPGN()
         {
-            if (!Core.SwitchBox.RealConnected())
-            {
-                Core.SwitchBox.ParseByteData(PGNdata, false);
-                if (RateDownIsPressed) PressSwitch(SwIDs.RateDown);
-                if (RateUpIsPressed) PressSwitch(SwIDs.RateUp);
-            }
+            if (!Core.SwitchBox.RealConnected()) Core.SwitchBox.ParseByteData(PGNdata, false);
         }
 
         private void SendTimer_Tick(object sender, EventArgs e)

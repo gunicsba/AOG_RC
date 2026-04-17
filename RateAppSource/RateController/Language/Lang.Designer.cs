@@ -151,7 +151,7 @@ namespace RateController.Language {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Area Remain..
+        ///   Looks up a localized string similar to Area Remain.
         /// </summary>
         internal static string lgAreaRemain {
             get {
@@ -331,7 +331,7 @@ namespace RateController.Language {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to Comm.
         /// </summary>
         internal static string lgComm {
             get {
@@ -345,6 +345,15 @@ namespace RateController.Language {
         internal static string lgCommDiagnostics {
             get {
                 return ResourceManager.GetString("lgCommDiagnostics", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Comm.
+        /// </summary>
+        internal static string lgCommMenu {
+            get {
+                return ResourceManager.GetString("lgCommMenu", resourceCulture);
             }
         }
         
@@ -1114,7 +1123,7 @@ namespace RateController.Language {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to On Screen.
+        ///   Looks up a localized string similar to On-Screen Switches.
         /// </summary>
         internal static string lgOnScreen {
             get {
@@ -1825,7 +1834,7 @@ namespace RateController.Language {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Qty Remain..
+        ///   Looks up a localized string similar to Qty Remain.
         /// </summary>
         internal static string lgTank_Remaining {
             get {

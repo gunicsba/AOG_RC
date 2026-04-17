@@ -243,6 +243,16 @@ namespace RateController.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap book_open_text {
+            get {
+                object obj = ResourceManager.GetObject("book-open-text", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap calendar___large {
             get {
                 object obj = ResourceManager.GetObject("calendar - large", resourceCulture);
@@ -503,6 +513,16 @@ namespace RateController.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap file_pdf2 {
+            get {
+                object obj = ResourceManager.GetObject("file-pdf2", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap file_text {
             get {
                 object obj = ResourceManager.GetObject("file-text", resourceCulture);
@@ -526,6 +546,26 @@ namespace RateController.Properties {
         internal static System.Drawing.Bitmap FileExplorerWindows {
             get {
                 object obj = ResourceManager.GetObject("FileExplorerWindows", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap FileList {
+            get {
+                object obj = ResourceManager.GetObject("FileList", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap files {
+            get {
+                object obj = ResourceManager.GetObject("files", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -1002,6 +1042,16 @@ namespace RateController.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap PDFfile {
+            get {
+                object obj = ResourceManager.GetObject("PDFfile", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap plus_square {
             get {
                 object obj = ResourceManager.GetObject("plus-square", resourceCulture);
@@ -1375,6 +1425,16 @@ namespace RateController.Properties {
         internal static System.Drawing.Bitmap Trash {
             get {
                 object obj = ResourceManager.GetObject("Trash", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap trash32 {
+            get {
+                object obj = ResourceManager.GetObject("trash32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

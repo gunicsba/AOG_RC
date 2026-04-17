@@ -33,64 +33,64 @@
             this.ckRateData = new System.Windows.Forms.CheckBox();
             this.ckSatView = new System.Windows.Forms.CheckBox();
             this.ckZones = new System.Windows.Forms.CheckBox();
-            this.ckUseVR = new System.Windows.Forms.CheckBox();
-            this.btnDeleteData = new System.Windows.Forms.Button();
             this.lbDataPoints = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.ckRecord = new System.Windows.Forms.CheckBox();
             this.pnlControls = new System.Windows.Forms.Panel();
+            this.ckEC = new System.Windows.Forms.CheckBox();
             this.ckYield = new System.Windows.Forms.CheckBox();
             this.ckElevation = new System.Windows.Forms.CheckBox();
             this.ckKML = new System.Windows.Forms.CheckBox();
-            this.btnHelp = new System.Windows.Forms.Button();
-            this.btnClose = new System.Windows.Forms.Button();
             this.pnlMain = new System.Windows.Forms.Panel();
             this.btnZoomIn = new System.Windows.Forms.Button();
             this.btnZoomOut = new System.Windows.Forms.Button();
             this.VSB = new System.Windows.Forms.VScrollBar();
             this.HSB = new System.Windows.Forms.HScrollBar();
             this.pnlMap = new System.Windows.Forms.Panel();
-            this.btnOK = new System.Windows.Forms.Button();
-            this.ckEdit = new System.Windows.Forms.CheckBox();
             this.lbArea = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.colorComboBox = new System.Windows.Forms.ComboBox();
-            this.btnDelete = new System.Windows.Forms.Button();
             this.lbP4 = new System.Windows.Forms.Label();
             this.tbP4 = new System.Windows.Forms.TextBox();
             this.lbP3 = new System.Windows.Forms.Label();
-            this.ckNew = new System.Windows.Forms.CheckBox();
             this.tbP3 = new System.Windows.Forms.TextBox();
             this.lbP2 = new System.Windows.Forms.Label();
             this.tbP2 = new System.Windows.Forms.TextBox();
             this.lbP1 = new System.Windows.Forms.Label();
             this.tbP1 = new System.Windows.Forms.TextBox();
             this.tbName = new System.Windows.Forms.TextBox();
-            this.btnCancel = new System.Windows.Forms.Button();
             this.tabControl1 = new System.Windows.Forms.TabControl();
+            this.tabPrescriptions = new System.Windows.Forms.TabPage();
+            this.lbRx = new System.Windows.Forms.ListBox();
+            this.btnImportRx = new System.Windows.Forms.Button();
+            this.btnExportRx = new System.Windows.Forms.Button();
+            this.btnDeleteRx = new System.Windows.Forms.Button();
+            this.btnNew = new System.Windows.Forms.Button();
+            this.lbPrescriptionLabel = new System.Windows.Forms.Label();
+            this.btnCopy = new System.Windows.Forms.Button();
+            this.lbFieldName = new System.Windows.Forms.Label();
             this.tabZones = new System.Windows.Forms.TabPage();
-            this.label12 = new System.Windows.Forms.Label();
+            this.btnFiles = new System.Windows.Forms.Button();
+            this.lbP5 = new System.Windows.Forms.Label();
             this.tbP5 = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
             this.lbAreaName = new System.Windows.Forms.Label();
+            this.btnOK = new System.Windows.Forms.Button();
+            this.ckEdit = new System.Windows.Forms.CheckBox();
+            this.btnCancel = new System.Windows.Forms.Button();
+            this.btnDelete = new System.Windows.Forms.Button();
+            this.ckNew = new System.Windows.Forms.CheckBox();
             this.tabData = new System.Windows.Forms.TabPage();
             this.rbProductE = new System.Windows.Forms.RadioButton();
             this.rbProductA = new System.Windows.Forms.RadioButton();
             this.rbProductD = new System.Windows.Forms.RadioButton();
             this.rbProductC = new System.Windows.Forms.RadioButton();
             this.rbProductB = new System.Windows.Forms.RadioButton();
-            this.tabFiles = new System.Windows.Forms.TabPage();
-            this.btnImportYieldData = new System.Windows.Forms.Button();
-            this.btnKMLdelete = new System.Windows.Forms.Button();
-            this.btnImportKML = new System.Windows.Forms.Button();
-            this.btnImportZones = new System.Windows.Forms.Button();
-            this.btnExport = new System.Windows.Forms.Button();
+            this.ckRecord = new System.Windows.Forms.CheckBox();
+            this.btnDeleteData = new System.Windows.Forms.Button();
             this.tabVR = new System.Windows.Forms.TabPage();
             this.label11 = new System.Windows.Forms.Label();
             this.tbTime5 = new System.Windows.Forms.TextBox();
             this.ckAutoTune = new System.Windows.Forms.CheckBox();
-            this.btnTimeOK = new System.Windows.Forms.Button();
-            this.btnTimeCancel = new System.Windows.Forms.Button();
             this.label10 = new System.Windows.Forms.Label();
             this.tbTime1 = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
@@ -100,6 +100,23 @@
             this.tbTime4 = new System.Windows.Forms.TextBox();
             this.tbTime3 = new System.Windows.Forms.TextBox();
             this.label9 = new System.Windows.Forms.Label();
+            this.btnTimeOK = new System.Windows.Forms.Button();
+            this.btnTimeCancel = new System.Windows.Forms.Button();
+            this.tabFiles = new System.Windows.Forms.TabPage();
+            this.cbElevation = new System.Windows.Forms.ComboBox();
+            this.cbEC = new System.Windows.Forms.ComboBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.btnGenerateTestYield = new System.Windows.Forms.Button();
+            this.btnGenerateTestElevation = new System.Windows.Forms.Button();
+            this.btnGenerateTestEC = new System.Windows.Forms.Button();
+            this.cbKML = new System.Windows.Forms.ComboBox();
+            this.lbKML = new System.Windows.Forms.Label();
+            this.lbYieldLabel = new System.Windows.Forms.Label();
+            this.cbYield = new System.Windows.Forms.ComboBox();
+            this.lbElevationLabel = new System.Windows.Forms.Label();
+            this.btnCreateZones = new System.Windows.Forms.Button();
+            this.btnFileDelete = new System.Windows.Forms.Button();
+            this.btnFileImport = new System.Windows.Forms.Button();
             this.pnlTabs = new System.Windows.Forms.Panel();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.tlpTitle = new System.Windows.Forms.TableLayoutPanel();
@@ -109,18 +126,17 @@
             this.btnTitleZoomOut = new System.Windows.Forms.Button();
             this.pnlControls2 = new System.Windows.Forms.Panel();
             this.btnMinimize = new System.Windows.Forms.Button();
-            this.label5 = new System.Windows.Forms.Label();
-            this.tbLong = new System.Windows.Forms.TextBox();
-            this.label4 = new System.Windows.Forms.Label();
             this.btnCentre = new System.Windows.Forms.Button();
-            this.tbLat = new System.Windows.Forms.TextBox();
+            this.btnHelp = new System.Windows.Forms.Button();
+            this.btnClose = new System.Windows.Forms.Button();
             this.pnlControls.SuspendLayout();
             this.pnlMain.SuspendLayout();
             this.tabControl1.SuspendLayout();
+            this.tabPrescriptions.SuspendLayout();
             this.tabZones.SuspendLayout();
             this.tabData.SuspendLayout();
-            this.tabFiles.SuspendLayout();
             this.tabVR.SuspendLayout();
+            this.tabFiles.SuspendLayout();
             this.pnlTabs.SuspendLayout();
             this.tlpTitle.SuspendLayout();
             this.pnlControls2.SuspendLayout();
@@ -133,7 +149,7 @@
             this.ckRateData.CheckState = System.Windows.Forms.CheckState.Checked;
             this.ckRateData.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.ckRateData.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckRateData.Location = new System.Drawing.Point(3, 150);
+            this.ckRateData.Location = new System.Drawing.Point(3, 146);
             this.ckRateData.Name = "ckRateData";
             this.ckRateData.Size = new System.Drawing.Size(89, 64);
             this.ckRateData.TabIndex = 366;
@@ -165,7 +181,7 @@
             this.ckZones.CheckState = System.Windows.Forms.CheckState.Checked;
             this.ckZones.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.ckZones.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckZones.Location = new System.Drawing.Point(3, 78);
+            this.ckZones.Location = new System.Drawing.Point(3, 76);
             this.ckZones.Name = "ckZones";
             this.ckZones.Size = new System.Drawing.Size(89, 64);
             this.ckZones.TabIndex = 364;
@@ -174,36 +190,10 @@
             this.ckZones.UseVisualStyleBackColor = true;
             this.ckZones.CheckedChanged += new System.EventHandler(this.ckZones_CheckedChanged);
             // 
-            // ckUseVR
-            // 
-            this.ckUseVR.Appearance = System.Windows.Forms.Appearance.Button;
-            this.ckUseVR.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
-            this.ckUseVR.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckUseVR.Location = new System.Drawing.Point(159, 296);
-            this.ckUseVR.Name = "ckUseVR";
-            this.ckUseVR.Size = new System.Drawing.Size(89, 64);
-            this.ckUseVR.TabIndex = 363;
-            this.ckUseVR.Text = "Enable VR";
-            this.ckUseVR.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.ckUseVR.UseVisualStyleBackColor = true;
-            this.ckUseVR.CheckedChanged += new System.EventHandler(this.ckUseVR_CheckedChanged);
-            // 
-            // btnDeleteData
-            // 
-            this.btnDeleteData.FlatAppearance.BorderSize = 0;
-            this.btnDeleteData.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeleteData.Image = global::RateController.Properties.Resources.Trash;
-            this.btnDeleteData.Location = new System.Drawing.Point(231, 250);
-            this.btnDeleteData.Name = "btnDeleteData";
-            this.btnDeleteData.Size = new System.Drawing.Size(89, 64);
-            this.btnDeleteData.TabIndex = 397;
-            this.btnDeleteData.UseVisualStyleBackColor = true;
-            this.btnDeleteData.Click += new System.EventHandler(this.btnDeleteData_Click);
-            // 
             // lbDataPoints
             // 
             this.lbDataPoints.Font = new System.Drawing.Font("Tahoma", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lbDataPoints.Location = new System.Drawing.Point(156, 83);
+            this.lbDataPoints.Location = new System.Drawing.Point(157, 105);
             this.lbDataPoints.Name = "lbDataPoints";
             this.lbDataPoints.Size = new System.Drawing.Size(111, 23);
             this.lbDataPoints.TabIndex = 396;
@@ -213,29 +203,16 @@
             // label1
             // 
             this.label1.Font = new System.Drawing.Font("Tahoma", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(112, 50);
+            this.label1.Location = new System.Drawing.Point(113, 72);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(198, 23);
             this.label1.TabIndex = 395;
             this.label1.Text = "Product Data points:";
             this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // ckRecord
-            // 
-            this.ckRecord.Appearance = System.Windows.Forms.Appearance.Button;
-            this.ckRecord.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
-            this.ckRecord.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckRecord.Image = global::RateController.Properties.Resources.record;
-            this.ckRecord.Location = new System.Drawing.Point(105, 250);
-            this.ckRecord.Name = "ckRecord";
-            this.ckRecord.Size = new System.Drawing.Size(89, 64);
-            this.ckRecord.TabIndex = 382;
-            this.ckRecord.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.ckRecord.UseVisualStyleBackColor = true;
-            this.ckRecord.CheckedChanged += new System.EventHandler(this.ckRecord_CheckedChanged);
-            // 
             // pnlControls
             // 
+            this.pnlControls.Controls.Add(this.ckEC);
             this.pnlControls.Controls.Add(this.ckYield);
             this.pnlControls.Controls.Add(this.ckElevation);
             this.pnlControls.Controls.Add(this.ckZones);
@@ -244,15 +221,29 @@
             this.pnlControls.Controls.Add(this.ckRateData);
             this.pnlControls.Location = new System.Drawing.Point(439, 2);
             this.pnlControls.Name = "pnlControls";
-            this.pnlControls.Size = new System.Drawing.Size(97, 438);
+            this.pnlControls.Size = new System.Drawing.Size(97, 494);
             this.pnlControls.TabIndex = 386;
+            // 
+            // ckEC
+            // 
+            this.ckEC.Appearance = System.Windows.Forms.Appearance.Button;
+            this.ckEC.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
+            this.ckEC.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ckEC.Location = new System.Drawing.Point(3, 356);
+            this.ckEC.Name = "ckEC";
+            this.ckEC.Size = new System.Drawing.Size(89, 64);
+            this.ckEC.TabIndex = 394;
+            this.ckEC.Text = "EC";
+            this.ckEC.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.ckEC.UseVisualStyleBackColor = true;
+            this.ckEC.CheckedChanged += new System.EventHandler(this.ckEC_CheckedChanged);
             // 
             // ckYield
             // 
             this.ckYield.Appearance = System.Windows.Forms.Appearance.Button;
             this.ckYield.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.ckYield.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckYield.Location = new System.Drawing.Point(3, 222);
+            this.ckYield.Location = new System.Drawing.Point(3, 286);
             this.ckYield.Name = "ckYield";
             this.ckYield.Size = new System.Drawing.Size(89, 64);
             this.ckYield.TabIndex = 393;
@@ -266,7 +257,7 @@
             this.ckElevation.Appearance = System.Windows.Forms.Appearance.Button;
             this.ckElevation.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.ckElevation.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckElevation.Location = new System.Drawing.Point(3, 294);
+            this.ckElevation.Location = new System.Drawing.Point(3, 426);
             this.ckElevation.Name = "ckElevation";
             this.ckElevation.Size = new System.Drawing.Size(89, 64);
             this.ckElevation.TabIndex = 392;
@@ -280,7 +271,7 @@
             this.ckKML.Appearance = System.Windows.Forms.Appearance.Button;
             this.ckKML.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.ckKML.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckKML.Location = new System.Drawing.Point(3, 366);
+            this.ckKML.Location = new System.Drawing.Point(3, 216);
             this.ckKML.Name = "ckKML";
             this.ckKML.Size = new System.Drawing.Size(89, 64);
             this.ckKML.TabIndex = 371;
@@ -288,37 +279,6 @@
             this.ckKML.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.ckKML.UseVisualStyleBackColor = true;
             this.ckKML.CheckedChanged += new System.EventHandler(this.ckKML_CheckedChanged);
-            // 
-            // btnHelp
-            // 
-            this.btnHelp.BackColor = System.Drawing.Color.Transparent;
-            this.btnHelp.FlatAppearance.BorderSize = 0;
-            this.btnHelp.FlatAppearance.MouseDownBackColor = System.Drawing.Color.DarkSlateBlue;
-            this.btnHelp.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnHelp.Font = new System.Drawing.Font("Microsoft Sans Serif", 21.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnHelp.Image = global::RateController.Properties.Resources.Help;
-            this.btnHelp.Location = new System.Drawing.Point(382, 4);
-            this.btnHelp.Name = "btnHelp";
-            this.btnHelp.Size = new System.Drawing.Size(70, 63);
-            this.btnHelp.TabIndex = 392;
-            this.btnHelp.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
-            this.btnHelp.UseVisualStyleBackColor = false;
-            this.btnHelp.Click += new System.EventHandler(this.btnHelp_Click);
-            // 
-            // btnClose
-            // 
-            this.btnClose.BackColor = System.Drawing.Color.Transparent;
-            this.btnClose.FlatAppearance.BorderSize = 0;
-            this.btnClose.FlatAppearance.MouseDownBackColor = System.Drawing.Color.DarkSlateBlue;
-            this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClose.Font = new System.Drawing.Font("Microsoft Sans Serif", 36F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnClose.Image = ((System.Drawing.Image)(resources.GetObject("btnClose.Image")));
-            this.btnClose.Location = new System.Drawing.Point(457, 4);
-            this.btnClose.Name = "btnClose";
-            this.btnClose.Size = new System.Drawing.Size(70, 63);
-            this.btnClose.TabIndex = 386;
-            this.btnClose.UseVisualStyleBackColor = false;
-            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
             // 
             // pnlMain
             // 
@@ -385,6 +345,338 @@
             this.pnlMap.Size = new System.Drawing.Size(335, 338);
             this.pnlMap.TabIndex = 0;
             // 
+            // lbArea
+            // 
+            this.lbArea.Location = new System.Drawing.Point(244, 119);
+            this.lbArea.Name = "lbArea";
+            this.lbArea.Size = new System.Drawing.Size(67, 24);
+            this.lbArea.TabIndex = 342;
+            this.lbArea.Text = "0.0";
+            this.lbArea.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // label2
+            // 
+            this.label2.Location = new System.Drawing.Point(114, 388);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(68, 24);
+            this.label2.TabIndex = 341;
+            this.label2.Text = "Color";
+            // 
+            // colorComboBox
+            // 
+            this.colorComboBox.FormattingEnabled = true;
+            this.colorComboBox.Items.AddRange(new object[] {
+            "Blue",
+            "Green",
+            "Red ",
+            "Purple",
+            "Orange"});
+            this.colorComboBox.Location = new System.Drawing.Point(244, 384);
+            this.colorComboBox.Name = "colorComboBox";
+            this.colorComboBox.Size = new System.Drawing.Size(162, 32);
+            this.colorComboBox.TabIndex = 340;
+            this.colorComboBox.SelectedIndexChanged += new System.EventHandler(this.colorComboBox_SelectedIndexChanged);
+            this.colorComboBox.Click += new System.EventHandler(this.colorComboBox_Click);
+            // 
+            // lbP4
+            // 
+            this.lbP4.Location = new System.Drawing.Point(114, 291);
+            this.lbP4.Name = "lbP4";
+            this.lbP4.Size = new System.Drawing.Size(119, 24);
+            this.lbP4.TabIndex = 11;
+            this.lbP4.Text = "4";
+            // 
+            // tbP4
+            // 
+            this.tbP4.Location = new System.Drawing.Point(244, 289);
+            this.tbP4.Name = "tbP4";
+            this.tbP4.Size = new System.Drawing.Size(80, 29);
+            this.tbP4.TabIndex = 10;
+            this.tbP4.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.tbP4.Enter += new System.EventHandler(this.tbP4_Enter);
+            this.tbP4.Validating += new System.ComponentModel.CancelEventHandler(this.tbP4_Validating);
+            // 
+            // lbP3
+            // 
+            this.lbP3.Location = new System.Drawing.Point(114, 249);
+            this.lbP3.Name = "lbP3";
+            this.lbP3.Size = new System.Drawing.Size(119, 24);
+            this.lbP3.TabIndex = 9;
+            this.lbP3.Text = "3";
+            // 
+            // tbP3
+            // 
+            this.tbP3.Location = new System.Drawing.Point(244, 247);
+            this.tbP3.Name = "tbP3";
+            this.tbP3.Size = new System.Drawing.Size(80, 29);
+            this.tbP3.TabIndex = 8;
+            this.tbP3.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.tbP3.Enter += new System.EventHandler(this.tbP3_Enter);
+            this.tbP3.Validating += new System.ComponentModel.CancelEventHandler(this.tbP3_Validating);
+            // 
+            // lbP2
+            // 
+            this.lbP2.Location = new System.Drawing.Point(114, 207);
+            this.lbP2.Name = "lbP2";
+            this.lbP2.Size = new System.Drawing.Size(119, 24);
+            this.lbP2.TabIndex = 7;
+            this.lbP2.Text = "2";
+            // 
+            // tbP2
+            // 
+            this.tbP2.Location = new System.Drawing.Point(244, 205);
+            this.tbP2.Name = "tbP2";
+            this.tbP2.Size = new System.Drawing.Size(80, 29);
+            this.tbP2.TabIndex = 6;
+            this.tbP2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.tbP2.Enter += new System.EventHandler(this.tbP2_Enter);
+            this.tbP2.Validating += new System.ComponentModel.CancelEventHandler(this.tbP2_Validating);
+            // 
+            // lbP1
+            // 
+            this.lbP1.Location = new System.Drawing.Point(114, 165);
+            this.lbP1.Name = "lbP1";
+            this.lbP1.Size = new System.Drawing.Size(119, 24);
+            this.lbP1.TabIndex = 5;
+            this.lbP1.Text = "1";
+            // 
+            // tbP1
+            // 
+            this.tbP1.Location = new System.Drawing.Point(244, 163);
+            this.tbP1.Name = "tbP1";
+            this.tbP1.Size = new System.Drawing.Size(80, 29);
+            this.tbP1.TabIndex = 4;
+            this.tbP1.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.tbP1.Enter += new System.EventHandler(this.tbP1_Enter);
+            this.tbP1.Validating += new System.ComponentModel.CancelEventHandler(this.tbP1_Validating);
+            // 
+            // tbName
+            // 
+            this.tbName.Location = new System.Drawing.Point(114, 52);
+            this.tbName.Name = "tbName";
+            this.tbName.Size = new System.Drawing.Size(292, 29);
+            this.tbName.TabIndex = 2;
+            this.tbName.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.tbName.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.tbName_KeyPress);
+            // 
+            // tabControl1
+            // 
+            this.tabControl1.Appearance = System.Windows.Forms.TabAppearance.Buttons;
+            this.tabControl1.Controls.Add(this.tabPrescriptions);
+            this.tabControl1.Controls.Add(this.tabZones);
+            this.tabControl1.Controls.Add(this.tabData);
+            this.tabControl1.Controls.Add(this.tabVR);
+            this.tabControl1.Controls.Add(this.tabFiles);
+            this.tabControl1.ItemSize = new System.Drawing.Size(100, 50);
+            this.tabControl1.Location = new System.Drawing.Point(2, 2);
+            this.tabControl1.Name = "tabControl1";
+            this.tabControl1.SelectedIndex = 0;
+            this.tabControl1.Size = new System.Drawing.Size(431, 487);
+            this.tabControl1.SizeMode = System.Windows.Forms.TabSizeMode.Fixed;
+            this.tabControl1.TabIndex = 389;
+            // 
+            // tabPrescriptions
+            // 
+            this.tabPrescriptions.Controls.Add(this.lbRx);
+            this.tabPrescriptions.Controls.Add(this.btnImportRx);
+            this.tabPrescriptions.Controls.Add(this.btnExportRx);
+            this.tabPrescriptions.Controls.Add(this.btnDeleteRx);
+            this.tabPrescriptions.Controls.Add(this.btnNew);
+            this.tabPrescriptions.Controls.Add(this.lbPrescriptionLabel);
+            this.tabPrescriptions.Controls.Add(this.btnCopy);
+            this.tabPrescriptions.Controls.Add(this.lbFieldName);
+            this.tabPrescriptions.Location = new System.Drawing.Point(4, 54);
+            this.tabPrescriptions.Name = "tabPrescriptions";
+            this.tabPrescriptions.Size = new System.Drawing.Size(423, 429);
+            this.tabPrescriptions.TabIndex = 5;
+            this.tabPrescriptions.Text = "Rx";
+            this.tabPrescriptions.UseVisualStyleBackColor = true;
+            // 
+            // lbRx
+            // 
+            this.lbRx.FormattingEnabled = true;
+            this.lbRx.ItemHeight = 24;
+            this.lbRx.Location = new System.Drawing.Point(38, 93);
+            this.lbRx.Name = "lbRx";
+            this.lbRx.ScrollAlwaysVisible = true;
+            this.lbRx.Size = new System.Drawing.Size(344, 244);
+            this.lbRx.Sorted = true;
+            this.lbRx.TabIndex = 434;
+            this.lbRx.SelectedIndexChanged += new System.EventHandler(this.lbRx_SelectedIndexChanged);
+            // 
+            // btnImportRx
+            // 
+            this.btnImportRx.BackColor = System.Drawing.Color.Transparent;
+            this.btnImportRx.FlatAppearance.BorderSize = 0;
+            this.btnImportRx.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnImportRx.Image = global::RateController.Properties.Resources.folder_open_small;
+            this.btnImportRx.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.btnImportRx.Location = new System.Drawing.Point(253, 354);
+            this.btnImportRx.Name = "btnImportRx";
+            this.btnImportRx.Size = new System.Drawing.Size(82, 64);
+            this.btnImportRx.TabIndex = 431;
+            this.btnImportRx.Text = "Import";
+            this.btnImportRx.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnImportRx.UseVisualStyleBackColor = false;
+            this.btnImportRx.Click += new System.EventHandler(this.btnImportRx_Click);
+            // 
+            // btnExportRx
+            // 
+            this.btnExportRx.BackColor = System.Drawing.Color.Transparent;
+            this.btnExportRx.FlatAppearance.BorderSize = 0;
+            this.btnExportRx.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnExportRx.Image = global::RateController.Properties.Resources.folder_open_small;
+            this.btnExportRx.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.btnExportRx.Location = new System.Drawing.Point(335, 354);
+            this.btnExportRx.Name = "btnExportRx";
+            this.btnExportRx.Size = new System.Drawing.Size(82, 64);
+            this.btnExportRx.TabIndex = 430;
+            this.btnExportRx.Text = "Export";
+            this.btnExportRx.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnExportRx.UseVisualStyleBackColor = false;
+            this.btnExportRx.Click += new System.EventHandler(this.btnExportRx_Click);
+            // 
+            // btnDeleteRx
+            // 
+            this.btnDeleteRx.FlatAppearance.BorderSize = 0;
+            this.btnDeleteRx.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDeleteRx.Image = global::RateController.Properties.Resources.Trash;
+            this.btnDeleteRx.Location = new System.Drawing.Point(171, 354);
+            this.btnDeleteRx.Name = "btnDeleteRx";
+            this.btnDeleteRx.Size = new System.Drawing.Size(82, 64);
+            this.btnDeleteRx.TabIndex = 429;
+            this.btnDeleteRx.UseVisualStyleBackColor = true;
+            this.btnDeleteRx.Click += new System.EventHandler(this.btnDeleteRx_Click);
+            // 
+            // btnNew
+            // 
+            this.btnNew.FlatAppearance.BorderSize = 0;
+            this.btnNew.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnNew.Image = global::RateController.Properties.Resources.NewFile;
+            this.btnNew.Location = new System.Drawing.Point(7, 354);
+            this.btnNew.Name = "btnNew";
+            this.btnNew.Size = new System.Drawing.Size(82, 64);
+            this.btnNew.TabIndex = 428;
+            this.btnNew.UseVisualStyleBackColor = true;
+            this.btnNew.Click += new System.EventHandler(this.btnNew_Click);
+            // 
+            // lbPrescriptionLabel
+            // 
+            this.lbPrescriptionLabel.Location = new System.Drawing.Point(38, 65);
+            this.lbPrescriptionLabel.Name = "lbPrescriptionLabel";
+            this.lbPrescriptionLabel.Size = new System.Drawing.Size(114, 24);
+            this.lbPrescriptionLabel.TabIndex = 425;
+            this.lbPrescriptionLabel.Text = "Prescription:";
+            this.lbPrescriptionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // btnCopy
+            // 
+            this.btnCopy.FlatAppearance.BorderSize = 0;
+            this.btnCopy.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCopy.Image = global::RateController.Properties.Resources.copy1;
+            this.btnCopy.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnCopy.Location = new System.Drawing.Point(89, 354);
+            this.btnCopy.Name = "btnCopy";
+            this.btnCopy.Size = new System.Drawing.Size(82, 64);
+            this.btnCopy.TabIndex = 427;
+            this.btnCopy.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnCopy.UseVisualStyleBackColor = true;
+            this.btnCopy.Click += new System.EventHandler(this.btnCopy_Click);
+            // 
+            // lbFieldName
+            // 
+            this.lbFieldName.Font = new System.Drawing.Font("Tahoma", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbFieldName.Location = new System.Drawing.Point(38, 12);
+            this.lbFieldName.Name = "lbFieldName";
+            this.lbFieldName.Size = new System.Drawing.Size(370, 30);
+            this.lbFieldName.TabIndex = 424;
+            this.lbFieldName.Text = "Field:";
+            this.lbFieldName.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // tabZones
+            // 
+            this.tabZones.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.tabZones.Controls.Add(this.btnFiles);
+            this.tabZones.Controls.Add(this.lbP5);
+            this.tabZones.Controls.Add(this.tbP5);
+            this.tabZones.Controls.Add(this.label3);
+            this.tabZones.Controls.Add(this.lbAreaName);
+            this.tabZones.Controls.Add(this.lbArea);
+            this.tabZones.Controls.Add(this.tbName);
+            this.tabZones.Controls.Add(this.label2);
+            this.tabZones.Controls.Add(this.tbP1);
+            this.tabZones.Controls.Add(this.colorComboBox);
+            this.tabZones.Controls.Add(this.lbP1);
+            this.tabZones.Controls.Add(this.tbP2);
+            this.tabZones.Controls.Add(this.lbP4);
+            this.tabZones.Controls.Add(this.lbP2);
+            this.tabZones.Controls.Add(this.tbP4);
+            this.tabZones.Controls.Add(this.tbP3);
+            this.tabZones.Controls.Add(this.lbP3);
+            this.tabZones.Controls.Add(this.btnOK);
+            this.tabZones.Controls.Add(this.ckEdit);
+            this.tabZones.Controls.Add(this.btnCancel);
+            this.tabZones.Controls.Add(this.btnDelete);
+            this.tabZones.Controls.Add(this.ckNew);
+            this.tabZones.Location = new System.Drawing.Point(4, 54);
+            this.tabZones.Name = "tabZones";
+            this.tabZones.Padding = new System.Windows.Forms.Padding(3);
+            this.tabZones.Size = new System.Drawing.Size(423, 429);
+            this.tabZones.TabIndex = 0;
+            this.tabZones.Text = "Zones";
+            this.tabZones.UseVisualStyleBackColor = true;
+            // 
+            // btnFiles
+            // 
+            this.btnFiles.BackColor = System.Drawing.Color.Transparent;
+            this.btnFiles.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnFiles.FlatAppearance.BorderSize = 0;
+            this.btnFiles.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnFiles.Font = new System.Drawing.Font("Tahoma", 14.25F);
+            this.btnFiles.Image = global::RateController.Properties.Resources.files;
+            this.btnFiles.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.btnFiles.Location = new System.Drawing.Point(12, 354);
+            this.btnFiles.Name = "btnFiles";
+            this.btnFiles.Size = new System.Drawing.Size(70, 63);
+            this.btnFiles.TabIndex = 350;
+            this.btnFiles.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.btnFiles.UseVisualStyleBackColor = false;
+            this.btnFiles.Click += new System.EventHandler(this.btnFiles_Click);
+            // 
+            // lbP5
+            // 
+            this.lbP5.Location = new System.Drawing.Point(114, 333);
+            this.lbP5.Name = "lbP5";
+            this.lbP5.Size = new System.Drawing.Size(119, 24);
+            this.lbP5.TabIndex = 349;
+            this.lbP5.Text = "5";
+            // 
+            // tbP5
+            // 
+            this.tbP5.Location = new System.Drawing.Point(244, 331);
+            this.tbP5.Name = "tbP5";
+            this.tbP5.Size = new System.Drawing.Size(80, 29);
+            this.tbP5.TabIndex = 348;
+            this.tbP5.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.tbP5.Enter += new System.EventHandler(this.tbP5_Enter);
+            this.tbP5.Validating += new System.ComponentModel.CancelEventHandler(this.tbP5_Validating);
+            // 
+            // label3
+            // 
+            this.label3.Location = new System.Drawing.Point(114, 25);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(92, 24);
+            this.label3.TabIndex = 347;
+            this.label3.Text = "Name";
+            // 
+            // lbAreaName
+            // 
+            this.lbAreaName.Location = new System.Drawing.Point(114, 119);
+            this.lbAreaName.Name = "lbAreaName";
+            this.lbAreaName.Size = new System.Drawing.Size(68, 24);
+            this.lbAreaName.TabIndex = 346;
+            this.lbAreaName.Text = "Acres";
+            // 
             // btnOK
             // 
             this.btnOK.BackColor = System.Drawing.Color.Transparent;
@@ -395,7 +687,7 @@
             this.btnOK.Font = new System.Drawing.Font("Tahoma", 14.25F);
             this.btnOK.Image = global::RateController.Properties.Resources.Save;
             this.btnOK.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnOK.Location = new System.Drawing.Point(12, 301);
+            this.btnOK.Location = new System.Drawing.Point(12, 285);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(70, 63);
             this.btnOK.TabIndex = 344;
@@ -418,38 +710,23 @@
             this.ckEdit.UseVisualStyleBackColor = true;
             this.ckEdit.CheckedChanged += new System.EventHandler(this.ckEdit_CheckedChanged);
             // 
-            // lbArea
+            // btnCancel
             // 
-            this.lbArea.Location = new System.Drawing.Point(244, 67);
-            this.lbArea.Name = "lbArea";
-            this.lbArea.Size = new System.Drawing.Size(67, 24);
-            this.lbArea.TabIndex = 342;
-            this.lbArea.Text = "0.0";
-            this.lbArea.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            // 
-            // label2
-            // 
-            this.label2.Location = new System.Drawing.Point(146, 336);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(68, 24);
-            this.label2.TabIndex = 341;
-            this.label2.Text = "Color";
-            // 
-            // colorComboBox
-            // 
-            this.colorComboBox.FormattingEnabled = true;
-            this.colorComboBox.Items.AddRange(new object[] {
-            "Blue",
-            "Green",
-            "Red ",
-            "Purple",
-            "Orange"});
-            this.colorComboBox.Location = new System.Drawing.Point(244, 332);
-            this.colorComboBox.Name = "colorComboBox";
-            this.colorComboBox.Size = new System.Drawing.Size(162, 32);
-            this.colorComboBox.TabIndex = 340;
-            this.colorComboBox.SelectedIndexChanged += new System.EventHandler(this.colorComboBox_SelectedIndexChanged);
-            this.colorComboBox.Click += new System.EventHandler(this.colorComboBox_Click);
+            this.btnCancel.BackColor = System.Drawing.Color.Transparent;
+            this.btnCancel.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnCancel.Enabled = false;
+            this.btnCancel.FlatAppearance.BorderSize = 0;
+            this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCancel.Font = new System.Drawing.Font("Tahoma", 14.25F);
+            this.btnCancel.Image = global::RateController.Properties.Resources.Cancel64;
+            this.btnCancel.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.btnCancel.Location = new System.Drawing.Point(12, 216);
+            this.btnCancel.Name = "btnCancel";
+            this.btnCancel.Size = new System.Drawing.Size(70, 63);
+            this.btnCancel.TabIndex = 345;
+            this.btnCancel.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.btnCancel.UseVisualStyleBackColor = false;
+            this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
             // btnDelete
             // 
@@ -457,40 +734,12 @@
             this.btnDelete.FlatAppearance.BorderSize = 0;
             this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDelete.Image = global::RateController.Properties.Resources.Trash;
-            this.btnDelete.Location = new System.Drawing.Point(6, 154);
+            this.btnDelete.Location = new System.Drawing.Point(6, 146);
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(82, 64);
             this.btnDelete.TabIndex = 12;
             this.btnDelete.UseVisualStyleBackColor = true;
             this.btnDelete.Click += new System.EventHandler(this.btnDelete_Click);
-            // 
-            // lbP4
-            // 
-            this.lbP4.AutoSize = true;
-            this.lbP4.Location = new System.Drawing.Point(209, 239);
-            this.lbP4.Name = "lbP4";
-            this.lbP4.Size = new System.Drawing.Size(20, 24);
-            this.lbP4.TabIndex = 11;
-            this.lbP4.Text = "4";
-            // 
-            // tbP4
-            // 
-            this.tbP4.Location = new System.Drawing.Point(244, 237);
-            this.tbP4.Name = "tbP4";
-            this.tbP4.Size = new System.Drawing.Size(80, 29);
-            this.tbP4.TabIndex = 10;
-            this.tbP4.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.tbP4.Enter += new System.EventHandler(this.tbP4_Enter);
-            this.tbP4.Validating += new System.ComponentModel.CancelEventHandler(this.tbP4_Validating);
-            // 
-            // lbP3
-            // 
-            this.lbP3.AutoSize = true;
-            this.lbP3.Location = new System.Drawing.Point(209, 197);
-            this.lbP3.Name = "lbP3";
-            this.lbP3.Size = new System.Drawing.Size(20, 24);
-            this.lbP3.TabIndex = 9;
-            this.lbP3.Text = "3";
             // 
             // ckNew
             // 
@@ -507,163 +756,6 @@
             this.ckNew.UseVisualStyleBackColor = true;
             this.ckNew.CheckedChanged += new System.EventHandler(this.ckNew_CheckedChanged);
             // 
-            // tbP3
-            // 
-            this.tbP3.Location = new System.Drawing.Point(244, 195);
-            this.tbP3.Name = "tbP3";
-            this.tbP3.Size = new System.Drawing.Size(80, 29);
-            this.tbP3.TabIndex = 8;
-            this.tbP3.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.tbP3.Enter += new System.EventHandler(this.tbP3_Enter);
-            this.tbP3.Validating += new System.ComponentModel.CancelEventHandler(this.tbP3_Validating);
-            // 
-            // lbP2
-            // 
-            this.lbP2.AutoSize = true;
-            this.lbP2.Location = new System.Drawing.Point(209, 155);
-            this.lbP2.Name = "lbP2";
-            this.lbP2.Size = new System.Drawing.Size(20, 24);
-            this.lbP2.TabIndex = 7;
-            this.lbP2.Text = "2";
-            // 
-            // tbP2
-            // 
-            this.tbP2.Location = new System.Drawing.Point(244, 153);
-            this.tbP2.Name = "tbP2";
-            this.tbP2.Size = new System.Drawing.Size(80, 29);
-            this.tbP2.TabIndex = 6;
-            this.tbP2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.tbP2.Enter += new System.EventHandler(this.tbP2_Enter);
-            this.tbP2.Validating += new System.ComponentModel.CancelEventHandler(this.tbP2_Validating);
-            // 
-            // lbP1
-            // 
-            this.lbP1.AutoSize = true;
-            this.lbP1.Location = new System.Drawing.Point(209, 113);
-            this.lbP1.Name = "lbP1";
-            this.lbP1.Size = new System.Drawing.Size(20, 24);
-            this.lbP1.TabIndex = 5;
-            this.lbP1.Text = "1";
-            // 
-            // tbP1
-            // 
-            this.tbP1.Location = new System.Drawing.Point(244, 111);
-            this.tbP1.Name = "tbP1";
-            this.tbP1.Size = new System.Drawing.Size(80, 29);
-            this.tbP1.TabIndex = 4;
-            this.tbP1.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.tbP1.Enter += new System.EventHandler(this.tbP1_Enter);
-            this.tbP1.Validating += new System.ComponentModel.CancelEventHandler(this.tbP1_Validating);
-            // 
-            // tbName
-            // 
-            this.tbName.Location = new System.Drawing.Point(244, 13);
-            this.tbName.Name = "tbName";
-            this.tbName.Size = new System.Drawing.Size(162, 29);
-            this.tbName.TabIndex = 2;
-            this.tbName.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            this.tbName.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.tbName_KeyPress);
-            // 
-            // btnCancel
-            // 
-            this.btnCancel.BackColor = System.Drawing.Color.Transparent;
-            this.btnCancel.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnCancel.Enabled = false;
-            this.btnCancel.FlatAppearance.BorderSize = 0;
-            this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnCancel.Font = new System.Drawing.Font("Tahoma", 14.25F);
-            this.btnCancel.Image = global::RateController.Properties.Resources.Cancel64;
-            this.btnCancel.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnCancel.Location = new System.Drawing.Point(12, 228);
-            this.btnCancel.Name = "btnCancel";
-            this.btnCancel.Size = new System.Drawing.Size(70, 63);
-            this.btnCancel.TabIndex = 345;
-            this.btnCancel.TextAlign = System.Drawing.ContentAlignment.TopLeft;
-            this.btnCancel.UseVisualStyleBackColor = false;
-            this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
-            // 
-            // tabControl1
-            // 
-            this.tabControl1.Appearance = System.Windows.Forms.TabAppearance.Buttons;
-            this.tabControl1.Controls.Add(this.tabZones);
-            this.tabControl1.Controls.Add(this.tabData);
-            this.tabControl1.Controls.Add(this.tabFiles);
-            this.tabControl1.Controls.Add(this.tabVR);
-            this.tabControl1.ItemSize = new System.Drawing.Size(100, 50);
-            this.tabControl1.Location = new System.Drawing.Point(2, 2);
-            this.tabControl1.Name = "tabControl1";
-            this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(431, 435);
-            this.tabControl1.SizeMode = System.Windows.Forms.TabSizeMode.Fixed;
-            this.tabControl1.TabIndex = 389;
-            // 
-            // tabZones
-            // 
-            this.tabZones.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-            this.tabZones.Controls.Add(this.label12);
-            this.tabZones.Controls.Add(this.tbP5);
-            this.tabZones.Controls.Add(this.label3);
-            this.tabZones.Controls.Add(this.lbAreaName);
-            this.tabZones.Controls.Add(this.btnOK);
-            this.tabZones.Controls.Add(this.ckEdit);
-            this.tabZones.Controls.Add(this.btnCancel);
-            this.tabZones.Controls.Add(this.lbArea);
-            this.tabZones.Controls.Add(this.tbName);
-            this.tabZones.Controls.Add(this.label2);
-            this.tabZones.Controls.Add(this.tbP1);
-            this.tabZones.Controls.Add(this.colorComboBox);
-            this.tabZones.Controls.Add(this.lbP1);
-            this.tabZones.Controls.Add(this.btnDelete);
-            this.tabZones.Controls.Add(this.tbP2);
-            this.tabZones.Controls.Add(this.lbP4);
-            this.tabZones.Controls.Add(this.lbP2);
-            this.tabZones.Controls.Add(this.tbP4);
-            this.tabZones.Controls.Add(this.tbP3);
-            this.tabZones.Controls.Add(this.lbP3);
-            this.tabZones.Controls.Add(this.ckNew);
-            this.tabZones.Location = new System.Drawing.Point(4, 54);
-            this.tabZones.Name = "tabZones";
-            this.tabZones.Padding = new System.Windows.Forms.Padding(3);
-            this.tabZones.Size = new System.Drawing.Size(423, 377);
-            this.tabZones.TabIndex = 0;
-            this.tabZones.Text = "Zones";
-            this.tabZones.UseVisualStyleBackColor = true;
-            // 
-            // label12
-            // 
-            this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(209, 281);
-            this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(20, 24);
-            this.label12.TabIndex = 349;
-            this.label12.Text = "5";
-            // 
-            // tbP5
-            // 
-            this.tbP5.Location = new System.Drawing.Point(244, 279);
-            this.tbP5.Name = "tbP5";
-            this.tbP5.Size = new System.Drawing.Size(80, 29);
-            this.tbP5.TabIndex = 348;
-            this.tbP5.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.tbP5.Enter += new System.EventHandler(this.tbP5_Enter);
-            this.tbP5.Validating += new System.ComponentModel.CancelEventHandler(this.tbP5_Validating);
-            // 
-            // label3
-            // 
-            this.label3.Location = new System.Drawing.Point(146, 15);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(92, 24);
-            this.label3.TabIndex = 347;
-            this.label3.Text = "Name";
-            // 
-            // lbAreaName
-            // 
-            this.lbAreaName.Location = new System.Drawing.Point(146, 67);
-            this.lbAreaName.Name = "lbAreaName";
-            this.lbAreaName.Size = new System.Drawing.Size(68, 24);
-            this.lbAreaName.TabIndex = 346;
-            this.lbAreaName.Text = "Acres";
-            // 
             // tabData
             // 
             this.tabData.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
@@ -672,14 +764,14 @@
             this.tabData.Controls.Add(this.rbProductD);
             this.tabData.Controls.Add(this.rbProductC);
             this.tabData.Controls.Add(this.rbProductB);
-            this.tabData.Controls.Add(this.ckRecord);
-            this.tabData.Controls.Add(this.btnDeleteData);
             this.tabData.Controls.Add(this.label1);
             this.tabData.Controls.Add(this.lbDataPoints);
+            this.tabData.Controls.Add(this.ckRecord);
+            this.tabData.Controls.Add(this.btnDeleteData);
             this.tabData.Location = new System.Drawing.Point(4, 54);
             this.tabData.Name = "tabData";
             this.tabData.Padding = new System.Windows.Forms.Padding(3);
-            this.tabData.Size = new System.Drawing.Size(423, 377);
+            this.tabData.Size = new System.Drawing.Size(423, 429);
             this.tabData.TabIndex = 1;
             this.tabData.Text = "Data";
             this.tabData.UseVisualStyleBackColor = true;
@@ -689,7 +781,7 @@
             this.rbProductE.Appearance = System.Windows.Forms.Appearance.Button;
             this.rbProductE.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.rbProductE.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.rbProductE.Location = new System.Drawing.Point(335, 147);
+            this.rbProductE.Location = new System.Drawing.Point(336, 169);
             this.rbProductE.Name = "rbProductE";
             this.rbProductE.Size = new System.Drawing.Size(66, 40);
             this.rbProductE.TabIndex = 402;
@@ -704,7 +796,7 @@
             this.rbProductA.Checked = true;
             this.rbProductA.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.rbProductA.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.rbProductA.Location = new System.Drawing.Point(19, 147);
+            this.rbProductA.Location = new System.Drawing.Point(20, 169);
             this.rbProductA.Name = "rbProductA";
             this.rbProductA.Size = new System.Drawing.Size(66, 40);
             this.rbProductA.TabIndex = 401;
@@ -719,7 +811,7 @@
             this.rbProductD.Appearance = System.Windows.Forms.Appearance.Button;
             this.rbProductD.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.rbProductD.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.rbProductD.Location = new System.Drawing.Point(256, 147);
+            this.rbProductD.Location = new System.Drawing.Point(257, 169);
             this.rbProductD.Name = "rbProductD";
             this.rbProductD.Size = new System.Drawing.Size(66, 40);
             this.rbProductD.TabIndex = 398;
@@ -733,7 +825,7 @@
             this.rbProductC.Appearance = System.Windows.Forms.Appearance.Button;
             this.rbProductC.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.rbProductC.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.rbProductC.Location = new System.Drawing.Point(177, 147);
+            this.rbProductC.Location = new System.Drawing.Point(178, 169);
             this.rbProductC.Name = "rbProductC";
             this.rbProductC.Size = new System.Drawing.Size(66, 40);
             this.rbProductC.TabIndex = 399;
@@ -747,7 +839,7 @@
             this.rbProductB.Appearance = System.Windows.Forms.Appearance.Button;
             this.rbProductB.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.rbProductB.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.rbProductB.Location = new System.Drawing.Point(98, 147);
+            this.rbProductB.Location = new System.Drawing.Point(99, 169);
             this.rbProductB.Name = "rbProductB";
             this.rbProductB.Size = new System.Drawing.Size(66, 40);
             this.rbProductB.TabIndex = 400;
@@ -756,111 +848,39 @@
             this.rbProductB.UseVisualStyleBackColor = true;
             this.rbProductB.CheckedChanged += new System.EventHandler(this.rbProductA_CheckedChanged);
             // 
-            // tabFiles
+            // ckRecord
             // 
-            this.tabFiles.Controls.Add(this.btnImportYieldData);
-            this.tabFiles.Controls.Add(this.btnKMLdelete);
-            this.tabFiles.Controls.Add(this.btnImportKML);
-            this.tabFiles.Controls.Add(this.btnImportZones);
-            this.tabFiles.Controls.Add(this.btnExport);
-            this.tabFiles.Location = new System.Drawing.Point(4, 54);
-            this.tabFiles.Name = "tabFiles";
-            this.tabFiles.Padding = new System.Windows.Forms.Padding(3);
-            this.tabFiles.Size = new System.Drawing.Size(423, 377);
-            this.tabFiles.TabIndex = 2;
-            this.tabFiles.Text = "Files";
-            this.tabFiles.UseVisualStyleBackColor = true;
+            this.ckRecord.Appearance = System.Windows.Forms.Appearance.Button;
+            this.ckRecord.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
+            this.ckRecord.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ckRecord.Image = global::RateController.Properties.Resources.record;
+            this.ckRecord.Location = new System.Drawing.Point(106, 272);
+            this.ckRecord.Name = "ckRecord";
+            this.ckRecord.Size = new System.Drawing.Size(89, 64);
+            this.ckRecord.TabIndex = 382;
+            this.ckRecord.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.ckRecord.UseVisualStyleBackColor = true;
+            this.ckRecord.CheckedChanged += new System.EventHandler(this.ckRecord_CheckedChanged);
             // 
-            // btnImportYieldData
+            // btnDeleteData
             // 
-            this.btnImportYieldData.BackColor = System.Drawing.Color.Transparent;
-            this.btnImportYieldData.FlatAppearance.BorderSize = 0;
-            this.btnImportYieldData.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnImportYieldData.Image = global::RateController.Properties.Resources.folder_open_small;
-            this.btnImportYieldData.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnImportYieldData.Location = new System.Drawing.Point(104, 303);
-            this.btnImportYieldData.Name = "btnImportYieldData";
-            this.btnImportYieldData.Size = new System.Drawing.Size(213, 64);
-            this.btnImportYieldData.TabIndex = 373;
-            this.btnImportYieldData.Text = "Import Yield Data";
-            this.btnImportYieldData.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnImportYieldData.UseVisualStyleBackColor = false;
-            this.btnImportYieldData.Click += new System.EventHandler(this.btnImportYieldData_Click);
-            // 
-            // btnKMLdelete
-            // 
-            this.btnKMLdelete.BackColor = System.Drawing.Color.Transparent;
-            this.btnKMLdelete.FlatAppearance.BorderSize = 0;
-            this.btnKMLdelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnKMLdelete.Image = global::RateController.Properties.Resources.folder_open_small;
-            this.btnKMLdelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnKMLdelete.Location = new System.Drawing.Point(104, 229);
-            this.btnKMLdelete.Name = "btnKMLdelete";
-            this.btnKMLdelete.Size = new System.Drawing.Size(213, 64);
-            this.btnKMLdelete.TabIndex = 372;
-            this.btnKMLdelete.Text = "Delete KML File";
-            this.btnKMLdelete.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnKMLdelete.UseVisualStyleBackColor = false;
-            this.btnKMLdelete.Click += new System.EventHandler(this.btnKMLdelete_Click);
-            // 
-            // btnImportKML
-            // 
-            this.btnImportKML.BackColor = System.Drawing.Color.Transparent;
-            this.btnImportKML.FlatAppearance.BorderSize = 0;
-            this.btnImportKML.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnImportKML.Image = global::RateController.Properties.Resources.folder_open_small;
-            this.btnImportKML.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnImportKML.Location = new System.Drawing.Point(104, 155);
-            this.btnImportKML.Name = "btnImportKML";
-            this.btnImportKML.Size = new System.Drawing.Size(213, 64);
-            this.btnImportKML.TabIndex = 370;
-            this.btnImportKML.Text = "Import KML File";
-            this.btnImportKML.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnImportKML.UseVisualStyleBackColor = false;
-            this.btnImportKML.Click += new System.EventHandler(this.btnImportKML_Click);
-            // 
-            // btnImportZones
-            // 
-            this.btnImportZones.BackColor = System.Drawing.Color.Transparent;
-            this.btnImportZones.FlatAppearance.BorderSize = 0;
-            this.btnImportZones.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnImportZones.Image = global::RateController.Properties.Resources.folder_open_small;
-            this.btnImportZones.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnImportZones.Location = new System.Drawing.Point(104, 7);
-            this.btnImportZones.Name = "btnImportZones";
-            this.btnImportZones.Size = new System.Drawing.Size(213, 64);
-            this.btnImportZones.TabIndex = 369;
-            this.btnImportZones.Text = "Import Shape File";
-            this.btnImportZones.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnImportZones.UseVisualStyleBackColor = false;
-            this.btnImportZones.Click += new System.EventHandler(this.btnImportZones_Click);
-            // 
-            // btnExport
-            // 
-            this.btnExport.BackColor = System.Drawing.Color.Transparent;
-            this.btnExport.FlatAppearance.BorderSize = 0;
-            this.btnExport.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnExport.Image = global::RateController.Properties.Resources.folder_open_small;
-            this.btnExport.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnExport.Location = new System.Drawing.Point(104, 81);
-            this.btnExport.Name = "btnExport";
-            this.btnExport.Size = new System.Drawing.Size(213, 64);
-            this.btnExport.TabIndex = 368;
-            this.btnExport.Text = "Export Map";
-            this.btnExport.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.btnExport.UseVisualStyleBackColor = false;
-            this.btnExport.Click += new System.EventHandler(this.btnExport_Click);
+            this.btnDeleteData.FlatAppearance.BorderSize = 0;
+            this.btnDeleteData.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDeleteData.Image = global::RateController.Properties.Resources.Trash;
+            this.btnDeleteData.Location = new System.Drawing.Point(232, 272);
+            this.btnDeleteData.Name = "btnDeleteData";
+            this.btnDeleteData.Size = new System.Drawing.Size(89, 64);
+            this.btnDeleteData.TabIndex = 397;
+            this.btnDeleteData.UseVisualStyleBackColor = true;
+            this.btnDeleteData.Click += new System.EventHandler(this.btnDeleteData_Click);
             // 
             // tabVR
             // 
             this.tabVR.Controls.Add(this.label11);
             this.tabVR.Controls.Add(this.tbTime5);
             this.tabVR.Controls.Add(this.ckAutoTune);
-            this.tabVR.Controls.Add(this.btnTimeOK);
-            this.tabVR.Controls.Add(this.btnTimeCancel);
             this.tabVR.Controls.Add(this.label10);
             this.tabVR.Controls.Add(this.tbTime1);
-            this.tabVR.Controls.Add(this.ckUseVR);
             this.tabVR.Controls.Add(this.label6);
             this.tabVR.Controls.Add(this.tbTime2);
             this.tabVR.Controls.Add(this.label7);
@@ -868,10 +888,12 @@
             this.tabVR.Controls.Add(this.tbTime4);
             this.tabVR.Controls.Add(this.tbTime3);
             this.tabVR.Controls.Add(this.label9);
+            this.tabVR.Controls.Add(this.btnTimeOK);
+            this.tabVR.Controls.Add(this.btnTimeCancel);
             this.tabVR.Location = new System.Drawing.Point(4, 54);
             this.tabVR.Name = "tabVR";
             this.tabVR.Padding = new System.Windows.Forms.Padding(3);
-            this.tabVR.Size = new System.Drawing.Size(423, 377);
+            this.tabVR.Size = new System.Drawing.Size(423, 429);
             this.tabVR.TabIndex = 3;
             this.tabVR.Text = "VR";
             this.tabVR.UseVisualStyleBackColor = true;
@@ -879,7 +901,7 @@
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(102, 244);
+            this.label11.Location = new System.Drawing.Point(102, 284);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(90, 24);
             this.label11.TabIndex = 378;
@@ -887,7 +909,7 @@
             // 
             // tbTime5
             // 
-            this.tbTime5.Location = new System.Drawing.Point(238, 242);
+            this.tbTime5.Location = new System.Drawing.Point(238, 282);
             this.tbTime5.Name = "tbTime5";
             this.tbTime5.Size = new System.Drawing.Size(80, 29);
             this.tbTime5.TabIndex = 377;
@@ -900,7 +922,7 @@
             this.ckAutoTune.Appearance = System.Windows.Forms.Appearance.Button;
             this.ckAutoTune.FlatAppearance.CheckedBackColor = System.Drawing.Color.LightGreen;
             this.ckAutoTune.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ckAutoTune.Location = new System.Drawing.Point(57, 297);
+            this.ckAutoTune.Location = new System.Drawing.Point(106, 359);
             this.ckAutoTune.Name = "ckAutoTune";
             this.ckAutoTune.Size = new System.Drawing.Size(89, 64);
             this.ckAutoTune.TabIndex = 376;
@@ -908,42 +930,6 @@
             this.ckAutoTune.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.ckAutoTune.UseVisualStyleBackColor = true;
             this.ckAutoTune.CheckedChanged += new System.EventHandler(this.ckAutoTune_CheckedChanged);
-            // 
-            // btnTimeOK
-            // 
-            this.btnTimeOK.BackColor = System.Drawing.Color.Transparent;
-            this.btnTimeOK.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnTimeOK.Enabled = false;
-            this.btnTimeOK.FlatAppearance.BorderSize = 0;
-            this.btnTimeOK.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnTimeOK.Font = new System.Drawing.Font("Tahoma", 14.25F);
-            this.btnTimeOK.Image = global::RateController.Properties.Resources.Save;
-            this.btnTimeOK.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnTimeOK.Location = new System.Drawing.Point(344, 298);
-            this.btnTimeOK.Name = "btnTimeOK";
-            this.btnTimeOK.Size = new System.Drawing.Size(70, 63);
-            this.btnTimeOK.TabIndex = 373;
-            this.btnTimeOK.TextAlign = System.Drawing.ContentAlignment.TopLeft;
-            this.btnTimeOK.UseVisualStyleBackColor = false;
-            this.btnTimeOK.Click += new System.EventHandler(this.btnTimeOK_Click);
-            // 
-            // btnTimeCancel
-            // 
-            this.btnTimeCancel.BackColor = System.Drawing.Color.Transparent;
-            this.btnTimeCancel.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnTimeCancel.Enabled = false;
-            this.btnTimeCancel.FlatAppearance.BorderSize = 0;
-            this.btnTimeCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnTimeCancel.Font = new System.Drawing.Font("Tahoma", 14.25F);
-            this.btnTimeCancel.Image = global::RateController.Properties.Resources.Cancel64;
-            this.btnTimeCancel.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnTimeCancel.Location = new System.Drawing.Point(261, 298);
-            this.btnTimeCancel.Name = "btnTimeCancel";
-            this.btnTimeCancel.Size = new System.Drawing.Size(70, 63);
-            this.btnTimeCancel.TabIndex = 374;
-            this.btnTimeCancel.TextAlign = System.Drawing.ContentAlignment.TopLeft;
-            this.btnTimeCancel.UseVisualStyleBackColor = false;
-            this.btnTimeCancel.Click += new System.EventHandler(this.btnTimeCancel_Click);
             // 
             // label10
             // 
@@ -976,7 +962,7 @@
             // 
             // tbTime2
             // 
-            this.tbTime2.Location = new System.Drawing.Point(238, 116);
+            this.tbTime2.Location = new System.Drawing.Point(238, 126);
             this.tbTime2.Name = "tbTime2";
             this.tbTime2.Size = new System.Drawing.Size(80, 29);
             this.tbTime2.TabIndex = 366;
@@ -987,7 +973,7 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(102, 202);
+            this.label7.Location = new System.Drawing.Point(102, 232);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(90, 24);
             this.label7.TabIndex = 371;
@@ -996,7 +982,7 @@
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(102, 118);
+            this.label8.Location = new System.Drawing.Point(102, 128);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(90, 24);
             this.label8.TabIndex = 367;
@@ -1004,7 +990,7 @@
             // 
             // tbTime4
             // 
-            this.tbTime4.Location = new System.Drawing.Point(238, 200);
+            this.tbTime4.Location = new System.Drawing.Point(238, 230);
             this.tbTime4.Name = "tbTime4";
             this.tbTime4.Size = new System.Drawing.Size(80, 29);
             this.tbTime4.TabIndex = 370;
@@ -1014,7 +1000,7 @@
             // 
             // tbTime3
             // 
-            this.tbTime3.Location = new System.Drawing.Point(238, 158);
+            this.tbTime3.Location = new System.Drawing.Point(238, 178);
             this.tbTime3.Name = "tbTime3";
             this.tbTime3.Size = new System.Drawing.Size(80, 29);
             this.tbTime3.TabIndex = 368;
@@ -1025,11 +1011,233 @@
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(102, 160);
+            this.label9.Location = new System.Drawing.Point(102, 180);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(90, 24);
             this.label9.TabIndex = 369;
             this.label9.Text = "Product 3";
+            // 
+            // btnTimeOK
+            // 
+            this.btnTimeOK.BackColor = System.Drawing.Color.Transparent;
+            this.btnTimeOK.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnTimeOK.Enabled = false;
+            this.btnTimeOK.FlatAppearance.BorderSize = 0;
+            this.btnTimeOK.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnTimeOK.Font = new System.Drawing.Font("Tahoma", 14.25F);
+            this.btnTimeOK.Image = global::RateController.Properties.Resources.Save;
+            this.btnTimeOK.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.btnTimeOK.Location = new System.Drawing.Point(337, 360);
+            this.btnTimeOK.Name = "btnTimeOK";
+            this.btnTimeOK.Size = new System.Drawing.Size(70, 63);
+            this.btnTimeOK.TabIndex = 373;
+            this.btnTimeOK.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.btnTimeOK.UseVisualStyleBackColor = false;
+            this.btnTimeOK.Click += new System.EventHandler(this.btnTimeOK_Click);
+            // 
+            // btnTimeCancel
+            // 
+            this.btnTimeCancel.BackColor = System.Drawing.Color.Transparent;
+            this.btnTimeCancel.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnTimeCancel.Enabled = false;
+            this.btnTimeCancel.FlatAppearance.BorderSize = 0;
+            this.btnTimeCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnTimeCancel.Font = new System.Drawing.Font("Tahoma", 14.25F);
+            this.btnTimeCancel.Image = global::RateController.Properties.Resources.Cancel64;
+            this.btnTimeCancel.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.btnTimeCancel.Location = new System.Drawing.Point(254, 360);
+            this.btnTimeCancel.Name = "btnTimeCancel";
+            this.btnTimeCancel.Size = new System.Drawing.Size(70, 63);
+            this.btnTimeCancel.TabIndex = 374;
+            this.btnTimeCancel.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.btnTimeCancel.UseVisualStyleBackColor = false;
+            this.btnTimeCancel.Click += new System.EventHandler(this.btnTimeCancel_Click);
+            // 
+            // tabFiles
+            // 
+            this.tabFiles.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.tabFiles.Controls.Add(this.cbElevation);
+            this.tabFiles.Controls.Add(this.cbEC);
+            this.tabFiles.Controls.Add(this.label4);
+            this.tabFiles.Controls.Add(this.btnGenerateTestYield);
+            this.tabFiles.Controls.Add(this.btnGenerateTestElevation);
+            this.tabFiles.Controls.Add(this.btnGenerateTestEC);
+            this.tabFiles.Controls.Add(this.cbKML);
+            this.tabFiles.Controls.Add(this.lbKML);
+            this.tabFiles.Controls.Add(this.lbYieldLabel);
+            this.tabFiles.Controls.Add(this.cbYield);
+            this.tabFiles.Controls.Add(this.lbElevationLabel);
+            this.tabFiles.Controls.Add(this.btnCreateZones);
+            this.tabFiles.Controls.Add(this.btnFileDelete);
+            this.tabFiles.Controls.Add(this.btnFileImport);
+            this.tabFiles.Location = new System.Drawing.Point(4, 54);
+            this.tabFiles.Name = "tabFiles";
+            this.tabFiles.Padding = new System.Windows.Forms.Padding(3);
+            this.tabFiles.Size = new System.Drawing.Size(423, 429);
+            this.tabFiles.TabIndex = 4;
+            this.tabFiles.Text = "Files";
+            this.tabFiles.UseVisualStyleBackColor = true;
+            // 
+            // cbElevation
+            // 
+            this.cbElevation.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbElevation.FormattingEnabled = true;
+            this.cbElevation.Location = new System.Drawing.Point(126, 192);
+            this.cbElevation.Name = "cbElevation";
+            this.cbElevation.Size = new System.Drawing.Size(287, 32);
+            this.cbElevation.TabIndex = 435;
+            this.cbElevation.SelectedIndexChanged += new System.EventHandler(this.cbElevation_SelectedIndexChanged);
+            this.cbElevation.Enter += new System.EventHandler(this.cbElevation_Enter);
+            // 
+            // cbEC
+            // 
+            this.cbEC.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbEC.FormattingEnabled = true;
+            this.cbEC.Location = new System.Drawing.Point(126, 271);
+            this.cbEC.Name = "cbEC";
+            this.cbEC.Size = new System.Drawing.Size(287, 32);
+            this.cbEC.TabIndex = 434;
+            this.cbEC.SelectedIndexChanged += new System.EventHandler(this.cbEC_SelectedIndexChanged);
+            this.cbEC.Enter += new System.EventHandler(this.cbEC_Enter);
+            // 
+            // label4
+            // 
+            this.label4.Location = new System.Drawing.Point(6, 275);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(100, 24);
+            this.label4.TabIndex = 433;
+            this.label4.Text = "EC:";
+            this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // btnGenerateTestYield
+            // 
+            this.btnGenerateTestYield.FlatAppearance.BorderSize = 0;
+            this.btnGenerateTestYield.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnGenerateTestYield.Location = new System.Drawing.Point(142, 321);
+            this.btnGenerateTestYield.Name = "btnGenerateTestYield";
+            this.btnGenerateTestYield.Size = new System.Drawing.Size(47, 40);
+            this.btnGenerateTestYield.TabIndex = 431;
+            this.btnGenerateTestYield.Text = "TY";
+            this.btnGenerateTestYield.UseVisualStyleBackColor = true;
+            this.btnGenerateTestYield.Visible = false;
+            this.btnGenerateTestYield.Click += new System.EventHandler(this.btnGenerateTestYield_Click);
+            // 
+            // btnGenerateTestElevation
+            // 
+            this.btnGenerateTestElevation.FlatAppearance.BorderSize = 0;
+            this.btnGenerateTestElevation.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnGenerateTestElevation.Location = new System.Drawing.Point(10, 321);
+            this.btnGenerateTestElevation.Name = "btnGenerateTestElevation";
+            this.btnGenerateTestElevation.Size = new System.Drawing.Size(50, 40);
+            this.btnGenerateTestElevation.TabIndex = 430;
+            this.btnGenerateTestElevation.Text = "TE";
+            this.btnGenerateTestElevation.UseVisualStyleBackColor = true;
+            this.btnGenerateTestElevation.Visible = false;
+            this.btnGenerateTestElevation.Click += new System.EventHandler(this.btnGenerateTestElevation_Click);
+            // 
+            // btnGenerateTestEC
+            // 
+            this.btnGenerateTestEC.FlatAppearance.BorderSize = 0;
+            this.btnGenerateTestEC.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnGenerateTestEC.Location = new System.Drawing.Point(66, 321);
+            this.btnGenerateTestEC.Name = "btnGenerateTestEC";
+            this.btnGenerateTestEC.Size = new System.Drawing.Size(70, 40);
+            this.btnGenerateTestEC.TabIndex = 429;
+            this.btnGenerateTestEC.Text = "TEC";
+            this.btnGenerateTestEC.UseVisualStyleBackColor = true;
+            this.btnGenerateTestEC.Visible = false;
+            this.btnGenerateTestEC.Click += new System.EventHandler(this.btnGenerateTestEC_Click);
+            // 
+            // cbKML
+            // 
+            this.cbKML.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbKML.FormattingEnabled = true;
+            this.cbKML.Location = new System.Drawing.Point(126, 34);
+            this.cbKML.Name = "cbKML";
+            this.cbKML.Size = new System.Drawing.Size(287, 32);
+            this.cbKML.TabIndex = 430;
+            this.cbKML.SelectedIndexChanged += new System.EventHandler(this.cbKML_SelectedIndexChanged);
+            this.cbKML.Enter += new System.EventHandler(this.cbKML_Enter);
+            // 
+            // lbKML
+            // 
+            this.lbKML.Location = new System.Drawing.Point(6, 26);
+            this.lbKML.Name = "lbKML";
+            this.lbKML.Size = new System.Drawing.Size(100, 48);
+            this.lbKML.TabIndex = 427;
+            this.lbKML.Text = "Boundary KML:";
+            this.lbKML.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // lbYieldLabel
+            // 
+            this.lbYieldLabel.Location = new System.Drawing.Point(6, 117);
+            this.lbYieldLabel.Name = "lbYieldLabel";
+            this.lbYieldLabel.Size = new System.Drawing.Size(100, 24);
+            this.lbYieldLabel.TabIndex = 414;
+            this.lbYieldLabel.Text = "Yield:";
+            this.lbYieldLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // cbYield
+            // 
+            this.cbYield.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbYield.FormattingEnabled = true;
+            this.cbYield.Location = new System.Drawing.Point(126, 113);
+            this.cbYield.Name = "cbYield";
+            this.cbYield.Size = new System.Drawing.Size(287, 32);
+            this.cbYield.TabIndex = 415;
+            this.cbYield.SelectedIndexChanged += new System.EventHandler(this.cbYield_SelectedIndexChanged);
+            this.cbYield.Enter += new System.EventHandler(this.cbYield_Enter);
+            // 
+            // lbElevationLabel
+            // 
+            this.lbElevationLabel.Location = new System.Drawing.Point(6, 196);
+            this.lbElevationLabel.Name = "lbElevationLabel";
+            this.lbElevationLabel.Size = new System.Drawing.Size(100, 24);
+            this.lbElevationLabel.TabIndex = 417;
+            this.lbElevationLabel.Text = "Elevation:";
+            this.lbElevationLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // btnCreateZones
+            // 
+            this.btnCreateZones.Location = new System.Drawing.Point(272, 367);
+            this.btnCreateZones.Name = "btnCreateZones";
+            this.btnCreateZones.Size = new System.Drawing.Size(131, 48);
+            this.btnCreateZones.TabIndex = 394;
+            this.btnCreateZones.Text = "Auto Zones";
+            this.btnCreateZones.UseVisualStyleBackColor = true;
+            this.btnCreateZones.Click += new System.EventHandler(this.btnCreateZones_Click);
+            // 
+            // btnFileDelete
+            // 
+            this.btnFileDelete.BackColor = System.Drawing.Color.Transparent;
+            this.btnFileDelete.Enabled = false;
+            this.btnFileDelete.FlatAppearance.BorderSize = 0;
+            this.btnFileDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnFileDelete.Image = global::RateController.Properties.Resources.trash32;
+            this.btnFileDelete.Location = new System.Drawing.Point(131, 369);
+            this.btnFileDelete.Name = "btnFileDelete";
+            this.btnFileDelete.Size = new System.Drawing.Size(82, 45);
+            this.btnFileDelete.TabIndex = 426;
+            this.btnFileDelete.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnFileDelete.UseVisualStyleBackColor = false;
+            this.btnFileDelete.Click += new System.EventHandler(this.btnFileDelete_Click);
+            // 
+            // btnFileImport
+            // 
+            this.btnFileImport.BackColor = System.Drawing.Color.Transparent;
+            this.btnFileImport.Enabled = false;
+            this.btnFileImport.FlatAppearance.BorderSize = 0;
+            this.btnFileImport.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnFileImport.Image = global::RateController.Properties.Resources.folder_open_small;
+            this.btnFileImport.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnFileImport.Location = new System.Drawing.Point(11, 369);
+            this.btnFileImport.Name = "btnFileImport";
+            this.btnFileImport.Size = new System.Drawing.Size(114, 45);
+            this.btnFileImport.TabIndex = 425;
+            this.btnFileImport.Text = "Import";
+            this.btnFileImport.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnFileImport.UseVisualStyleBackColor = false;
+            this.btnFileImport.Click += new System.EventHandler(this.btnFileImport_Click);
             // 
             // pnlTabs
             // 
@@ -1037,7 +1245,7 @@
             this.pnlTabs.Controls.Add(this.tabControl1);
             this.pnlTabs.Location = new System.Drawing.Point(2, 2);
             this.pnlTabs.Name = "pnlTabs";
-            this.pnlTabs.Size = new System.Drawing.Size(433, 438);
+            this.pnlTabs.Size = new System.Drawing.Size(433, 490);
             this.pnlTabs.TabIndex = 390;
             // 
             // timer1
@@ -1128,16 +1336,12 @@
             // pnlControls2
             // 
             this.pnlControls2.Controls.Add(this.btnMinimize);
-            this.pnlControls2.Controls.Add(this.label5);
-            this.pnlControls2.Controls.Add(this.tbLong);
-            this.pnlControls2.Controls.Add(this.label4);
             this.pnlControls2.Controls.Add(this.btnCentre);
             this.pnlControls2.Controls.Add(this.btnHelp);
-            this.pnlControls2.Controls.Add(this.tbLat);
             this.pnlControls2.Controls.Add(this.btnClose);
-            this.pnlControls2.Location = new System.Drawing.Point(2, 446);
+            this.pnlControls2.Location = new System.Drawing.Point(214, 502);
             this.pnlControls2.Name = "pnlControls2";
-            this.pnlControls2.Size = new System.Drawing.Size(534, 76);
+            this.pnlControls2.Size = new System.Drawing.Size(317, 63);
             this.pnlControls2.TabIndex = 393;
             // 
             // btnMinimize
@@ -1148,39 +1352,13 @@
             this.btnMinimize.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnMinimize.Font = new System.Drawing.Font("Microsoft Sans Serif", 21.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnMinimize.Image = global::RateController.Properties.Resources.arrow_circle_down_right;
-            this.btnMinimize.Location = new System.Drawing.Point(232, 4);
+            this.btnMinimize.Location = new System.Drawing.Point(3, 0);
             this.btnMinimize.Name = "btnMinimize";
             this.btnMinimize.Size = new System.Drawing.Size(70, 63);
             this.btnMinimize.TabIndex = 398;
             this.btnMinimize.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
             this.btnMinimize.UseVisualStyleBackColor = false;
             this.btnMinimize.Click += new System.EventHandler(this.btnMinimize_Click);
-            // 
-            // label5
-            // 
-            this.label5.Location = new System.Drawing.Point(3, 9);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(98, 24);
-            this.label5.TabIndex = 397;
-            this.label5.Text = "Longitude";
-            // 
-            // tbLong
-            // 
-            this.tbLong.Location = new System.Drawing.Point(106, 6);
-            this.tbLong.Name = "tbLong";
-            this.tbLong.Size = new System.Drawing.Size(121, 29);
-            this.tbLong.TabIndex = 396;
-            this.tbLong.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.tbLong.Enter += new System.EventHandler(this.tbLong_Enter);
-            this.tbLong.Validating += new System.ComponentModel.CancelEventHandler(this.tbLong_Validating);
-            // 
-            // label4
-            // 
-            this.label4.Location = new System.Drawing.Point(3, 43);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(91, 24);
-            this.label4.TabIndex = 395;
-            this.label4.Text = "Latitude";
             // 
             // btnCentre
             // 
@@ -1190,7 +1368,7 @@
             this.btnCentre.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCentre.Font = new System.Drawing.Font("Microsoft Sans Serif", 21.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnCentre.Image = global::RateController.Properties.Resources.arrows_in_cardinal;
-            this.btnCentre.Location = new System.Drawing.Point(307, 4);
+            this.btnCentre.Location = new System.Drawing.Point(79, 0);
             this.btnCentre.Name = "btnCentre";
             this.btnCentre.Size = new System.Drawing.Size(70, 63);
             this.btnCentre.TabIndex = 393;
@@ -1198,21 +1376,42 @@
             this.btnCentre.UseVisualStyleBackColor = false;
             this.btnCentre.Click += new System.EventHandler(this.btnCentre_Click);
             // 
-            // tbLat
+            // btnHelp
             // 
-            this.tbLat.Location = new System.Drawing.Point(106, 38);
-            this.tbLat.Name = "tbLat";
-            this.tbLat.Size = new System.Drawing.Size(121, 29);
-            this.tbLat.TabIndex = 394;
-            this.tbLat.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.tbLat.Enter += new System.EventHandler(this.tbLat_Enter);
-            this.tbLat.Validating += new System.ComponentModel.CancelEventHandler(this.tbLat_Validating);
+            this.btnHelp.BackColor = System.Drawing.Color.Transparent;
+            this.btnHelp.FlatAppearance.BorderSize = 0;
+            this.btnHelp.FlatAppearance.MouseDownBackColor = System.Drawing.Color.DarkSlateBlue;
+            this.btnHelp.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnHelp.Font = new System.Drawing.Font("Microsoft Sans Serif", 21.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnHelp.Image = global::RateController.Properties.Resources.Help;
+            this.btnHelp.Location = new System.Drawing.Point(155, 0);
+            this.btnHelp.Name = "btnHelp";
+            this.btnHelp.Size = new System.Drawing.Size(70, 63);
+            this.btnHelp.TabIndex = 392;
+            this.btnHelp.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
+            this.btnHelp.UseVisualStyleBackColor = false;
+            this.btnHelp.Click += new System.EventHandler(this.btnHelp_Click);
+            // 
+            // btnClose
+            // 
+            this.btnClose.BackColor = System.Drawing.Color.Transparent;
+            this.btnClose.FlatAppearance.BorderSize = 0;
+            this.btnClose.FlatAppearance.MouseDownBackColor = System.Drawing.Color.DarkSlateBlue;
+            this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnClose.Font = new System.Drawing.Font("Microsoft Sans Serif", 36F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnClose.Image = ((System.Drawing.Image)(resources.GetObject("btnClose.Image")));
+            this.btnClose.Location = new System.Drawing.Point(231, 0);
+            this.btnClose.Name = "btnClose";
+            this.btnClose.Size = new System.Drawing.Size(70, 63);
+            this.btnClose.TabIndex = 386;
+            this.btnClose.UseVisualStyleBackColor = false;
+            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
             // 
             // frmMap
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(955, 616);
+            this.ClientSize = new System.Drawing.Size(955, 580);
             this.Controls.Add(this.pnlControls2);
             this.Controls.Add(this.tlpTitle);
             this.Controls.Add(this.pnlTabs);
@@ -1233,16 +1432,16 @@
             this.pnlControls.ResumeLayout(false);
             this.pnlMain.ResumeLayout(false);
             this.tabControl1.ResumeLayout(false);
+            this.tabPrescriptions.ResumeLayout(false);
             this.tabZones.ResumeLayout(false);
             this.tabZones.PerformLayout();
             this.tabData.ResumeLayout(false);
-            this.tabFiles.ResumeLayout(false);
             this.tabVR.ResumeLayout(false);
             this.tabVR.PerformLayout();
+            this.tabFiles.ResumeLayout(false);
             this.pnlTabs.ResumeLayout(false);
             this.tlpTitle.ResumeLayout(false);
             this.pnlControls2.ResumeLayout(false);
-            this.pnlControls2.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -1251,7 +1450,6 @@
         private System.Windows.Forms.CheckBox ckRateData;
         private System.Windows.Forms.CheckBox ckSatView;
         private System.Windows.Forms.CheckBox ckZones;
-        private System.Windows.Forms.CheckBox ckUseVR;
         private System.Windows.Forms.Button btnDeleteData;
         private System.Windows.Forms.Label lbDataPoints;
         private System.Windows.Forms.Label label1;
@@ -1292,12 +1490,7 @@
         private System.Windows.Forms.Label lbAreaName;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Timer timer1;
-        private System.Windows.Forms.TabPage tabFiles;
-        private System.Windows.Forms.Button btnImportZones;
-        private System.Windows.Forms.Button btnExport;
-        private System.Windows.Forms.Button btnImportKML;
         private System.Windows.Forms.CheckBox ckKML;
-        private System.Windows.Forms.Button btnKMLdelete;
         private System.Windows.Forms.Button btnHelp;
         private System.Windows.Forms.TableLayoutPanel tlpTitle;
         private System.Windows.Forms.Button btnTitleClose;
@@ -1306,10 +1499,6 @@
         private System.Windows.Forms.Button btnTitleZoomOut;
         private System.Windows.Forms.Panel pnlControls2;
         private System.Windows.Forms.Button btnCentre;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.TextBox tbLong;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox tbLat;
         private System.Windows.Forms.TabPage tabVR;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.TextBox tbTime1;
@@ -1326,11 +1515,36 @@
         private System.Windows.Forms.CheckBox ckElevation;
         private System.Windows.Forms.Button btnMinimize;
         private System.Windows.Forms.CheckBox ckYield;
-        private System.Windows.Forms.Button btnImportYieldData;
         private System.Windows.Forms.RadioButton rbProductE;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.TextBox tbTime5;
-        private System.Windows.Forms.Label label12;
+        private System.Windows.Forms.Label lbP5;
         private System.Windows.Forms.TextBox tbP5;
+        private System.Windows.Forms.TabPage tabFiles;
+        private System.Windows.Forms.Label lbYieldLabel;
+        private System.Windows.Forms.ComboBox cbYield;
+        private System.Windows.Forms.Button btnGenerateTestYield;
+        private System.Windows.Forms.Label lbElevationLabel;
+        private System.Windows.Forms.TabPage tabPrescriptions;
+        private System.Windows.Forms.Button btnDeleteRx;
+        private System.Windows.Forms.Button btnNew;
+        private System.Windows.Forms.Label lbFieldName;
+        private System.Windows.Forms.Label lbPrescriptionLabel;
+        private System.Windows.Forms.Button btnCopy;
+        private System.Windows.Forms.Button btnExportRx;
+        private System.Windows.Forms.Button btnImportRx;
+        private System.Windows.Forms.Label lbKML;
+        private System.Windows.Forms.Button btnFileDelete;
+        private System.Windows.Forms.Button btnFileImport;
+        private System.Windows.Forms.Button btnGenerateTestElevation;
+        private System.Windows.Forms.Button btnGenerateTestEC;
+        private System.Windows.Forms.ListBox lbRx;
+        private System.Windows.Forms.ComboBox cbKML;
+        private System.Windows.Forms.CheckBox ckEC;
+        private System.Windows.Forms.Button btnCreateZones;
+        private System.Windows.Forms.ComboBox cbElevation;
+        private System.Windows.Forms.ComboBox cbEC;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Button btnFiles;
     }
 }
