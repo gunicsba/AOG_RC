@@ -192,18 +192,6 @@ namespace RateController.Classes
                     }
                 }
 
-                // set master relays
-                for (int i = 0; i < cRelays.Count; i++)
-                {
-                    clsRelay Rly = cRelays[i];
-
-                    if (Rly.Type == RelayTypes.Master)
-                    {
-                        Rly.IsON = MasterRelayOn;
-                        MasterFound = true;
-                    }
-                }
-
                 // check if at least one section on
                 for (int i = 0; i < Props.MaxSections; i++)
                 {
@@ -211,6 +199,18 @@ namespace RateController.Classes
                     {
                         SectionsOn = true;
                         break;
+                    }
+                }
+
+                // set master relays
+                for (int i = 0; i < cRelays.Count; i++)
+                {
+                    clsRelay Rly = cRelays[i];
+
+                    if (Rly.Type == RelayTypes.Master)
+                    {
+                        Rly.IsON = MasterRelayOn && SectionsOn;
+                        MasterFound = true;
                     }
                 }
 

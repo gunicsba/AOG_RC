@@ -342,7 +342,8 @@ void ReadPGNs(byte data[], uint16_t len)
                 MDL.Is3Wire = ((tmp & 16) == 16);
                 MDL.ADS1115Enabled = ((tmp & 32) == 32);
 
-                MDL.RelayControl = data[5];
+                MDL.OnboardRelayControl = data[5];
+                MDL.RemoteRelayControl = data[6];
                 AssignPin("S0 FlowPin", Sensor[0].FlowPin, data[7]);
                 AssignPin("S0 IN1", Sensor[0].IN1, data[8]);
                 AssignPin("S0 IN2", Sensor[0].IN2, data[9]);

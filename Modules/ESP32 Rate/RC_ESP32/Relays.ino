@@ -257,7 +257,7 @@ void ControlSwitch(byte Start, byte End, byte Control)
 							PWMServoDriver.setPWM(IOpin, 0, 0);
 							PWMServoDriver.setPWM(IOpin + 1, 0, 4095);
 						}
-						RelayStatus[i] = BitState;
+						RelayStatusPCA9685[i] = BitState;
 					}
 				}
 			}
@@ -272,7 +272,7 @@ void ControlSwitch(byte Start, byte End, byte Control)
 				{
 					BitState = bitRead(NewHi, i);
 
-					if (RelayStatus[i] != BitState)
+					if (RelayStatusPCA9685[i] != BitState)
 					{
 						IOpin = (1 + i) * 2 - 1;
 						if (BitState)
@@ -285,7 +285,7 @@ void ControlSwitch(byte Start, byte End, byte Control)
 							// off
 							PWMServoDriverExt.setPWM(IOpin, 0, 0);
 						}
-						RelayStatus[i] = BitState;
+						RelayStatusPCA9685[i] = BitState;
 					}
 				}
 			}
@@ -296,7 +296,7 @@ void ControlSwitch(byte Start, byte End, byte Control)
 				{
 					BitState = bitRead(NewHi, i);
 
-					if (RelayStatus[i] != BitState)
+					if (RelayStatusPCA9685[i] != BitState)
 					{
 						IOpin = i * 2;
 						if (BitState)

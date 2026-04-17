@@ -102,7 +102,8 @@ namespace RateController.Classes
                             if (IsValve)
                             {
                                 int minPWM = Math.Max(20, Prd.MinPWMadjust);
-                                Prd.ManualPWM = minPWM + (255 - minPWM) * (RateStep - 1) / (MaxSteps - 1);
+                                int absValue = minPWM + (255 - minPWM) * (RateStep - 1) / (MaxSteps - 1);
+                                Prd.ManualPWM = (int)(absValue * RateDir);
                             }
                             else
                             {

@@ -148,9 +148,15 @@ String GetPageInfo()
   st += "\n  <tr>";
 
 
-  st += "\n<td>Relékontroll</td><td>";
-  st += MDL.RelayControl;
-  st += "\n</td><td>0 - no relays, 1 - RS485, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - Teensy GPIO, 6 - PCA9685 </td> ";
+  st += "\n<td>Onboard Relay Control</td><td>";
+  st += MDL.OnboardRelayControl;
+  st += "\n</td><td>0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574 </td> ";
+  st += "\n  </tr>";
+  st += "\n";
+  st += "\n  <tr>";
+  st += "\n<td>Remote Relay Control</td><td>";
+  st += MDL.RemoteRelayControl;
+  st += "\n</td><td>0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574 </td> ";
   st += "\n  </tr>";
   st += "\n";
   st += "\n  <tr>";
@@ -162,10 +168,10 @@ String GetPageInfo()
   st += "\n  </tr>";
   st += "\n";
   st += "\n  <tr>";
-  st += "\n<td>Flow enabled?</td><td>";
-  st += Sensor[0].FlowEnabled;
+  st += "\n<td>Adjustment enabled?</td><td>";
+  st += Sensor[0].AdjustmentEnabled;
   st += "   ";
-  st += Sensor[1].FlowEnabled;
+  st += Sensor[1].AdjustmentEnabled;
   st += "\n</td><td>0 / 1</td> ";
   st += "\n  </tr>";
   st += "\n";

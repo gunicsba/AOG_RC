@@ -6,8 +6,8 @@ void DoSetup()
 	uint8_t ErrorCount = 0;
 	bool WheelMatch = false;
 
-	Sensor[0].FlowEnabled = false;
-	Sensor[1].FlowEnabled = false;
+	Sensor[0].AdjustmentEnabled = false;
+	Sensor[1].AdjustmentEnabled = false;
 
 	Serial.begin(38400);
 	delay(300);
@@ -220,7 +220,7 @@ void DoSetup()
 	}
 
 	// Relays
-	switch (MDL.RelayControl)
+	switch (MDL.OnboardRelayControl)
 	{
 	case 1:
 		// Relay GPIO Pins
@@ -665,7 +665,8 @@ void LoadDefaults()
 	MDL.SensorCount = 2;
 	MDL.InvertRelay = true;
 	MDL.InvertFlow = false;
-	MDL.RelayControl = 5;
+	MDL.OnboardRelayControl = 5;
+	MDL.RemoteRelayControl = 0;
 	MDL.WorkPin = NC;
 	MDL.WorkPinIsMomentary = false;
 	MDL.Is3Wire = false;
@@ -768,7 +769,7 @@ bool ValidData()
 			}
 		}
 
-		if (Result && MDL.RelayControl == 1)
+		if (Result && MDL.OnboardRelayControl == 1)
 		{
 			// check GPIOs for relays
 			for (int k = 0; k < 16; k++)
