@@ -807,7 +807,7 @@ namespace RateController
                 {
                     double Rt = Ra / TargetRate();
 
-                    if (Rt >= .9 && Rt <= 1.1 && mf.SwitchBox.SwitchIsOn(SwIDs.Auto))
+                    if (Rt >= .9 && Rt <= 1.1 && (mf.SwitchBox.SwitchIsOn(SwIDs.Auto) || cControlType == ControlTypeEnum.Fan))
                     {
                         Result = TargetRate();
                     }
@@ -961,7 +961,7 @@ namespace RateController
                 CurrentWorkedArea_Hc = cHectaresPerMinute * CurrentMinutes;
 
                 //coverage
-                if (cHectaresPerMinute > 0)    // Is application on?
+                if (cHectaresPerMinute > 0 || cControlType == ControlTypeEnum.Fan)    // Is application on?
                 {
                     switch (CoverageUnits)
                     {
