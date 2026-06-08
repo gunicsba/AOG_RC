@@ -66,6 +66,18 @@ void CheckRelays()
 	byte Start = 0;
 	if (MDL.OnboardRelayControl > 0) Start = 8; // onboard does first 8
 	ControlSwitch(Start, 15, MDL.RemoteRelayControl);
+
+	// Cytron disable (GPIO13) based on 8th relay
+	if (disableMotor && Sensor[1].ControlType == Motor_ct)
+	{
+		digitalWrite(13, bitRead(NewLo, 7));
+	}
+
+	// 9th relay: use motor channel 1 as relay
+	if (b9threlay)
+	{
+		SetPWM(1, bitRead(NewHi, 0) ? 255.0f : -255.0f);
+	}
 }
 
 void ControlSwitch(byte Start, byte End, byte Control)
@@ -190,68 +202,74 @@ void ControlSwitch(byte Start, byte End, byte Control)
 		break;
 
 	case 5:
-		// PCA9685
-		if (PCA9685_found)
+		// PCA9685 (primary for 0-7, extended for 8-15)
 		{
-			bool UseSpareDRV = (MDL.SensorCount == 1 && PCB_Type == 0);	// use spare DRV for relay 8
-			uint8_t RelayByte = (Start == 0) ? NewLo : NewHi;
-			for (int i = 0; i < 8; i++)
+			bool UseExt = (Start >= 8);
+			Adafruit_PWMServoDriver &Drv = UseExt ? PWMServoDriverExt : PWMServoDriver;
+			bool DrvFound = UseExt ? PCA9685Ext_found : PCA9685_found;
+
+			if (DrvFound)
 			{
-				uint8_t RelayIndex = i + Start;
-				if (RelayIndex > End) continue;
-
-				BitState = bitRead(RelayByte, i);
-				bool Use2Wire = (!MDL.Is3Wire || FlowMasterValveIndex == RelayIndex);
-
-				if (Use2Wire)
+				bool UseSpareDRV = (MDL.SensorCount == 1 && PCB_Type == 0 && !UseExt);
+				uint8_t RelayByte = (Start == 0) ? NewLo : NewHi;
+				for (int i = 0; i < 8; i++)
 				{
-					// 2 pins used for each valve, powered on and off
-					IOpin = i * 2;
-					if (BitState)
+					uint8_t RelayIndex = i + Start;
+					if (RelayIndex > End) continue;
+
+					BitState = bitRead(RelayByte, i);
+					bool Use2Wire = (!MDL.Is3Wire || FlowMasterValveIndex == RelayIndex);
+
+					if (Use2Wire)
 					{
-						// on
-						PWMServoDriver.setPWM(IOpin, 4096, 0);
-						PWMServoDriver.setPWM(IOpin + 1, 0, 4096);
-						if (UseSpareDRV && i == 7)
+						// 2 pins used for each valve, powered on and off
+						IOpin = i * 2;
+						if (BitState)
 						{
-							analogWrite(25, 255);
-							analogWrite(26, 0);
+							// on
+							Drv.setPWM(IOpin, 0, 4095);
+							Drv.setPWM(IOpin + 1, 0, 0);
+							if (UseSpareDRV && i == 7)
+							{
+								analogWrite(25, 255);
+								analogWrite(26, 0);
+							}
+						}
+						else
+						{
+							// off
+							Drv.setPWM(IOpin, 0, 0);
+							Drv.setPWM(IOpin + 1, 0, 0);
+							if (UseSpareDRV && i == 7)
+							{
+								analogWrite(25, 0);
+								analogWrite(26, 255);
+							}
 						}
 					}
 					else
 					{
-						// off
-						PWMServoDriver.setPWM(IOpin, 0, 4096);
-						PWMServoDriver.setPWM(IOpin + 1, 4096, 0);
-						if (UseSpareDRV && i == 7)
+						// 1 pin for each valve, powered on only, 8 sections, 1 drv for each section, use IN1
+						IOpin = (1 + i) * 2 - 1;
+						if (BitState)
 						{
-							analogWrite(25, 0);
-							analogWrite(26, 255);
+							// on
+							Drv.setPWM(IOpin, 0, 4095);
+							if (UseSpareDRV && i == 7)
+							{
+								analogWrite(25, 255);
+								analogWrite(26, 0);
+							}
 						}
-					}
-				}
-				else
-				{
-					// 1 pin for each valve, powered on only, 8 sections, 1 drv for each section, use IN1
-					IOpin = (1 + i) * 2 - 1;
-					if (BitState)
-					{
-						// on
-						PWMServoDriver.setPWM(IOpin, 4096, 0);
-						if (UseSpareDRV && i == 7)
+						else
 						{
-							analogWrite(25, 255);
-							analogWrite(26, 0);
-						}
-					}
-					else
-					{
-						// off
-						PWMServoDriver.setPWM(IOpin, 0, 4096);
-						if (UseSpareDRV && i == 7)
-						{
-							analogWrite(25, 0);
-							analogWrite(26, 255);
+							// off
+							Drv.setPWM(IOpin, 0, 0);
+							if (UseSpareDRV && i == 7)
+							{
+								analogWrite(25, 0);
+								analogWrite(26, 255);
+							}
 						}
 					}
 				}

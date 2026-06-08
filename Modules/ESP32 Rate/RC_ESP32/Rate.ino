@@ -55,6 +55,9 @@ void GetUPM()
 				Sensor[i].Hz = hz * 0.8 + Sensor[i].Hz * 0.2;
 				if (Sensor[i].MeterCal > 0) Sensor[i].UPM = (60.0 * Sensor[i].Hz) / Sensor[i].MeterCal;
 			}
+
+			// disableFlow: suppress flow reading when 8th section is active
+			if (disableFlow && bitRead(RelayLo, 7)) Sensor[i].UPM = 0;
 		}
 		else
 		{

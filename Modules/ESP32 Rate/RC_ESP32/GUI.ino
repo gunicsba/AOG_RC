@@ -22,6 +22,29 @@ void HandlePage2()
 	server.send(200, "text/html", GetPage2());
 }
 
+void HandleInfo()
+{
+	server.send(200, "text/html", GetPageInfo());
+}
+
+void HandleSettings()
+{
+	bool changed = false;
+
+	bool newState = server.arg("disableFlow") == "on";
+	if (disableFlow != newState) { disableFlow = newState; changed = true; }
+
+	newState = server.arg("disableMotor") == "on";
+	if (disableMotor != newState) { disableMotor = newState; changed = true; }
+
+	newState = server.arg("b9threlay") == "on";
+	if (b9threlay != newState) { b9threlay = newState; changed = true; }
+
+	if (changed) SaveData();
+
+	HandleInfo();
+}
+
 void handleCredentials()
 {
 	bool OldMode = MDLnetwork.WifiModeUseStation;
@@ -98,6 +121,61 @@ void ButtonPressed()
 	}
 }
 
-
-
+String HtmlGetHead(String title)
+{
+	String st = "";
+	st += "<html>";
+	st += "  <head>";
+	st += "    <META content='text/html; charset=utf-8' http-equiv=Content-Type>";
+	st += "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+	st += "    <title>";
+	st += title;
+	st += "</title>";
+	st += "    <style>";
+	st += "      html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center; }";
+	st += "      h1 { color: #444444; margin: 50px auto 30px; }";
+	st += "      body { margin-top: 50px; background-color: wheat; }";
+	st += "      table.center { margin-left: auto; margin-right: auto; }";
+	st += "      .button-72 {";
+	st += "        align-items: center; background-color: initial;";
+	st += "        background-image: linear-gradient(rgba(179,132,201,.84), rgba(57,31,91,.84) 50%);";
+	st += "        border-radius: 42px; border-width: 0;";
+	st += "        box-shadow: rgba(57,31,91,0.24) 0 2px 2px, rgba(179,132,201,0.4) 0 8px 12px;";
+	st += "        color: #FFFFFF; cursor: pointer; display: inline-flex; justify-content: center; align-items: center;";
+	st += "        font-family: Quicksand, sans-serif; font-size: 18px; font-weight: 700;";
+	st += "        letter-spacing: .04em; line-height: 16px; margin: 12px auto; padding: 12px 18px;";
+	st += "        text-align: center; text-decoration: none; user-select: none; -webkit-user-select: none;";
+	st += "        touch-action: manipulation; vertical-align: baseline; width: 320px; max-width: 90%;";
+	st += "      }";
+	st += "      .button-on {";
+	st += "        align-items: center; background-color: initial;";
+	st += "        background-image: linear-gradient(rgba(50,255,50,.84), rgba(30,150,30,.84) 50%);";
+	st += "        border-radius: 42px; border-width: 0;";
+	st += "        box-shadow: rgba(57,31,91,0.24) 0 2px 2px, rgba(179,132,201,0.4) 0 8px 12px;";
+	st += "        color: #FFFFFF; cursor: pointer; display: flex;";
+	st += "        font-family: Quicksand, sans-serif; font-size: 18px; font-weight: 700;";
+	st += "        justify-content: center; letter-spacing: .04em; line-height: 16px;";
+	st += "        margin: auto; padding: 18px 18px; text-align: center; text-decoration: none;";
+	st += "        user-select: none; -webkit-user-select: none; touch-action: manipulation;";
+	st += "        vertical-align: baseline; width: 40%; max-width: 20em;";
+	st += "      }";
+	st += "      .button-off {";
+	st += "        align-items: center; background-color: initial;";
+	st += "        background-image: linear-gradient(rgba(255,50,50,.84), rgba(150,30,30,.84) 50%);";
+	st += "        border-radius: 42px; border-width: 0;";
+	st += "        box-shadow: rgba(57,31,91,0.24) 0 2px 2px, rgba(179,132,201,0.4) 0 8px 12px;";
+	st += "        color: #FFFFFF; cursor: pointer; display: flex;";
+	st += "        font-family: Quicksand, sans-serif; font-size: 18px; font-weight: 700;";
+	st += "        justify-content: center; letter-spacing: .04em; line-height: 16px;";
+	st += "        margin: auto; padding: 18px 18px; text-align: center; text-decoration: none;";
+	st += "        user-select: none; -webkit-user-select: none; touch-action: manipulation;";
+	st += "        vertical-align: baseline; width: 40%; max-width: 150px;";
+	st += "      }";
+	st += "      .InputCell { text-align: center; font-size: 18px; font-weight: 700; }";
+	st += "      a:link { font-size: 150%; }";
+	st += "    </style>";
+	st += "  </head>";
+	st += "  <body>";
+	return st;
+}
 

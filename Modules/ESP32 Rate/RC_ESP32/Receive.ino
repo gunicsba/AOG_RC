@@ -5,7 +5,7 @@ void ReceiveUDP()
 
     if (ChipFound)
     {
-        if (Ethernet.linkStatus() == LinkON)
+        if (ETHconnected)
         {
             uint16_t len = UDP_Ethernet.parsePacket();
             if (len)
@@ -275,30 +275,18 @@ void ReadPGNs(byte data[], uint16_t len)
         break;
 
     case 32700:
-        // module config
+        // module config (selective parsing -- hardcoded board)
         //0     HeaderLo    188
         //1     HeaderHi    127
         //2     Module ID   0-15
-        //3	    sensor count
-        //4     commands
-        //      bit 0 - Invert relay control
-        //      bit 1 - Invert flow control
-        //      bit 2 - 
-        //      bit 3 - work pin is momentary
-        //      bit 4 - Is3Wire valve
-        //      bit 5 - ADS1115 enabled
-        //5	    onboard relay control type		0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
-        //6	    remote relay control type		0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
-        //7	    Sensor 0, Flow pin
-        //8     Sensor 0, Dir pin
-        //9     Sensor 0, PWM pin
-        //10    Sensor 1, Flow pin
-        //11    Sensor 1, Dir pin
-        //12    Sensor 1, PWM pin
-        //13    Relay pins 0-15, bytes 13-28
-        //29    work pin
-        //30    pressure pin
-        //31    -
+        //3     sensor count
+        //4     commands (only bits 0,1,3,4 parsed; bit 5 ADS forced true)
+        //5     onboard relay type (forced to 5 = PCA9685)
+        //6     remote relay type  (forced to 5 = PCA9685)
+        //7-12  sensor pins (IGNORED)
+        //13-28 relay GPIO pins (IGNORED)
+        //29    work pin (IGNORED, forced to 40)
+        //30    pressure pin (IGNORED)
         //32    CRC
 
         PGNlength = 33;
@@ -314,25 +302,14 @@ void ReadPGNs(byte data[], uint16_t len)
                 MDL.InvertFlow = ((tmp & 2) == 2);
                 MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
                 MDL.Is3Wire = ((tmp & 16) == 16);
-                MDL.ADS1115Enabled = ((tmp & 32) == 32);
 
-                MDL.OnboardRelayControl = data[5];
-                MDL.RemoteRelayControl = data[6];
-
-                Sensor[0].FlowPin = data[7];
-                Sensor[0].IN1 = data[8];
-                Sensor[0].IN2 = data[9];
-                Sensor[1].FlowPin = data[10];
-                Sensor[1].IN1 = data[11];
-                Sensor[1].IN2 = data[12];
-
-                for (int i = 0; i < 16; i++)
-                {
-                    MDL.RelayControlPins[i] = data[13 + i];
-                }
-
-                MDL.WorkPin = data[29];
-                MDL.PressurePin = data[30];
+                // Force hardcoded values
+                MDL.ADS1115Enabled = true;
+                MDL.OnboardRelayControl = 5;  // PCA9685
+                MDL.RemoteRelayControl = 5;   // PCA9685
+                MDL.WorkPin = 40;
+                MDL.PressurePin = NC;
+                // IGNORE: sensor pins, relay GPIO pins
 
                 SaveData(); 
                 ESP.restart();

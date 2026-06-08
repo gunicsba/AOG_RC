@@ -70,15 +70,12 @@ void SendComm()
 			bool Sent = false;
 
 			// ethernet
-			if (ChipFound)
+			if (ETHconnected)
 			{
-				if (Ethernet.linkStatus() == LinkON)
-				{
 					UDP_Ethernet.beginPacket(Ethernet_DestinationIP, DestinationPort);
 					UDP_Ethernet.write(Data, 15);
 					UDP_Ethernet.endPacket();
 					Sent = true;
-				}
 			}
 
 			// wifi
@@ -158,10 +155,7 @@ void SendComm()
 			}
 		}
 
-		if (ChipFound)
-		{
-			if (Ethernet.linkStatus() == LinkON) Data[13] |= 0b00010000;
-		}
+		if (ETHconnected) Data[13] |= 0b00010000;
 
 		if (GoodPins) Data[13] |= 0b00100000;
 		if (MDL.Is3Wire) Data[13] |= 0b01000000;
@@ -170,16 +164,12 @@ void SendComm()
 
 		bool Sent = false;
 		// ethernet
-		if (ChipFound)
+		if (ETHconnected)
 		{
-			if (Ethernet.linkStatus() == LinkON)
-			{
-
-				UDP_Ethernet.beginPacket(Ethernet_DestinationIP, DestinationPort);
-				UDP_Ethernet.write(Data, 15);
-				UDP_Ethernet.endPacket();
-				Sent = true;
-			}
+			UDP_Ethernet.beginPacket(Ethernet_DestinationIP, DestinationPort);
+			UDP_Ethernet.write(Data, 15);
+			UDP_Ethernet.endPacket();
+			Sent = true;
 		}
 
 		// wifi

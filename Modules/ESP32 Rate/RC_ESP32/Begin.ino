@@ -1,5 +1,5 @@
-// valid pins for each processor
-uint8_t ValidPins0[] = { 0,2,4,13,14,15,16,17,21,22,25,26,27,32,33,34,35,36,39 };	// SPI pins 5,18,19,23 excluded for ethernet module
+// valid pins for ESP32-S3 (excludes strapping pins 0/3/45/46, flash 26-32, SPI 35-38)
+uint8_t ValidPins0[] = { 1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,33,34,39,40,41,42,43,44,47,48 };
 
 void DoSetup()
 {
@@ -51,9 +51,8 @@ void DoSetup()
 	if (MDL.WorkPin < NC) pinMode(MDL.WorkPin, INPUT_PULLUP);
 	if (MDL.SensorCount > MaxProductCount) MDL.SensorCount = MaxProductCount;
 
-	// I2C
-	Wire.begin();			// I2C on pins SCL 22, SDA 21
-	Wire.setClock(400000);	//Increase I2C data rate to 400kHz
+	// I2C (ESP32-S3: SDA=8, SCL=18)
+	Wire.begin(8, 18, 400000);
 
 	// ADS1115
 	if (MDL.ADS1115Enabled)
@@ -84,35 +83,30 @@ void DoSetup()
 		}
 	}
 
-	// ethernet 
+	// ethernet (WT5500 SPI)
 	Serial.println("Starting Ethernet ...");
 	MDLnetwork.IP3 = MDL.ID + 50;
 	IPAddress LocalIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, MDLnetwork.IP3);
-	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDLnetwork.IP3 };
-
-	Ethernet.init(W5500_SS);   // SS pin
 	IPAddress Gateway(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 1);
 	IPAddress Mask(255, 255, 255, 0);
-	Ethernet.begin(LocalMac, LocalIP, Gateway, Gateway, Mask);
 
-	delay(1500);
-	ChipFound = (Ethernet.hardwareStatus() != EthernetNoHardware);
-	if (ChipFound)
+	WT5500setup();
+
+	// wait for ETHconnected event
+	uint8_t ethWait = 0;
+	while (!ETHconnected && ethWait < 20) { delay(250); Serial.print("."); ethWait++; }
+	Serial.println("");
+
+	if (ETHconnected)
 	{
-		if (Ethernet.linkStatus() == LinkON)
-		{
-			Serial.println("Ethernet connected.");
-		}
-		else
-		{
-			Serial.println("Ethernet not connected.");
-		}
+		ETH.config(LocalIP, Gateway, Mask);
+		Serial.println("Ethernet connected.");
 		Serial.print("IP Address: ");
-		Serial.println(Ethernet.localIP());
+		Serial.println(ETH.localIP());
 	}
 	else
 	{
-		Serial.println("Ethernet hardware not found.");
+		Serial.println("Ethernet not connected.");
 	}
 
 	Ethernet_DestinationIP = IPAddress(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);	// update from saved data
@@ -150,11 +144,14 @@ void DoSetup()
 		}
 
 		// pwm frequency change from default 5000 Hz to 490 Hz, required for some valves to work
-		ledcAttach(Sensor[i].IN1, PWM_FREQ, PWM_BITS);
-		ledcWrite(Sensor[i].IN1, 0);
+		// ESP32 core 2.0.x: channel-based LEDC API
+		ledcSetup(i * 2, PWM_FREQ, PWM_BITS);
+		ledcAttachPin(Sensor[i].IN1, i * 2);
+		ledcWrite(i * 2, 0);
 
-		ledcAttach(Sensor[i].IN2, PWM_FREQ, PWM_BITS);
-		ledcWrite(Sensor[i].IN2, 0);
+		ledcSetup(i * 2 + 1, PWM_FREQ, PWM_BITS);
+		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
+		ledcWrite(i * 2 + 1, 0);
 
 		if (Sensor[i].FlowPin == MDL.WheelSpeedPin) WheelMatch = true;
 	}
@@ -219,6 +216,8 @@ void DoSetup()
 	server.on("/", HandleRoot);
 	server.on("/page1", HandlePage1);
 	server.on("/page2", HandlePage2);
+	server.on("/info", HandleInfo);
+	server.on("/settings", HandleSettings);
 	server.on("/ButtonPressed", ButtonPressed);
 	server.onNotFound(HandleRoot);
 
@@ -239,6 +238,16 @@ void DoSetup()
 	ESP2SOTA.begin(&server);
 
 	Serial.println("OTA started.");
+
+	// Cytron motor enable pin (GPIO13)
+	pinMode(13, OUTPUT);
+	digitalWrite(13, HIGH);	// enabled by default
+
+	// scan I2C bus
+	scanI2CDevices();
+
+	// internal temperature sensor
+	initTempSensor();
 
 	// wifi client mode
 	if (MDLnetwork.WifiModeUseStation)
@@ -471,14 +480,35 @@ void InitializeRelays(uint8_t Control, int8_t End)
 			Serial.println("PCA9685 expander found.");
 			PWMServoDriver.begin();
 			PWMServoDriver.setPWMFreq(200);
-
-			pinMode(OutputEnablePin, OUTPUT);
-			digitalWrite(OutputEnablePin, LOW);	//enable
 		}
 		else
 		{
 			Serial.println("PCA9685 expander not found.");
 		}
+
+		// PCA9685 extended (for relays 8-15)
+		ErrorCount = 0;
+		while (!PCA9685Ext_found)
+		{
+			Serial.print(".");
+			Wire.beginTransmission(PCAExtaddress);
+			PCA9685Ext_found = (Wire.endTransmission() == 0);
+			ErrorCount++;
+			delay(500);
+			if (ErrorCount > 5)break;
+		}
+
+		if (PCA9685Ext_found)
+		{
+			Serial.println("PCA9685 extended expander found.");
+			PWMServoDriverExt.begin();
+			PWMServoDriverExt.setPWMFreq(200);
+		}
+		else
+		{
+			Serial.println("PCA9685 extended not found.");
+		}
+		Serial.println("");
 		break;
 
 	case 6:
@@ -513,6 +543,7 @@ void InitializeRelays(uint8_t Control, int8_t End)
 // eeprom map:
 // ID			0-1
 // module type	2
+// feature flags	10-12 (disableMotor, disableFlow, b9threlay)
 // module data	23-147
 // network		168-232
 // sensor 1		253-356
@@ -530,6 +561,11 @@ void LoadData()
 		// load stored data
 		Serial.println("Loading stored settings.");
 		EEPROM.get(23, MDL);
+
+		// feature flags
+		disableMotor = EEPROM.read(10);
+		disableFlow = EEPROM.read(11);
+		b9threlay = EEPROM.read(12);
 
 		for (int i = 0; i < MaxProductCount; i++)
 		{
@@ -554,6 +590,11 @@ void SaveData()
 	EEPROM.put(2, InoType);
 	EEPROM.put(23, MDL);
 
+	// feature flags
+	EEPROM.write(10, disableMotor);
+	EEPROM.write(11, disableFlow);
+	EEPROM.write(12, b9threlay);
+
 	for (int i = 0; i < MaxProductCount; i++)
 	{
 		EEPROM.put(253 + i * 124, Sensor[i]);
@@ -565,15 +606,14 @@ void LoadDefaults()
 {
 	Serial.println("Loading default settings.");
 
-	// RC15
-	// default flow pins
-	Sensor[0].FlowPin = 17;
-	Sensor[0].IN1 = 32;
-	Sensor[0].IN2 = 33;
+	// default flow pins (ESP32-S3)
+	Sensor[0].FlowPin = 21;
+	Sensor[0].IN1 = 4;
+	Sensor[0].IN2 = 5;
 
-	Sensor[1].FlowPin = 16;
-	Sensor[1].IN1 = 25;
-	Sensor[1].IN2 = 26;
+	Sensor[1].FlowPin = 47;
+	Sensor[1].IN1 = 7;
+	Sensor[1].IN2 = 15;
 
 	// default control settings
 	for (int i = 0; i < 2; i++)
@@ -604,7 +644,7 @@ void LoadDefaults()
 
 	// module settings
 	MDL.ID = 0;
-	MDL.SensorCount = 1;
+	MDL.SensorCount = 2;
 	MDL.InvertRelay = true;
 	MDL.InvertFlow = true;
 	MDL.OnboardRelayControl = 5;
@@ -612,7 +652,7 @@ void LoadDefaults()
 	MDL.WorkPin = NC;
 	MDL.WorkPinIsMomentary = false;
 	MDL.Is3Wire = true;
-	MDL.ADS1115Enabled = false;
+	MDL.ADS1115Enabled = true;
 	MDL.PressurePin = NC;
 	MDL.WheelCal = 0;
 	MDL.WheelSpeedPin = NC;
@@ -625,6 +665,7 @@ bool ValidData()
 	switch (Processor)
 	{
 	case 0:
+	case 1:
 		// work switch
 		Result = (MDL.WorkPin == NC);
 		if (!Result)
@@ -763,6 +804,51 @@ void SaveNetworks()
 {
 	EEPROM.put(168, MDLnetwork);
 	EEPROM.commit();
+}
+
+void scanI2CDevices()
+{
+	Serial.println("Scanning I2C bus...");
+	byte count = 0;
+	for (byte addr = 1; addr < 127; addr++)
+	{
+		Wire.beginTransmission(addr);
+		if (Wire.endTransmission() == 0)
+		{
+			Serial.print("  Found device at 0x");
+			if (addr < 16) Serial.print("0");
+			Serial.println(addr, HEX);
+			count++;
+		}
+	}
+	Serial.print("  ");
+	Serial.print(count);
+	Serial.println(" device(s) found.");
+}
+
+// ESP32-S3 internal temperature sensor (ESP-IDF 4.4 / core 2.0.x API)
+static temp_sensor_config_t temp_sensor_config = TSENS_CONFIG_DEFAULT();
+
+void initTempSensor()
+{
+	temp_sensor_set_config(temp_sensor_config);
+	temp_sensor_start();
+}
+
+float getChipTempC()
+{
+	float temp = 0;
+	temp_sensor_read_celsius(&temp);
+	return temp;
+}
+
+float getCurrentInAmps(int pin)
+{
+	// ESP32-S3 ADC: 12-bit, 0-3.3V range
+	int raw = analogRead(pin);
+	float voltage = (raw / 4095.0f) * 3.3f;
+	// ACS712-style: 2.5V offset, 66mV/A sensitivity
+	return (voltage - 2.5f) / 0.066f;
 }
 
 

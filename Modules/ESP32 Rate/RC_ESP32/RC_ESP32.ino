@@ -2,12 +2,10 @@
 #include <Adafruit_SPIDevice.h>
 #include <Adafruit_I2CRegister.h>
 #include <Adafruit_I2CDevice.h>
-#include <Adafruit_GenericDevice.h>
 #include <Adafruit_BusIO_Register.h>
-#include <index_html.h>
 #include "PCA95x5_RC.h"		// modified from https://github.com/hideakitai/PCA95x5
 #include <PCF8574.h>		// https://github.com/RobTillaart/PCF8574
-#include "ESP2SOTA_RC/ESP2SOTA_RC.h"	// modified from https://github.com/pangodream/ESP2SOTA
+#include "ESP2SOTA_RC.h"	// modified from https://github.com/pangodream/ESP2SOTA
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -18,17 +16,17 @@
 #include <EEPROM.h> 
 #include <Wire.h>
 
-#include <SPI.h>
-#include <Ethernet_Generic.h>
-#include <EthernetUdp.h>
-
 #include <Adafruit_PWMServoDriver.h>	// Adafruit PCA9685 PWM Servo Driver Library
 
-//rate control with ESP32, board: DOIT ESP32 DEVKIT V1
+#include "ETHClass.h"		// WT5500 SPI Ethernet
+#include <elapsedMillis.h>
+#include "driver/temp_sensor.h"
+
+//rate control with ESP32-S3, board: ESP32-S3 custom rate control board
 # define InoDescription "RC_ESP32"
 const uint16_t InoID = 5056;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 4;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
-const uint8_t Processor = 0;	// 0 - ESP32-Wroom-32U
+const uint8_t Processor = 1;	// 1 - ESP32-S3
 const uint8_t PCB_Type = 0;		// 0 - RC15
 
 const uint8_t NC = 0xFF;		// Pin not connected
@@ -38,13 +36,13 @@ const uint32_t FlowTimeout = 4000;
 const uint16_t EEPROM_SIZE = 512;
 
 // servo driver
-const uint8_t OutputEnablePin = 27;
-const uint8_t PCA9685address = 0x55;	// RC15 1010101, 1 + A5-A0
+const uint8_t PCA9685address = 0x40;	// PCA9685 address 0x40, 1 + A5-A0
 
 const int16_t ADS1115_Address = 0x48;
 uint8_t MCP23017address;
 const uint8_t PCF8574address = 0x20;
-const uint8_t W5500_SS = 5;		// W5500 SPI SS
+
+#define PCAExtaddress 0x41	// Extended PCA9685 for relays 8-15
 
 #if defined(ESP32)
 const int PWM_BITS = 12;
@@ -147,8 +145,9 @@ bool SensorConnected[MaxProductCount];
 bool PIDenabled[MaxProductCount];
 bool Applying[MaxProductCount];
 
-// ethernet
-EthernetUDP UDP_Ethernet;
+// ethernet (WT5500 SPI via ETHClass)
+WiFiUDP UDP_Ethernet;
+bool ETHconnected = false;
 const uint16_t ListeningPort = 28888;
 const uint16_t DestinationPort = 29999;
 IPAddress Ethernet_DestinationIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);
@@ -194,8 +193,12 @@ bool MCP23017_found = false;
 
 // PCA9685
 bool PCA9685_found = false;
-#define PCA9685Address 0x55
+#define PCA9685Address 0x40
 Adafruit_PWMServoDriver PWMServoDriver = Adafruit_PWMServoDriver(PCA9685Address);
+
+// PCA9685 extended (for relays 8-15)
+bool PCA9685Ext_found = false;
+Adafruit_PWMServoDriver PWMServoDriverExt = Adafruit_PWMServoDriver(PCAExtaddress);
 
 // analog
 int16_t PressureReading = 0;
@@ -208,6 +211,15 @@ void  ISR0();		// function prototype
 void  ISR1();
 
 uint8_t DisconnectCount = 0;
+
+// feature flags (EEPROM persisted)
+bool disableMotor = false;	// GPIO13 high disables motor driver
+bool disableFlow = false;	// suppress flow when section 8 active
+bool b9threlay = false;		// use motor channel 1 as 9th relay
+
+// current sense pins (ESP32-S3)
+const uint8_t Current1Pin = 6;
+const uint8_t Current2Pin = 14;
 
 void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info)
 {
@@ -250,6 +262,13 @@ uint32_t WheelCounts = 0;
 void setup()
 {
 	DoSetup();
+
+	// Force hardware config to our fixed board
+	MDL.OnboardRelayControl = 5;	// PCA9685
+	MDL.RemoteRelayControl = 5;	// PCA9685
+	MDL.ADS1115Enabled = true;
+	MDL.WorkPin = 40;
+	MDL.PressurePin = NC;
 }
 
 void loop()

@@ -3,6 +3,9 @@ void AdjustFlow()
 {
     for (int i = 0; i < MDL.SensorCount; i++)
     {
+        // b9threlay: skip sensor 1 (motor channel used as 9th relay)
+        if (b9threlay && i == 1) continue;
+
         float clamped = constrain(Sensor[i].PWM, -255.0f, 255.0f);
 
         switch (Sensor[i].ControlType)
@@ -44,13 +47,13 @@ void SetPWM(byte ID, float pwmVal)
 #if defined(ESP32)
     if (Increase)
     {
-        ledcWrite(Sensor[ID].IN1, duty);
-        ledcWrite(Sensor[ID].IN2, 0);
+        ledcWrite(ID * 2, duty);      // IN1 channel
+        ledcWrite(ID * 2 + 1, 0);     // IN2 channel
     }
     else
     {
-        ledcWrite(Sensor[ID].IN1, 0);
-        ledcWrite(Sensor[ID].IN2, duty);
+        ledcWrite(ID * 2, 0);         // IN1 channel
+        ledcWrite(ID * 2 + 1, duty);  // IN2 channel
     }
 
 #else
