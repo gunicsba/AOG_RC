@@ -1,5 +1,11 @@
-// valid pins - excludes ethernet pins 35,36,37,38,45,48
-uint8_t ValidPins0[] = { 0,2,3,4,5,7,9,10,11,12,13,14,15,16,17,21,22,25,26,27,32,33,34,39,40,47 };
+// valid pins - excludes:
+//   ethernet pins 35,36,37,38,45,48
+//   internal flash pins 6,7,8,9,10,11
+//   strapping pins 0 (boot mode), 2 (flash boot)
+//   input-only pins 34,39 (no output capability)
+//   I2C pins 8 (SDA), 18 (SCL)
+//   note: GPIO12 (flash voltage strapping) is safe after eFuse VDD_SDIO burn to 3.3V
+uint8_t ValidPins0[] = { 3,4,5,12,13,14,15,16,17,21,22,25,26,27,32,33,40,47 };
 
 void DoSetup()
 {
@@ -629,8 +635,8 @@ void LoadDefaults()
 	Sensor[0].IN2 = 5;
 
 	Sensor[1].FlowPin = 47;
-	Sensor[1].IN1 = 7;
-	Sensor[1].IN2 = 15;
+	Sensor[1].IN1 = 16;
+	Sensor[1].IN2 = 17;
 
 	// default control settings
 	for (int i = 0; i < 2; i++)
@@ -787,6 +793,54 @@ bool ValidData()
 				if (!Result) break;
 			}
 		}
+
+		// check for duplicate pins
+		if (Result)
+		{
+			uint8_t usedPins[32];
+			uint8_t usedCount = 0;
+
+			auto addPin = [&](uint8_t pin) {
+				if (pin < NC && usedCount < sizeof(usedPins))
+					usedPins[usedCount++] = pin;
+			};
+			auto pinUsed = [&](uint8_t pin) -> bool {
+				if (pin >= NC) return false;
+				for (int i = 0; i < usedCount; i++)
+					if (usedPins[i] == pin) return true;
+				return false;
+			};
+
+			// collect all assigned pins
+			for (int i = 0; i < MDL.SensorCount; i++)
+			{
+				addPin(Sensor[i].FlowPin);
+				addPin(Sensor[i].IN1);
+				addPin(Sensor[i].IN2);
+			}
+			addPin(MDL.WorkPin);
+			addPin(MDL.PressurePin);
+			addPin(MDL.WheelSpeedPin);
+			if (MDL.OnboardRelayControl == 1)
+			{
+				for (int i = 0; i < 16; i++)
+					addPin(MDL.RelayControlPins[i]);
+			}
+
+			// check for duplicates
+			for (int i = 0; i < usedCount && Result; i++)
+			{
+				for (int j = i + 1; j < usedCount && Result; j++)
+				{
+					if (usedPins[i] == usedPins[j])
+					{
+						Serial.printf("ERROR: Duplicate pin %d detected!\n", usedPins[i]);
+						Result = false;
+					}
+				}
+			}
+		}
+
 		break;
 	}
 	GoodPins = Result;

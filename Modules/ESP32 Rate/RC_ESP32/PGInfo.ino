@@ -56,13 +56,13 @@ String GetPageInfo()
   st += "\n";
   st += "\n  <tr>";
   st += "\n<td>Valid GPIO Pins</td><td>";
-  st += "0,2,4,5,7,13,14,15,16,17,21,22,25,26,27,32,33,47";
-  st += "\n</td><td>Excludes ETH pins 35-38,45,48</td> ";
+  st += "3,4,5,12,13,14,15,16,17,21,22,25,26,27,32,33,40,47";
+  st += "\n</td><td>Excludes ETH(35-38,45,48), Flash(6-11), Strapping(0,2), Input-only(34,39), I2C(8,18). GPIO12 safe after eFuse burn.</td> ";
   st += "\n  </tr>";
   st += "\n";
   st += "\n  <tr>";
   st += "\n<td>Default Pins</td><td>";
-  st += "S0: Flow=21, IN1=4, IN2=5 | S1: Flow=47, IN1=7, IN2=15 | Work=NC, Pressure=NC";
+  st += "S0: Flow=21, IN1=4, IN2=5 | S1: Flow=47, IN1=16, IN2=17 | Work=NC, Pressure=NC";
   st += "\n</td><td>Factory defaults</td> ";
   st += "\n  </tr>";
   st += "\n";
