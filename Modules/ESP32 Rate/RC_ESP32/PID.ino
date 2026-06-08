@@ -45,6 +45,13 @@ void SetPWM()
 				Sensor[i].PWM = PIDvalve(i);
 				break;
 			}
+			if(
+				disableMotor && !bitRead(RelayLo,1) 
+										 && !bitRead(RelayLo,2)
+										 && !bitRead(RelayLo,3)
+										 && !bitRead(RelayLo,4)
+										 && !bitRead(RelayLo,5) 
+				) Sensor[i].PWM=0;
 		}
 	}
 	else
