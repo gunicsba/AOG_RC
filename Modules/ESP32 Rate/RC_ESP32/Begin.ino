@@ -386,6 +386,7 @@ void DoSetup()
 	server.on("/page2", HandlePage2);
 	server.on("/ButtonPressed", ButtonPressed);
   server.on("/info", HandleInfo);
+  server.on("/piddata", HandlePidData);
   server.on("/Cytron", Cytron);
 	server.onNotFound(HandleRoot);
 

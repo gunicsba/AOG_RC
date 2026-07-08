@@ -26,6 +26,14 @@ void HandleInfo()
 {
   server.send(200, "text/html", GetPageInfo());
 }
+
+void HandlePidData()
+{
+  String data = getDebugPID(0);
+  data += "|||";
+  data += getDebugPID(1);
+  server.send(200, "text/plain", data);
+}
 void handleCredentials()
 {
 	int NewID;

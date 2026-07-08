@@ -135,10 +135,16 @@ String GetPageInfo()
 
   st += "\n<tr><td>PID0</td>";
   st += "\n<td>Debug info</td>";
-  st += "\n<td>";
-  st += "\n\n";
+  st += "\n<td><span id='pid0'>";
   st += getDebugPID(0);
-  st += "\n</td>";
+  st += "</span></td>";
+  st += "\n</tr>";
+
+  st += "\n<tr><td>PID1</td>";
+  st += "\n<td>Debug info</td>";
+  st += "\n<td><span id='pid1'>";
+  st += getDebugPID(1);
+  st += "</span></td>";
   st += "\n</tr>";
 
   st += "\n<tr><td>Disable Motor drive based on 8th relay (Árpád)</td>";
@@ -171,6 +177,16 @@ String GetPageInfo()
   st += ">";
   st += "\n</td>";
   st += "\n</tr>";
+
+  st += "\n<script>";
+  st += "\nsetInterval(function(){";
+  st += "\n  fetch('/piddata').then(r=>r.text()).then(d=>{";
+  st += "\n    var p=d.split('|||');";
+  st += "\n    if(p[0])document.getElementById('pid0').innerHTML=p[0];";
+  st += "\n    if(p[1])document.getElementById('pid1').innerHTML=p[1];";
+  st += "\n  });";
+  st += "\n},200);";
+  st += "\n</script>";
 
   st += "\n</table>";
   st += "\n";

@@ -6,6 +6,7 @@ const double SampleTime = 50;
 const double Deadband = 0.04;		// % error below which no adjustment is made
 const double BrakePoint = 0.20;		// % error below which reduced adjustment is used
 const double BrakeSet = 0.75;		// low adjustment rate
+const double Decay = 0.90;			// leakage factor for incremental PID (1.0 = no decay)
 double SF;							// Settings Factor used to reduce adjustment when close to set rate
 double DifValue;					// differential value on UPM
 
@@ -85,20 +86,13 @@ int PIDmotor(byte ID)
 			LastCheck[ID] = millis();
 
 			RateError = Sensor[ID].TargetUPM - Sensor[ID].UPM;
-			if (abs(RateError) > Sensor[ID].TargetUPM)
-			{
-				if (RateError > 0)
-				{
-					RateError = Sensor[ID].TargetUPM;
-				}
-				else
-				{
-					RateError = Sensor[ID].TargetUPM * -1;
-				}
-			}
+			// normalize to percentage of target (-1.0 to 1.0)
+			RateError /= Sensor[ID].TargetUPM;
+			if (RateError > 1.0) RateError = 1.0;
+			if (RateError < -1.0) RateError = -1.0;
 
 			// check brakepoint
-			if (abs(RateError) > BrakePoint * Sensor[ID].TargetUPM)
+			if (abs(RateError) > BrakePoint)
 			{
 				SF = 1.0;
 			}
@@ -108,13 +102,16 @@ int PIDmotor(byte ID)
 			}
 
 			// check deadband
-			if (abs(RateError) > Deadband * Sensor[ID].TargetUPM)
+			if (abs(RateError) > Deadband)
 			{
 				IntegralSum[ID] += Sensor[ID].KI * RateError;
+				// clamp integral to prevent windup
+				if (IntegralSum[ID] > Sensor[ID].MaxPWM) IntegralSum[ID] = Sensor[ID].MaxPWM;
+				if (IntegralSum[ID] < -Sensor[ID].MaxPWM) IntegralSum[ID] = -Sensor[ID].MaxPWM;
 				IntegralSum[ID] *= (Sensor[ID].KI > 0);	// zero out if not using KI
 
 				DifValue = Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM);
-				Result += Sensor[ID].KP * SF * RateError + IntegralSum[ID] + DifValue;
+				Result = LastPWM[ID] * Decay + Sensor[ID].KP * SF * RateError + IntegralSum[ID] + DifValue;
 
 				if (Result > Sensor[ID].MaxPWM) Result = Sensor[ID].MaxPWM;
 				if (Result < Sensor[ID].MinPWM) Result = Sensor[ID].MinPWM;
@@ -201,12 +198,14 @@ int PIDvalve(byte ID)
 
 String getDebugPID(byte ID){
   String fr = "";
-  fr += "PID Debug for valve:";
+  fr += "PID Debug for sensor:";
   fr += ID;
   fr += "<br> MaxPWM: ";
   fr += Sensor[ID].MaxPWM;
   fr += " MinPWM: ";
   fr += Sensor[ID].MinPWM;
+  fr += " Decay: ";
+  fr += Decay;
   fr += "<br> FlowEnabled? ";
   fr += Sensor[ID].FlowEnabled;
   fr += "<br> TargetUPM: ";
@@ -215,26 +214,33 @@ String getDebugPID(byte ID){
   fr += Sensor[ID].UPM;
   fr += " RateError: ";
   fr += (Sensor[ID].TargetUPM - Sensor[ID].UPM);
-  fr += "<br> LastCheck: ";
-  fr += LastCheck[ID];
-  fr += " SampleTime: ";
-  fr += SampleTime;
-  fr += "<br> BrakePoint: ";
-  fr += BrakePoint;
-  fr += "<br> IntegralSum[ID]: "; 
-  fr += IntegralSum[ID];
+  fr += " (norm: ";
+  if (Sensor[ID].TargetUPM > 0)
+    fr += (Sensor[ID].TargetUPM - Sensor[ID].UPM) / Sensor[ID].TargetUPM;
+  else
+    fr += 0.0;
+  fr += ")";
+  fr += "<br> KP: ";
+  fr += Sensor[ID].KP;
+  fr += " KI: ";
+  fr += Sensor[ID].KI;
   fr += " KD: ";
   fr += Sensor[ID].KD;
-  fr += " KP: ";
-  fr += Sensor[ID].KP;
-  fr += " IntegralSum: ";
+  fr += " SF: ";
+  fr += SF;
+  fr += "<br> IntegralSum: ";
   fr += IntegralSum[ID];
-  fr += "<br> LastPWM ";
-  fr += LastPWM[ID];
-  fr += "<br><br> DifValue = Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM) ";
+  fr += " DifValue: ";
   fr += (Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM));
-  fr += "<br><br> Sensor[ID].KP * SF * RateError + IntegralSum[ID] + DifValue) ";
-  fr += Sensor[ID].KP * SF * RateError + IntegralSum[ID];
+  fr += "<br> LastPWM: ";
+  fr += LastPWM[ID];
+  fr += " LastUPM: ";
+  fr += LastUPM[ID];
+  fr += "<br> PWM output: ";
+  fr += Sensor[ID].PWM;
+  fr += "<br><br> Formula: LastPWM*Decay + KP*SF*Error + I + D = ";
+  double normErr = (Sensor[ID].TargetUPM > 0) ? (Sensor[ID].TargetUPM - Sensor[ID].UPM) / Sensor[ID].TargetUPM : 0.0;
+  fr += LastPWM[ID] * Decay + Sensor[ID].KP * SF * normErr + IntegralSum[ID] + Sensor[ID].KD * (LastUPM[ID] - Sensor[ID].UPM);
  return fr;
 }
 
