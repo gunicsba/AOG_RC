@@ -129,6 +129,13 @@ float PIDmotor(byte ID)
 {
 	float Result = 0;
 
+	// Motor disabled via 8th relay bit (disableMotor feature flag)
+	// Output 0 but keep integral state for smooth resume
+	if (disableMotor && !bitRead(RelayLo, 7))
+	{
+		return 0;
+	}
+
 	if (PIDenabled[ID])
 	{
 		Result = LastPWM[ID];

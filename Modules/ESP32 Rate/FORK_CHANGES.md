@@ -64,14 +64,41 @@ ChipFound = (Ethernet.hardwareStatus() != EthernetNoHardware);
 | RST | 48 |
 
 **Initialization** (in `Begin.ino`, replaces the old Ethernet block):
+
+> **⚠️ CRITICAL — Init Order on ESP32-S3:**
+> On ESP32-S3 the `WiFi.onEvent()` callback for ETH events (enum 18–23) may not fire reliably.
+> You **must** call `ETH.config()` **immediately** after `WT5500setup()`, **before** waiting for the link.
+> Then poll `ETH.linkUp()` with a timeout loop — do **not** gate `ETH.config()` behind the `ETHconnected` boolean.
+> Getting this order wrong results in no static IP being assigned and the web UI being unreachable.
+
 ```cpp
 WT5500setup();
-// Wait for ETHconnected event with timeout
-ETH.config(LocalIP, Gateway, Mask);
+
+// 1. Set static IP IMMEDIATELY (do not wait for ETHconnected)
+if (ETH.config(LocalIP, Gateway, Mask) == false) {
+    Serial.println("WT5500 Configuration failed.");
+} else {
+    Serial.println("WT5500 Configuration success.");
+}
+
+// 2. Poll linkUp() with timeout
+int timeout = 10;
+while (!ETHconnected && --timeout >= 0) {
+    Serial.print("Linkup:");
+    Serial.print(ETH.linkUp());
+    Serial.print(" Linkspeed:");
+    Serial.print(ETH.linkSpeed());
+    Serial.print(" LocalIP:");
+    Serial.print(ETH.localIP());
+    Serial.println("  Wait for network connect ...");
+    delay(500);
+}
+
+// 3. Start UDP
 UDP_Ethernet.begin(ListeningPort);
 ```
 
-**Link Status:** Replaced polling `Ethernet.linkStatus() == LinkON` with an event-driven boolean `ETHconnected` that is set/cleared by the `WiFiEvent` handler in `WT5500.ino`. Used in `Send.ino` and `Receive.ino`.
+**Link Status:** The event-driven boolean `ETHconnected` is set/cleared by the `WiFiEvent` handler in `WT5500.ino` when ETH events do fire. It is used in `Send.ino` and `Receive.ino` as the primary link indicator, but the init sequence must **not** depend on it.
 
 ---
 
@@ -483,7 +510,7 @@ When re-implementing these changes on a fresh fork:
 - [ ] Add PCAExtaddress (0x41) and PWMServoDriverExt
 - [ ] Update flow sensor default pins in `LoadDefaults()`
 - [ ] Add Current1Pin (6), Current2Pin (14), WorkPin (40) constants
-- [ ] Replace W5500 init with WT5500setup() + ETH.config() in Begin.ino
+- [ ] Replace W5500 init with WT5500setup() + ETH.config() in Begin.ino — **call `ETH.config()` immediately after `WT5500setup()`, THEN poll `linkUp()`** (see Section 3 warning)
 - [ ] Add `ETHconnected` boolean and event handler in WT5500.ino
 - [ ] Replace all `Ethernet.linkStatus()` checks with `ETHconnected`
 - [ ] Extract HTML header into `HtmlGetHead()` in `GUI.ino`

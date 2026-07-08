@@ -237,9 +237,9 @@ void ControlSwitch(byte Start, byte End, byte Control)
 						}
 						else
 						{
-							// off
+							// off — pulse close pin (matching old code for 3-wire valves)
 							Drv.setPWM(IOpin, 0, 0);
-							Drv.setPWM(IOpin + 1, 0, 0);
+							Drv.setPWM(IOpin + 1, 0, 4095);
 							if (UseSpareDRV && i == 7)
 							{
 								analogWrite(25, 0);

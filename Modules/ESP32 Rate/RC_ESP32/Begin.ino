@@ -92,21 +92,23 @@ void DoSetup()
 
 	WT5500setup();
 
-	// wait for ETHconnected event
-	uint8_t ethWait = 0;
-	while (!ETHconnected && ethWait < 20) { delay(250); Serial.print("."); ethWait++; }
-	Serial.println("");
-
-	if (ETHconnected)
-	{
-		ETH.config(LocalIP, Gateway, Mask);
-		Serial.println("Ethernet connected.");
-		Serial.print("IP Address: ");
-		Serial.println(ETH.localIP());
+	// config static IP immediately
+	if (ETH.config(LocalIP, Gateway, Mask) == false) {
+		Serial.println("WT5500 Configuration failed.");
+	} else {
+		Serial.println("WT5500 Configuration success.");
 	}
-	else
-	{
-		Serial.println("Ethernet not connected.");
+
+	int timeout = 10;
+	while (!ETHconnected && --timeout >= 0) {
+		Serial.print("Linkup:");
+		Serial.print(ETH.linkUp());
+		Serial.print(" Linkspeed:");
+		Serial.print(ETH.linkSpeed());
+		Serial.print(" LocalIP:");
+		Serial.print(ETH.localIP());
+		Serial.println("  Wait for network connect ...");
+		delay(500);
 	}
 
 	Ethernet_DestinationIP = IPAddress(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 255);	// update from saved data
@@ -842,13 +844,14 @@ float getChipTempC()
 	return temp;
 }
 
-float getCurrentInAmps(int pin)
+float getCurrentInAmps(int pin, float maxAmps)
 {
 	// ESP32-S3 ADC: 12-bit, 0-3.3V range
 	int raw = analogRead(pin);
 	float voltage = (raw / 4095.0f) * 3.3f;
-	// ACS712-style: 2.5V offset, 66mV/A sensitivity
-	return (voltage - 2.5f) / 0.066f;
+	// Sensor outputs 2.5V at 0A, 0V at maxAmps
+	float sensitivity = maxAmps / 2.5f;
+	return (2.5f - voltage) * sensitivity;
 }
 
 
