@@ -485,7 +485,7 @@ void InitializeRelays(uint8_t Control, int8_t End)
 		while (!PCA9685_found)
 		{
 			Serial.print(".");
-			Wire.beginTransmission(PCA9685Address);
+			Wire.beginTransmission(PCA9685address);
 			PCA9685_found = (Wire.endTransmission() == 0);
 			ErrorCount++;
 			delay(500);

@@ -51,7 +51,7 @@ uint8_t DefaultRelayPins[] = { 8,9,10,11,12,25,26,27,NC,NC,NC,NC,NC,NC,NC,NC };	
 
 #if defined(ESP32)
 const int PWM_BITS = 12;
-const int PWM_FREQ = 490;
+const int PWM_FREQ = 2000;
 const uint8_t MaxProductCount = 6;
 const int MaxSampleSize = 25;
 #elif defined(ARDUINO_TEENSY41)

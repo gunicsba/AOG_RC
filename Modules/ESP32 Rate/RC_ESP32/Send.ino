@@ -201,7 +201,7 @@ void SendComm()
 			// ethernet
 			if (ChipFound)
 			{
-				if (Ethernet.linkStatus() == LinkON)
+				if (ETH.linkUp())
 				{
 
 					UDP_Ethernet.beginPacket(Ethernet_DestinationIP, DestinationPort);
@@ -312,7 +312,7 @@ void SendPIDlog()
 				// ethernet
 				if (ChipFound)
 				{
-					if (Ethernet.linkStatus() == LinkON)
+					if (ETH.linkUp())
 					{
 
 						UDP_Ethernet.beginPacket(Ethernet_DestinationIP, DestinationPort);

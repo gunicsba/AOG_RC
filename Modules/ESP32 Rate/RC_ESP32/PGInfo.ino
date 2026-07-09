@@ -92,9 +92,11 @@ String GetPageInfo()
 	st += MasterOn;
 	st += "</td><td>global from PGN32500 bit 4</td></tr>";
 	
-	st += "\n  <tr><td>AutoOn</td><td colspan=\"2\">";
-	st += AutoOn;
-	st += "</td><td>global from PGN32500 bit 6</td></tr>";
+	st += "\n  <tr><td>AutoOn</td><td>";
+	st += AutoOn[0];
+	st += "  ";
+	st += AutoOn[1];
+	st += "</td><td>per-sensor from PGN32500 bit 6</td></tr>";
 	
 	st += "\n  <tr><td>SensorConnected</td><td>";
 	st += SensorConnected[0];
@@ -316,11 +318,11 @@ String GetPageInfo()
 	st += Sensor[1].PulseMax;
 	st += "</td></tr>";
 
-	// PulseSampleSize
-	st += "\n  <tr><td>PulseSampleSize</td><td>";
-	st += Sensor[0].PulseSampleSize;
+	// MedianCount (live pulse sample count used in latest median)
+	st += "\n  <tr><td>MedianCount</td><td>";
+	st += MedianCount[0];
 	st += "</td><td>";
-	st += Sensor[1].PulseSampleSize;
+	st += MedianCount[1];
 	st += "</td></tr>";
 
 	st += "\n</table>";
