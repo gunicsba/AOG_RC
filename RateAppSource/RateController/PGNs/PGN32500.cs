@@ -13,6 +13,7 @@ namespace RateController.PGNs
         ControlFan = 8,                 // 0000 1000, bit 3
         ControlComboCloseTimed = 10,    // 0000 1010, bit 1, bit 3
         MasterOnMode = 16,              // 0001 0000, bit 4
+        PidLoggingOn = 32,              // 0010 0000, bit 5
         AutoOn = 64,                    // 0100 0000, bit 6
         CalibrationOn = 128             // 1000 0000, bit 7
     }
@@ -33,7 +34,7 @@ namespace RateController.PGNs
         //	        - bit 0		    reset acc.Quantity
         //	        - bit 1,2,3		control type 0-4
         //	        - bit 4		    MasterOn mode
-        //          - bit 5         -
+        //          - bit 5         PidLogging
         //          - bit 6         AutoOn
         //          - bit 7         Calibration On
         //10    manual pwm Lo
@@ -105,14 +106,19 @@ namespace RateController.PGNs
                 if (Prod.EraseAccumulatedUnits) cData[9] |= (byte)CommandPGN32500.ResetQuantity;
                 Prod.EraseAccumulatedUnits = false;
 
-                if (Props.RateCalibrationOn)
+                if (Props.LogPID) cData[9] |= (byte)CommandPGN32500.PidLoggingOn;
+
+                if (Props.RateCalibrationOn && Core.Products.CalibrationOnModule(Prod.ModuleID))
                 {
-                    // calibrate
+                    // calibrating on this module - only its products get calibration
+                    // behaviour; other modules stay on the normal path below
+                    cData[9] |= (byte)(CommandPGN32500.MasterOnMode); // keep the module - global MasterOn asserted (any cleared bit would clobber it)
+
                     if (Prod.CalibrateOjbect?.PowerOn == true)
                     {
                         RateSet = Prod.TargetUPM() * 1000.0;
 
-                        cData[9] |= (byte)(CommandPGN32500.CalibrationOn | CommandPGN32500.MasterOnMode);
+                        cData[9] |= (byte)(CommandPGN32500.CalibrationOn);
 
                         if (Prod.CalibrateOjbect?.Locked == true)
                         {
@@ -125,6 +131,14 @@ namespace RateController.PGNs
                             // Setting PWM, auto on, find CalPWM
                             cData[9] |= (byte)CommandPGN32500.AutoOn;
                         }
+                    }
+                    else
+                    {
+                        // idle product on a calibrating module: park
+                        // this sensor in auto - with rate 0 its PID is gated off and a
+                        // combo-close valve is driven closed. AutoOn is per-sensor in the
+                        // firmware, so this cannot disturb the calibrating sensor's phase.
+                        cData[9] |= (byte)(CommandPGN32500.AutoOn);
                     }
                 }
                 else
@@ -139,7 +153,15 @@ namespace RateController.PGNs
                     else
                     {
                         RateSet = Prod.TargetUPM() * 1000.0;
-                        if (RateSet < (Prod.MinUPM * 1000.0)) RateSet = Prod.MinUPMinUse() * 1000.0;
+
+                        // only apply the minimum-UPM floor when product is actually applying
+                        // (at least one section on with width); otherwise sections-off would
+                        // command a non-zero target and wind the valve open
+                        if (Prod.ProductOn(false))
+                        {
+                            double MinUPM = Prod.MinUPMinUse() * 1000.0;
+                            if (RateSet < MinUPM) RateSet = MinUPM;
+                        }
                     }
 
                     // master on

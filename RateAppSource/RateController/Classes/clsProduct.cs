@@ -402,7 +402,7 @@ namespace RateController.Classes
             get { return cOffRateSetting; }
             set
             {
-                if (value >= 0 && value <= 40)
+                if (value >= 0 && value <= 60)
                 {
                     cOffRateSetting = value;
                 }
@@ -659,12 +659,42 @@ namespace RateController.Classes
             double Result = cMinUPM;
             if (cUseMinUPMbySpeed)
             {
-                double KPH = cMinUPMbySpeed;
-                if (!Props.UseMetric) KPH *= Props.MPHtoKPH;
-                double HPM = Core.Sections.TotalWidth(false) * KPH / 600.0;   // hectares per minute
-                Result = TargetRate() * HPM;
-                if (CoverageUnits == 0) Result *= 2.47105;
+                Result = FloorUPMfromSpeed(cMinUPMbySpeed);
             }
+
+            // Scale the floor to the active working width so a partial-width pass
+            // isn't floored to the full-implement minimum (which over-applies on the
+            // sections still on). All sections on -> factor 1 -> unchanged.
+            // FloorUPMfromSpeed/SpeedFromFloorUPM stay on full configured width for the
+            // UI preview (sections are off while parked in the menu); the active-width
+            // scaling lives here, on the runtime-only path (PGN32500 via ProductOn).
+            double fullWidth = Core.Sections.TotalWidth(false);
+            if (fullWidth > 0) Result *= Core.Sections.WorkingWidth(false) / fullWidth;
+
+            return Result;
+        }
+
+        // The UPM floor produced by holding control down to a given minimum ground
+        // speed, at the current target rate and active section width.
+        // minSpeed is in the user's display units (mph or km/h).
+        public double FloorUPMfromSpeed(double minSpeed)
+        {
+            double KPH = minSpeed;
+            if (!Props.UseMetric) KPH *= Props.MPHtoKPH;
+            double HPM = Core.Sections.TotalWidth(false) * KPH / 600.0;   // hectares per minute
+            double Result = TargetRate() * HPM;
+            if (CoverageUnits == 0) Result *= 2.47105;
+            return Result;
+        }
+
+        // The minimum ground speed (user display units) that a given UPM floor
+        // corresponds to, at the current target rate and active section width.
+        // Returns 0 when it cannot be resolved (no target rate / zero width).
+        public double SpeedFromFloorUPM(double upm)
+        {
+            double Result = 0;
+            double upmPerUnitSpeed = FloorUPMfromSpeed(1.0);   // linear, so this is the slope
+            if (upmPerUnitSpeed > 0) Result = upm / upmPerUnitSpeed;
             return Result;
         }
 
@@ -858,6 +888,9 @@ namespace RateController.Classes
             Props.SetProp(IDname + "CurrentTankAmount", cCurrentTankAmount.ToString());
 
             cSensorSettings.Save();
+
+            string RxPath = JobManager.MapPath(JobManager.CurrentJob?.ID ?? -1);
+            if (!string.IsNullOrEmpty(RxPath)) Core.Products.SaveSidecar(RxPath);
         }
 
         public void SendSensorSettings()

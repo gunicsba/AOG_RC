@@ -64,6 +64,7 @@
             this.btnDelete = new System.Windows.Forms.Button();
             this.btnSelect = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
+            this.btnPrint = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dataSet1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataTable1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.DGV)).BeginInit();
@@ -94,7 +95,6 @@
             // 
             this.dataRelay.Caption = "Name";
             this.dataRelay.ColumnName = "cName";
-            this.dataRelay.MaxLength = -1;
             // 
             // dataType
             // 
@@ -301,7 +301,7 @@
             this.btnCancel.Font = new System.Drawing.Font("Tahoma", 14.25F);
             this.btnCancel.Image = global::RateController.Properties.Resources.Cancel64;
             this.btnCancel.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnCancel.Location = new System.Drawing.Point(503, 341);
+            this.btnCancel.Location = new System.Drawing.Point(513, 341);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(70, 63);
             this.btnCancel.TabIndex = 178;
@@ -318,7 +318,7 @@
             this.btnOK.Font = new System.Drawing.Font("Tahoma", 14.25F);
             this.btnOK.Image = global::RateController.Properties.Resources.Save;
             this.btnOK.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.btnOK.Location = new System.Drawing.Point(581, 341);
+            this.btnOK.Location = new System.Drawing.Point(589, 341);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(70, 63);
             this.btnOK.TabIndex = 177;
@@ -331,7 +331,7 @@
             this.btnDelete.FlatAppearance.BorderSize = 0;
             this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDelete.Image = global::RateController.Properties.Resources.Trash;
-            this.btnDelete.Location = new System.Drawing.Point(415, 341);
+            this.btnDelete.Location = new System.Drawing.Point(425, 341);
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(82, 64);
             this.btnDelete.TabIndex = 430;
@@ -343,7 +343,7 @@
             this.btnSelect.FlatAppearance.BorderSize = 0;
             this.btnSelect.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSelect.Image = global::RateController.Properties.Resources.selection;
-            this.btnSelect.Location = new System.Drawing.Point(327, 341);
+            this.btnSelect.Location = new System.Drawing.Point(337, 341);
             this.btnSelect.Name = "btnSelect";
             this.btnSelect.Size = new System.Drawing.Size(82, 64);
             this.btnSelect.TabIndex = 432;
@@ -359,11 +359,29 @@
             this.label1.TabIndex = 433;
             this.label1.Text = "label1";
             // 
+            // btnPrint
+            // 
+            this.btnPrint.BackColor = System.Drawing.Color.Transparent;
+            this.btnPrint.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnPrint.FlatAppearance.BorderSize = 0;
+            this.btnPrint.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPrint.Font = new System.Drawing.Font("Tahoma", 14.25F);
+            this.btnPrint.Image = global::RateController.Properties.Resources.printer;
+            this.btnPrint.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.btnPrint.Location = new System.Drawing.Point(261, 338);
+            this.btnPrint.Name = "btnPrint";
+            this.btnPrint.Size = new System.Drawing.Size(70, 63);
+            this.btnPrint.TabIndex = 434;
+            this.btnPrint.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.btnPrint.UseVisualStyleBackColor = false;
+            this.btnPrint.Click += new System.EventHandler(this.btnPrint_Click);
+            // 
             // frmZoneList
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(671, 413);
+            this.Controls.Add(this.btnPrint);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.btnSelect);
             this.Controls.Add(this.btnDelete);
@@ -378,7 +396,6 @@
             this.MinimizeBox = false;
             this.Name = "frmZoneList";
             this.ShowInTaskbar = false;
-            this.Text = "Zone List";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmZoneList_FormClosing);
             this.Load += new System.EventHandler(this.frmZoneList_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dataSet1)).EndInit();
@@ -419,5 +436,6 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn cNameIndex;
         private System.Windows.Forms.Button btnSelect;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Button btnPrint;
     }
 }

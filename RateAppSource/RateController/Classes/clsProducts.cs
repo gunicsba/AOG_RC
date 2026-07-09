@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
 
 namespace RateController.Classes
 {
@@ -62,6 +65,30 @@ namespace RateController.Classes
             return Result;
         }
 
+        // True when a product on the given module is actively calibrating (calibrate object
+        // powered on). Scopes calibration behaviour (PGN32500 command bits, forced relays) to
+        // the modules actually involved, so uninvolved modules run normally during calibration.
+        public bool CalibrationOnModule(int moduleID)
+        {
+            bool Result = false;
+            try
+            {
+                foreach (clsProduct P in cProducts)
+                {
+                    if (P.ModuleID == moduleID && P.CalibrateOjbect?.PowerOn == true)
+                    {
+                        Result = true;
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("clsProducts/CalibrationOnModule: " + ex.Message);
+            }
+            return Result;
+        }
+
         public clsProduct Item(int ProdID)  // access records by Product ID
         {
             int IDX = ListID(ProdID);
@@ -98,6 +125,7 @@ namespace RateController.Classes
                     Prd.AppMode = ApplicationMode.ControlledUPM;
                     Prd.OffRateSetting = 0;
                     Prd.MinUPM = 0;
+                    Prd.UseMinUPMbySpeed = true;   // by-speed is the default minimum mode for new profiles
                     Prd.CountsRev = 1;
                     Prd.Enabled = false;
                     Prd.Save();
@@ -231,6 +259,109 @@ namespace RateController.Classes
             {
                 Props.WriteErrorLog("AssignNextUnusedModSen: " + ex.Message);
             }
+        }
+
+        public void SaveSidecar(string prescriptionPath)
+        {
+            try
+            {
+                int rateProducts = Props.MaxProducts - 2;
+                var data = new Dictionary<string, string>();
+                for (int i = 0; i < rateProducts && i < cProducts.Count; i++)
+                {
+                    var p = cProducts[i];
+                    string pfx = "Product_" + i + "_";
+                    data[pfx + "ProductName"]         = p.ProductName;
+                    data[pfx + "QuantityDescription"] = p.QuantityDescription;
+                    data[pfx + "CoverageUnits"]       = p.CoverageUnits.ToString();
+                    data[pfx + "CountsRev"]           = p.CountsRev.ToString();
+                    data[pfx + "MeterCal"]            = p.MeterCal.ToString(CultureInfo.InvariantCulture);
+                    data[pfx + "ProdDensity"]         = p.ProdDensity.ToString(CultureInfo.InvariantCulture);
+                    data[pfx + "MinUPM"]              = p.MinUPM.ToString(CultureInfo.InvariantCulture);
+                    data[pfx + "RateSet"]             = p.RateSet.ToString(CultureInfo.InvariantCulture);
+                    data[pfx + "RateAlt"]             = p.RateAlt.ToString(CultureInfo.InvariantCulture);
+                }
+                WriteSidecar(SidecarPath(prescriptionPath), data);
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("clsProducts/SaveSidecar: " + ex.Message);
+            }
+        }
+
+        public void LoadSidecar(string prescriptionPath)
+        {
+            try
+            {
+                string sp = SidecarPath(prescriptionPath);
+                var data = ReadSidecar(sp);
+
+                int rateProducts = Props.MaxProducts - 2;
+
+                if (data.Count == 0)
+                {
+                    SaveSidecar(prescriptionPath);
+                    return;
+                }
+
+                for (int i = 0; i < rateProducts && i < cProducts.Count; i++)
+                {
+                    var p = cProducts[i];
+                    string pfx = "Product_" + i + "_";
+
+                    if (data.TryGetValue(pfx + "ProductName", out string name))
+                        p.ProductName = name;
+                    if (data.TryGetValue(pfx + "QuantityDescription", out string qd))
+                        p.QuantityDescription = qd;
+                    if (data.TryGetValue(pfx + "CoverageUnits", out string cu)
+                        && byte.TryParse(cu, out byte cuVal))
+                        p.CoverageUnits = cuVal;
+                    if (data.TryGetValue(pfx + "CountsRev", out string cr)
+                        && int.TryParse(cr, out int crVal))
+                        p.CountsRev = crVal;
+                    if (data.TryGetValue(pfx + "MeterCal", out string mc)
+                        && double.TryParse(mc, NumberStyles.Any, CultureInfo.InvariantCulture, out double mcVal))
+                        p.MeterCal = mcVal;
+                    if (data.TryGetValue(pfx + "ProdDensity", out string pd)
+                        && double.TryParse(pd, NumberStyles.Any, CultureInfo.InvariantCulture, out double pdVal))
+                        p.ProdDensity = pdVal;
+                    if (data.TryGetValue(pfx + "MinUPM", out string mu)
+                        && double.TryParse(mu, NumberStyles.Any, CultureInfo.InvariantCulture, out double muVal))
+                        p.MinUPM = muVal;
+                    if (data.TryGetValue(pfx + "RateSet", out string rs)
+                        && double.TryParse(rs, NumberStyles.Any, CultureInfo.InvariantCulture, out double rsVal))
+                        p.RateSet = rsVal;
+                    if (data.TryGetValue(pfx + "RateAlt", out string ra)
+                        && double.TryParse(ra, NumberStyles.Any, CultureInfo.InvariantCulture, out double raVal))
+                        p.RateAlt = raVal;
+
+                    p.Save();
+                }
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("clsProducts/LoadSidecar: " + ex.Message);
+            }
+        }
+
+        private static string SidecarPath(string prescriptionPath)
+            => Path.ChangeExtension(prescriptionPath, ".products");
+
+        private static Dictionary<string, string> ReadSidecar(string path)
+        {
+            var d = new Dictionary<string, string>();
+            if (!File.Exists(path)) return d;
+            foreach (var line in File.ReadAllLines(path))
+            {
+                int eq = line.IndexOf('=');
+                if (eq > 0) d[line.Substring(0, eq)] = line.Substring(eq + 1);
+            }
+            return d;
+        }
+
+        private static void WriteSidecar(string path, Dictionary<string, string> data)
+        {
+            File.WriteAllLines(path, data.Select(kv => kv.Key + "=" + kv.Value));
         }
 
         private void Core_AppExit(object sender, EventArgs e)

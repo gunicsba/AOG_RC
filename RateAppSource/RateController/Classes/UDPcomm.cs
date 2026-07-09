@@ -180,6 +180,14 @@ namespace RateController
                             if (!Props.CanEnabled) Core.ModulesStatus.ParseByteData(Data);
                             break;
 
+                        case 32403:
+                            if (!Props.CanEnabled) Core.ModulesBoardID.ParseByteData(Data);
+                            break;
+
+                        case 32402:
+                            Core.PgnPidLog.ParseByteData(Data);
+                            break;
+
                         case 32618:
                             Core.SwitchBox.ParseByteData(Data);
                             break;

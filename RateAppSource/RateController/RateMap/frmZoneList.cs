@@ -1,8 +1,9 @@
-﻿using AgOpenGPS;
+using AgOpenGPS;
 using RateController.Classes;
 using System;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Printing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
@@ -14,6 +15,7 @@ namespace RateController.RateMap
         private bool AllSelected = false;
         private bool cEdited = false;
         private bool Initializing = false;
+        private int _printRow;
 
         public frmZoneList()
         {
@@ -78,6 +80,27 @@ namespace RateController.RateMap
             else
             {
                 Close();
+            }
+        }
+
+        private void btnPrint_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (var pd = new PrintDocument())
+                {
+                    _printRow = 0;
+                    pd.PrintPage += PrintZoneList;
+                    using (var dlg = new PrintDialog { Document = pd, UseEXDialog = true })
+                    {
+                        if (dlg.ShowDialog() == DialogResult.OK)
+                            pd.Print();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Props.WriteErrorLog("frmZoneList/btnPrint_Click: " + ex.Message);
             }
         }
 
@@ -208,7 +231,7 @@ namespace RateController.RateMap
                 var zones = MapController.ZnOverlays?.TargetZoneslist;
                 if (zones != null && zones.Count > 0)
                 {
-                    foreach (var zone in zones.OrderBy(z => z.Name))
+                    foreach (var zone in zones.OrderBy(z => ExtractZoneNumber(z.Name)).ThenBy(z => z.Name))
                     {
                         DataRow Rw = dataSet1.Tables[0].NewRow();
                         Rw[0] = zone.Name;
@@ -239,6 +262,109 @@ namespace RateController.RateMap
             catch (Exception ex)
             {
                 Props.WriteErrorLog("frmZoneList/LoadData: " + ex.Message);
+            }
+        }
+
+        private void PrintZoneList(object sender, PrintPageEventArgs e)
+        {
+            var g = e.Graphics;
+            float margin = 50f;
+            float pageHeight = e.PageBounds.Height - 2 * margin;
+            float y = margin;
+
+            var titleFont = new Font("Arial", 13, FontStyle.Bold);
+            var subFont = new Font("Arial", 9);
+            var headerFont = new Font("Arial", 9, FontStyle.Bold);
+            var cellFont = new Font("Arial", 9);
+
+            try
+            {
+                if (_printRow == 0)
+                {
+                    Job JB = JobManager.CurrentJob;
+                    string prescription = JB?.ActivePrescription ?? string.Empty;
+                    string title = string.IsNullOrEmpty(prescription) ? "Zone List" : "Zone List — " + prescription;
+                    g.DrawString(title, titleFont, Brushes.Black, margin, y);
+                    y += titleFont.GetHeight(g) + 2;
+                    g.DrawString(DateTime.Now.ToString("yyyy-MM-dd"), subFont, Brushes.Black, margin, y);
+                    y += subFont.GetHeight(g) + 8;
+                }
+
+                string areaUnit = Props.UseMetric ? "Ha" : "Ac";
+                string[] headers = { "Name", areaUnit, "A", "B", "C", "D", "E", "Color" };
+                float[] colWidths = { 140f, 55f, 55f, 55f, 55f, 55f, 55f, 55f };
+                int[] dgvCols = { 1, 2, 3, 4, 5, 6, 7, 8 };
+                float rowHeight = headerFont.GetHeight(g) + 6;
+
+                // Column headers on every page
+                float x = margin;
+                g.FillRectangle(Brushes.LightGray, x, y, colWidths.Sum(), rowHeight);
+                for (int c = 0; c < headers.Length; c++)
+                {
+                    g.DrawRectangle(Pens.Black, x, y, colWidths[c], rowHeight);
+                    var sf = new StringFormat
+                    {
+                        Alignment = c == 0 ? StringAlignment.Near : StringAlignment.Far,
+                        LineAlignment = StringAlignment.Center
+                    };
+                    g.DrawString(headers[c], headerFont, Brushes.Black,
+                        new RectangleF(x + 2, y, colWidths[c] - 4, rowHeight), sf);
+                    x += colWidths[c];
+                }
+                y += rowHeight;
+
+                // Data rows
+                while (_printRow < DGV.Rows.Count)
+                {
+                    if (y + rowHeight > margin + pageHeight)
+                    {
+                        e.HasMorePages = true;
+                        return;
+                    }
+
+                    x = margin;
+                    for (int c = 0; c < dgvCols.Length; c++)
+                    {
+                        g.DrawRectangle(Pens.Black, x, y, colWidths[c], rowHeight);
+
+                        if (c == 7)
+                        {
+                            var raw = DGV.Rows[_printRow].Cells[dgvCols[c]].Value;
+                            if (raw is int colorArgb)
+                            {
+                                Color zc = Color.FromArgb(colorArgb);
+                                using (var brush = new SolidBrush(Color.FromArgb(255, zc.R, zc.G, zc.B)))
+                                    g.FillRectangle(brush, x + 3, y + 3, colWidths[c] - 6, rowHeight - 6);
+                            }
+                        }
+                        else
+                        {
+                            string val = DGV.Rows[_printRow].Cells[dgvCols[c]].FormattedValue?.ToString() ?? "";
+                            var sf = new StringFormat
+                            {
+                                Alignment = c == 0 ? StringAlignment.Near : StringAlignment.Far,
+                                LineAlignment = StringAlignment.Center
+                            };
+                            g.DrawString(val, cellFont, Brushes.Black,
+                                new RectangleF(x + 2, y, colWidths[c] - 4, rowHeight), sf);
+                        }
+                        x += colWidths[c];
+                    }
+                    y += rowHeight;
+                    _printRow++;
+                }
+
+                // Footer
+                y += 4;
+                g.DrawString(ZoneCountText(), subFont, Brushes.Black, margin, y);
+                e.HasMorePages = false;
+            }
+            finally
+            {
+                titleFont.Dispose();
+                subFont.Dispose();
+                headerFont.Dispose();
+                cellFont.Dispose();
             }
         }
 
@@ -308,11 +434,32 @@ namespace RateController.RateMap
             }
         }
 
+        private static int ExtractZoneNumber(string name)
+        {
+            if (!name.StartsWith("Zone ")) return int.MaxValue;
+            int start = 5, end = 5;
+            while (end < name.Length && char.IsDigit(name[end])) end++;
+            return end > start && int.TryParse(name.Substring(start, end - start), out int n) ? n : int.MaxValue;
+        }
+
+        private string ZoneCountText()
+        {
+            var zones = MapController.ZnOverlays?.TargetZoneslist;
+            if (zones == null || zones.Count == 0) return "0 zones";
+            int totalParts = zones.Count;
+            int distinctZones = zones
+                .Select(z => string.Join("|", ZoneFields.Products.Select(p => z.Rates.TryGetValue(p, out double v) ? ((long)Math.Round(v * 10)).ToString() : "0")))
+                .Distinct().Count();
+            return distinctZones == totalParts
+                ? string.Format("{0} zones", totalParts)
+                : string.Format("{0} zones, {1} parts", distinctZones, totalParts);
+        }
+
         private void UpdateForm(bool UpdateObject = false)
         {
             Initializing = true;
             LoadData(UpdateObject);
-            label1.Text = "Zone count: " + DGV.Rows.Count.ToString();
+            label1.Text = ZoneCountText();
             Initializing = false;
         }
     }

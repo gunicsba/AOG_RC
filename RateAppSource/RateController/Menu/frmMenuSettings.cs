@@ -13,6 +13,7 @@ namespace RateController.Menu
         private bool cEdited;
         private bool Initializing = false;
         private frmMenu MainMenu;
+        private string cSpeedUnits = "mph";   // localized speed units (mph / km/h), set in SetLanguage
 
         public frmMenuSettings(frmMenu menu)
         {
@@ -91,6 +92,7 @@ namespace RateController.Menu
         private void ckDefault_CheckedChanged(object sender, EventArgs e)
         {
             SetButtons(true);
+            UpdateMinUPMhint();   // also fires on tbMinUPM / tbUPMspeed TextChanged
         }
 
         private void ckDefault_CheckedChanged_1(object sender, EventArgs e)
@@ -153,9 +155,66 @@ namespace RateController.Menu
             MainMenu.MenuMoved += MainMenu_MenuMoved;
             MainMenu.ProductChanged += MainMenu_ProductChanged;
             lbProduct.Font = new Font(lbProduct.Font.FontFamily, 18, FontStyle.Underline);
+
+            // StyleControls re-themes every Label; restore the hint's intended look
+            lbUPMhint.Font = new Font("Tahoma", 12F, FontStyle.Regular);
+            lbUPMhint.ForeColor = System.Drawing.SystemColors.Highlight;
+
             timer1.Enabled = true;
             UpdateForm();
             SetLanguage();
+        }
+
+        private void SetMinUPMboxes()
+        {
+            bool wasInitializing = Initializing;
+            Initializing = true;
+
+            if (rbUPMFixed.Checked)
+            {
+                tbMinUPM.Enabled = true;
+                tbUPMspeed.Enabled = false;
+                tbUPMspeed.Text = "0.0";
+            }
+            else
+            {
+                tbMinUPM.Enabled = false;
+                tbUPMspeed.Enabled = true;
+                tbMinUPM.Text = "0.0";
+            }
+
+            Initializing = wasInitializing;
+            UpdateMinUPMhint();
+        }
+
+        // Grounds the abstract Min-UPM value against numbers the user already
+        // understands: by-speed mode shows the resulting flow floor; fixed mode
+        // shows the speed below which that flow floor engages. Both use the
+        // current target rate and active width.
+        private void UpdateMinUPMhint()
+        {
+            clsProduct Prd = MainMenu.CurrentProduct;
+            double target = Prd.TargetRate();
+            string hint;
+
+            if (target <= 0)
+            {
+                hint = "Set a target rate to see the equivalent.";
+            }
+            else if (rbUPMSpeed.Checked)
+            {
+                double.TryParse(tbUPMspeed.Text, out double spd);
+                double upm = Prd.FloorUPMfromSpeed(spd);
+                hint = upm.ToString("N1") + " UPM at current target";
+            }
+            else
+            {
+                double.TryParse(tbMinUPM.Text, out double upm);
+                double spd = Prd.SpeedFromFloorUPM(upm);
+                hint = string.Format(Lang.lgMinFlowEngages, spd.ToString("N1") + " " + cSpeedUnits);
+            }
+
+            lbUPMhint.Text = hint;
         }
 
         private void grpMinUPM_Paint(object sender, PaintEventArgs e)
@@ -182,13 +241,13 @@ namespace RateController.Menu
 
         private void rbUPMFixed_CheckedChanged(object sender, EventArgs e)
         {
-            tbUPMspeed.Text = "0.0";
+            SetMinUPMboxes();
             SetButtons(true);
         }
 
         private void rbUPMSpeed_CheckedChanged(object sender, EventArgs e)
         {
-            tbMinUPM.Text = "0.0";
+            SetMinUPMboxes();
             SetButtons(true);
         }
 
@@ -235,10 +294,22 @@ namespace RateController.Menu
             lbModuleID.Text = Lang.lgModuleID;
             lbSensorID.Text = Lang.lgSensorID;
             rbUPMFixed.Text = Lang.lgUPMFixed;
-            rbUPMSpeed.Text = Lang.lgUPMSpeed;
             ckDefault.Text = Lang.lgDefaultProduct;
             ckOffRate.Text = Lang.lgOffRate;
             ckScale.Text = Lang.lgScaleWeight;
+
+            if (Props.UseMetric)
+            {
+                rbUPMSpeed.Text = Lang.lgUPMSpeed + "  (" + Lang.lgSpeedKMH + ")";
+                cSpeedUnits = Lang.lgSpeedKMH;
+            }
+            else
+            {
+                rbUPMSpeed.Text = Lang.lgUPMSpeed + "  (" + Lang.lgSpeedMPH + ")";
+                cSpeedUnits = Lang.lgSpeedMPH;
+            }
+
+            UpdateMinUPMhint();   // re-render with the locale's units
         }
 
         private void SetModuleIndicator()
@@ -301,7 +372,7 @@ namespace RateController.Menu
         {
             double tempD;
             double.TryParse(tbOffRate.Text, out tempD);
-            using (var form = new FormNumeric(0, 40, tempD))
+            using (var form = new FormNumeric(0, 60, tempD))
             {
                 var result = form.ShowDialog();
                 if (result == DialogResult.OK)
@@ -315,7 +386,7 @@ namespace RateController.Menu
         {
             int tempInt;
             int.TryParse(tbOffRate.Text, out tempInt);
-            if (tempInt < 0 || tempInt > 40)
+            if (tempInt < 0 || tempInt > 60)
             {
                 System.Media.SystemSounds.Exclamation.Play();
                 e.Cancel = true;
@@ -431,6 +502,8 @@ namespace RateController.Menu
             }
 
             ckDefault.Checked = (Props.DefaultProduct == MainMenu.CurrentProduct.ID);
+
+            UpdateMinUPMhint();
 
             Initializing = false;
         }

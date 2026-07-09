@@ -74,12 +74,23 @@ Key points:
 | 32501 | 11 | Relay/section states |
 | 32502 | 24 | PID settings |
 | 32504 | 9 | Wheel speed config |
+| 32505 | 6 | Max pressure gate threshold (raw ADC) |
+| 32506 | 20 | Board ID label set (16-char description → module EEPROM) |
+| 32700 | 32 | Module config (pins, relay types, CommMode) |
 
 ### Module → RC PGNs (data)
 | PGN | Size | Description |
 |-----|------|-------------|
 | 32400 | 15 | Sensor data (rate, qty, PWM, Hz) |
 | 32401 | 15 | Module status (pressure, wheel speed, flags) |
+| 32402 | 24 | PID diagnostics log (per-sensor, PID-loop cadence) |
+| 32403 | 20 | Board ID label report (16-char description, ~2 s cyclic) |
+
+### CAN proprietary frame mapping (CommMode 1/2, via `CanFrameTranslator`)
+Each UDP PGN above maps to one or more 8-byte Proprietary-B frames (PF=0xFF). Board label:
+- RC → module: PGN 32506 → **0xFF11/0xFF12/0xFF13** (16 chars in 3 frames, `data[0]`=ModID + 7 chars, commit on 0xFF13)
+- module → RC: **0xFF14/0xFF15/0xFF16** → PGN 32403 (assembled on 0xFF16)
+- Stored in a dedicated EEPROM slot (offset 3) that **survives a firmware reflash** (unlike settings).
 
 ### Gateway PGNs
 | PGN | Direction | Description |
@@ -151,6 +162,111 @@ Gateway uses ~20-23% CPU even after optimizations. Initial changes (1ms→5ms ma
 - Investigate serial port read efficiency
 
 ## Recent Changes
+
+### Jul 9, 2026 — Multi-Sensor Calibration (per-sensor AutoOn) — firmware ×3 + app
+
+Motivated by PR #57 (gunicsba): on a multi-sensor module, calibration flags flapped because
+`MasterOn`/`AutoOn` are module-global in the firmware but written by every per-sensor PGN 32500 —
+last packet wins. The PR's app-side fix was adopted but was only safe for the unlocked phase; the
+locked (Testing Rate) phase needs `AutoOn = 0` for manual CalPWM, which idle sensors' packets
+would overwrite. Root fix implemented instead:
+
+**Firmware (RCteensy, RC_ESP32, RCnano):** `AutoOn` is now **per-sensor** — `bool AutoOn[MaxProductCount]`,
+decoded from each sensor's own packet bit 6 (`Receive.ino`; Teensy also `CANBus.ino` 0xFF03).
+Used in `PIDenabled[i]`, `Applying[i]`, and `DoPID()`. Initialized true in the `DoSetup` loop
+(NOT an aggregate initializer — `{ true, true }` silently under-fills on the 6-product ESP32).
+`MasterOn` stays module-global (machine-level, identical in both calibration phases). No EEPROM
+layout change. Teensy + Nano compile-verified; ESP32 needs a Visual Micro build.
+
+**App:**
+- `clsProducts.CalibrationOnModule(moduleID)` — true when a product on that module is calibrating.
+- `PGN32500.cs`: calibration branch scoped per module (uninvolved modules take the normal path).
+  All products on a calibrating module assert `MasterOnMode` (hoisted, set once); the calibrating
+  product adds `CalibrationOn` (+`AutoOn` unlocked / manual CalPWM bytes locked); idle products add
+  `AutoOn` — parks them (rate 0 → PID gated off, combo-close valves driven closed). Safe because
+  AutoOn is per-sensor now.
+- `clsRelays.SetRelays`: calibration relay forcing (Master/FlowMaster/Slave/Bypass/Section) scoped
+  via a single `CalibratingModule` local — idle modules' relays are untouched during calibration.
+
+Result: any number of sensors can calibrate simultaneously, in any phase mix, same or different
+modules. **Deploy firmware + app together** — a new app with old firmware reintroduces the
+clobbering. Supersedes PR #57 (credit gunicsba for report + diagnosis).
+
+Known pre-existing asymmetry (not fixed): `Invert_Section` relays are not forced off during
+calibration while `Section` relays are forced on — paired NC/NO section hardware sees
+contradictory states while calibrating.
+
+### Jul 8, 2026 — Valve-Path Gain Fix, Firmware Sync, Dev-vs-Main Review Fixes
+
+- **Scale-tuned PID decode** (field session showed valve sluggish at max sliders): uniform `/100`
+  Kp/Ki decode with per-actuator scales in `PID.ino` (`ValveKpScale 1.0/ValveKiScale 0.1`,
+  `MotorKpScale 0.1/MotorKiScale 0.01` — motor numerically unchanged). Authority≥1 guard. Stale
+  exponential EEPROM defaults fixed. InoID 8076. Valve tunes land mid-slider (~35/40) after re-tune.
+- **ESP32 sync fixes:** `SendPIDlog()` was never called; PID log gated on Ethernet only (dead on
+  WiFi); board-label report transmitted the wrong buffer; `CalibrationOn[]` sized 2 with 6 products
+  (out-of-bounds); `PulseISR` shadowed its timestamp parameter.
+- **Nano brought up to date** (memory-tiered): normalized PID (no logging), `/100` decode, master-off
+  windup fix, ISR ring fix (fixed modulus — byte 22 acts as a median pulse-count cap, no room for
+  timestamps), pressure max gate (`CheckPressureGate()` — `CheckPressure()` is the ADC reader there).
+  78% flash, 614 B stack free. Skipped: time-window median, PID logging, board label.
+- **Module-level PGN convention fixed (firmware):** 32504/32505/32506 handlers compared
+  `ParseModID(data[2])` (high nibble) but module-level PGNs carry the RAW module ID in byte 2
+  (like 32700/32401/32403) — worked for module 0 only. Now `data[2] == MDL.ID` on Teensy + ESP32 + Nano.
+  Per-sensor PGNs (32500/32501/32502) still use `BuildModSenID`/`ParseModID`.
+- **AgGrow XML import:** `double.TryParse` now uses `NumberStyles.Float, CultureInfo.InvariantCulture`
+  (comma-decimal locales misparsed rates/geometry).
+- PID replay validation: dev firmware math reproduced 89% of 38k logged field samples within ±1 PWM
+  count (mismatches = mid-day settings changes, not math). See `docs/` PID analysis material.
+
+### Jun 24, 2026 — Min-UPM Floor Scaled by Active Working Width (app only)
+
+Driven by analysis of today's 100 ms-loop PID logs in `D:\Sync\RATE CONTROL\PID logs\`.
+The Min-UPM floor over-applied on **partial-width** passes: the flow target already scales
+with sections currently on (`cHectaresPerMinute = WorkingWidth() * speed / 600`), but the
+floor did not. Fixed `cMinUPM` had no width term; by-speed `FloorUPMfromSpeed` used
+`Core.Sections.TotalWidth(false)` (all *configured* sections — whole implement) instead of
+`WorkingWidth` (sections ON now). With 1 of N sections on, target dropped to ~1/N but the
+floor stayed full-width, so the `RateSet < MinUPM` clamp in `PGN32500.cs` won → over-apply
+on the active section. Smoking gun in `PIDlog_20260624_182648.csv`: recurring flat
+`Target = 4.682` with `Applied 0 / Samples 0` driving PWM to +255 (full-width floor binding
+at low real demand; also fed integral windup → ±255 overshoot reversals).
+
+**Fix (`Classes/clsProduct.cs` — `MinUPMinUse()`):** scale the floor by the active-width
+fraction on the runtime-only path (only `PGN32500` calls it, via `ProductOn(false)`):
+```csharp
+double fullWidth = Core.Sections.TotalWidth(false);
+if (fullWidth > 0) Result *= Core.Sections.WorkingWidth(false) / fullWidth;
+```
+Both modes handled at once: by-speed's `TotalWidth × (WorkingWidth/TotalWidth)` nets to
+`WorkingWidth`; fixed `cMinUPM` gets the active fraction. All sections on → factor 1 →
+unchanged. **Deliberately NOT** placed inside `FloorUPMfromSpeed`/`SpeedFromFloorUPM` —
+those also feed the Settings UI floor↔speed hint (`frmMenuSettings.cs:207/213`), where the
+operator is parked with sections off and `WorkingWidth` would be 0; that preview stays on
+full configured width.
+
+App-side (RateController) only — no firmware. **Needs a Visual Studio rebuild of
+`RateController.sln`.** Reduces (does not eliminate) the over-pressure exposure tracked in
+`docs/MinUPM_OverPressure_Risk.md` (now has a matching 2026-06-24 update section).
+
+### Jun 20, 2026 — Teensy Rate PID/Flow Fixes & Log Instrumentation
+
+Driven by analysis of PID logs in `D:\Temp\PIDLogs\` (rate "adjusting down while below target", valve overshoot on start, and "stuck valve"). All firmware edits in `Modules/Teensy Rate/RCteensy/`. **NOT YET FLASHED**; item 7 also needs an app rebuild. Full investigation detail in the auto-memory `project_pid_logging.md`.
+
+Note: the no-arg PID entry `SetPWM()` was renamed to `DoPID()` (disambiguates from the hardware writer `SetPWM(byte,float)` in `Motor.ino`); called at top of `loop()`.
+
+1. **Bug 1 — auto PID drove the valve while master OFF, and (1a) while all sections OFF (`RCteensy.ino`).** `PIDenabled` didn't include `MasterOn`, so with `AutoOn` + the `MinUPM` target floor the loop wound up and drove the valve open while off → ~10× overshoot when flow primed. **1a:** the same windup occurs when auto turns all sections off but the **master stays on** (e.g. spraying over already-sprayed ground) — no flow path, `UPM`=0, target nonzero → valve winds open. Fix (covers both): `PIDenabled[i] = SensorConnected[i] && AutoOn && MasterOn && (RelayLo || RelayHi) && (Sensor[i].TargetUPM > 0);` — the `(RelayLo || RelayHi)` term matches how `PulseISR`/`GetUPM` already define "no flow." Confirmed safe: prime and calibration assert master-on; manual adjust is the `AutoOn==false` path that bypasses `PIDenabled`. (`PIDenabled` vs `Applying` are intentionally separate — `Applying` = "energize output", used for Motor/Fan/ComboClose in `Motor.ino`; standard valve is a velocity-form actuator — PWM drives the valve motor's speed/direction, so PWM=0 means the motor stops and the valve HOLDS its last position, not closes. So gating PID off makes the valve hold its last position → no windup AND no re-entry lag when a section reopens.)
+
+2. **Logging consistency — snapshot (`RCteensy.ino`, `PID.ino`, `Send.ino`).** `SendPIDlog` had mixed snapshot fields (captured at PID-compute) with live `Sensor[i].*` (read at send) → impossible rows (Target 2, Applied 10.3, Error +2) in ~18% of samples. Fix: added `DiagTarget/DiagApplied/DiagPWM`, captured in `PIDvalve` with the rest of the `Diag*` set; `SendPIDlog` transmits those, not live `Sensor` values. (ChatGPT independently confirmed this diagnosis.)
+
+3. **Bug 2 — flow-measurement lag: hybrid fixed-time-window median (`Rate.ino`).** Measured ~200 ms response lag vs 100 ms `PIDtime` → overshoot/limit-cycle (the "down while below target" symptom). The median was fixed-COUNT (`PulseSampleSize` periods) so lag `≈ (PulseSampleSize/2)/Hz` ballooned at low flow and stale samples lingered on shutoff. Fix: per-pulse timestamps (`SampleStamp[]`), ring modulus changed to `MaxSampleSize` (decouples from `PulseSampleSize`, removes a `%0` risk), and `GetUPM` now takes the median of pulses within `FlowWindow` (150 ms, the tuning knob), capped at `PulseSampleSize`. Lag bounded ~`FlowWindow/2` at any flow; high flow still smooths, low flow stays responsive.
+
+4. **Stuck-valve — MaxIntegral semantics (`PID.ino`, valve & motor).** `MaxIntegral` (default 25) was documented as "per-loop change" but used as an absolute clamp on the total `IntegralSum`, capping integral authority at ±25 — too little to overcome valve stiction at small error. Fix (Option B, no app change): `MaxIntegral` now limits the per-loop increment (`IntegralSum += constrain(RateError*Ki, ±MaxIntegral)`) and the TOTAL is clamped to ±(MaxPWM−MinPWM) so the integral can reach full PWM authority while wind-up rate stays bounded.
+
+5. **Ki decode mismatch (`CANBus.ino`).** UDP (`Receive.ino`) decoded Ki as `1.1^(byte-108)`, CAN as `1.1^(byte-120)` — a 3.1× discrepancy per transport. The `-108` was a deliberate bump (integral too weak); changed CAN to `-108` to match UDP. (May be revisited after field-testing the MaxIntegral fix, since it likely compensated for the cap.)
+
+6. **Hysteresis integral reset (`PID.ino`, valve & motor).** Old reset fired on every raw `Error` sign flip = every `Target−Applied` zero crossing, which target wobble triggered (one log: 170 error flips, Applied reversed only 1×) → integral never accumulated. Fix: reset only when the rate clearly crosses to the other side of target beyond a band (`Deadband*Target`); small jitter no longer wipes the integral, genuine overshoots still do.
+
+7. **Median sample-count added to PID log — firmware + APP (`RCteensy.ino`, `Rate.ino`, `PID.ino`, `Send.ino`; `PGNs/PGN32402.cs`, `Classes/PidLogger.cs`, `docs/PID_Log_Excel_Analysis.md`).** PGN 32402 grew 23→24 bytes: new byte `[22] = Samples` (pulse count used in the median that loop), CRC moved to `[23]`. App parses it and writes a new `Samples` CSV column. Lets a field log confirm the fixed-time-window is binding (Samples < PulseSampleSize at low flow). `clsTools.GoodCRC` is length-agnostic. **Firmware and app must be deployed together** — the old app rejects the wider packet.
 
 ### Feb 6, 2026 - Session 2: Bug Fixes & Performance
 

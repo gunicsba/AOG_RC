@@ -19,6 +19,9 @@ namespace RateController.Classes
         public static frmMain MainForm;
         public static PGN32700 ModuleConfig;
         public static PGN32401 ModulesStatus;
+        public static PGN32403 ModulesBoardID;
+        public static PGN32402 PgnPidLog;
+        public static PidLogger PidLogger;
         public static clsProducts Products;
         public static clsAlarm RCalarm;
         public static clsRelays RelayObjects;
@@ -43,6 +46,7 @@ namespace RateController.Classes
 
         private static DateTime cStartTime;
         private static System.Timers.Timer MainTimer;
+        private static bool[] cPressureGateLastConnected;   // tracks connect edge for on-connect pressure-gate resend
 
         #endregion private variables
 
@@ -121,6 +125,13 @@ namespace RateController.Classes
 
                 SwitchBox = new PGN32618();
                 ModulesStatus = new PGN32401();
+                ModulesBoardID = new PGN32403();
+                PgnPidLog = new PGN32402();
+                PidLogger = new PidLogger();
+                // LogPID persists across restarts and already sets PGN 32500 bit 5 (module sends
+                // PGN 32402), so start the CSV writer here too - otherwise logging only began when
+                // the help page opened and fired ckPidLog.CheckedChanged.
+                if (Props.LogPID) PidLogger.Start();
 
                 Sections = new clsSections();
                 RCalarm = new clsAlarm();
@@ -135,6 +146,8 @@ namespace RateController.Classes
                 {
                     RelaySettings[i] = new PGN32501(i);
                 }
+
+                cPressureGateLastConnected = new bool[Props.MaxModules];
 
                 vSwitchBox = new clsVirtualSwitchBox();
                 Zones = new clsZones();
@@ -207,6 +220,7 @@ namespace RateController.Classes
         {
             if (ShowNormal)
             {
+                Props.SaveFormLocation(MainForm.MainMini);
                 MainForm.MainMini.Hide();
                 MainForm.WindowState = FormWindowState.Normal;
                 SafeEvent.Raise(RestoreMain);
@@ -263,6 +277,28 @@ namespace RateController.Classes
             }
         }
 
+        public static void SendPressureGate()
+        {
+            PGN32505 gate = new PGN32505();
+            for (int i = 0; i < Props.MaxModules; i++)
+            {
+                if (ModulesStatus.Connected(i)) gate.Send(i);
+            }
+        }
+
+        public static void ResendPressureGateOnConnect()
+        {
+            // Resend the gate threshold to any module on its disconnected->connected edge,
+            // so a freshly powered/never-configured module is armed without a profile reload.
+            PGN32505 gate = new PGN32505();
+            for (int i = 0; i < Props.MaxModules; i++)
+            {
+                bool connected = ModulesStatus.Connected(i);
+                if (connected && !cPressureGateLastConnected[i]) gate.Send(i);
+                cPressureGateLastConnected[i] = connected;
+            }
+        }
+
         public static int UseCanComm(bool enable)
         {
             int Result = -1;
@@ -313,6 +349,7 @@ namespace RateController.Classes
             RateAdjustController.Update();
             SafeEvent.Raise(UpdateStatus);
             SendRelays();
+            ResendPressureGateOnConnect();
             RCalarm.CheckAlarms();
         }
 
@@ -328,6 +365,7 @@ namespace RateController.Classes
                 Props.DisplaySwitches();
                 Products.Load();
                 Products.UpdateSensorSettings();
+                SendPressureGate();
                 Props.ShowScales();
                 Result = true;
             }

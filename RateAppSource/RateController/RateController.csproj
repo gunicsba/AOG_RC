@@ -123,6 +123,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Classes\clsAlarm.cs" />
+    <Compile Include="Classes\PidLogger.cs" />
     <Compile Include="Classes\clsCalibrate.cs" />
     <Compile Include="Classes\clsCalibrates.cs" />
     <Compile Include="Classes\clsJobDataCollector.cs" />
@@ -448,16 +449,21 @@
     <Compile Include="PGNs\PGN32296.cs" />
     <Compile Include="PGNs\PGN32400.cs" />
     <Compile Include="PGNs\PGN32401.cs" />
+    <Compile Include="PGNs\PGN32402.cs" />
+    <Compile Include="PGNs\PGN32403.cs" />
     <Compile Include="PGNs\PGN32500.cs" />
     <Compile Include="PGNs\PGN32501.cs" />
     <Compile Include="PGNs\PGN32502.cs" />
     <Compile Include="PGNs\PGN32503.cs" />
     <Compile Include="PGNs\PGN32504.cs" />
+    <Compile Include="PGNs\PGN32505.cs" />
+    <Compile Include="PGNs\PGN32506.cs" />
     <Compile Include="PGNs\PGN32618.cs" />
     <Compile Include="PGNs\PGN32700.cs" />
     <Compile Include="Printing\RichTexBoxPrinterRTF.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RateMap\AgGrowXmlParser.cs" />
     <Compile Include="RateMap\ArcGIS_World_Imagery_Provider.cs" />
     <Compile Include="RateMap\CoverageTrail.cs" />
     <Compile Include="RateMap\DataCollector.cs" />
@@ -502,6 +508,8 @@
     <Compile Include="RateMap\RateReading.cs" />
     <Compile Include="RateMap\ShapefileHelper.cs" />
     <Compile Include="RateMap\ProductivityZoneCreator.cs" />
+    <Compile Include="RateMap\VrtGridImporter.cs" />
+    <Compile Include="RateMap\XmlHelper.cs" />
     <Compile Include="RateMap\YieldOverlayCreator.cs" />
     <Compile Include="RateMap\ZoneManager.cs" />
     <EmbeddedResource Include="Forms\FormNumeric.resx">
@@ -694,6 +702,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Help\frmMenuControl.pdf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Help\frmMenuFolders.pdf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Help\frmMenuHelp.pdf">

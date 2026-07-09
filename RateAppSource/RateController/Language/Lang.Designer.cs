@@ -529,6 +529,15 @@ namespace RateController.Language {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Enabled.
+        /// </summary>
+        internal static string lgEnabled {
+            get {
+                return ResourceManager.GetString("lgEnabled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Enable VR.
         /// </summary>
         internal static string lgEnableVR {
@@ -1023,6 +1032,15 @@ namespace RateController.Language {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to Minimum flow engages below {0}.
+        /// </summary>
+        internal static string lgMinFlowEngages {
+            get {
+                return ResourceManager.GetString("lgMinFlowEngages", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Minimum UPM.
         /// </summary>
@@ -1834,6 +1852,24 @@ namespace RateController.Language {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to KMH.
+        /// </summary>
+        internal static string lgSpeedKMH {
+            get {
+                return ResourceManager.GetString("lgSpeedKMH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MPH.
+        /// </summary>
+        internal static string lgSpeedMPH {
+            get {
+                return ResourceManager.GetString("lgSpeedMPH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Standard valve.
         /// </summary>
         internal static string lgStandard {
@@ -2050,7 +2086,7 @@ namespace RateController.Language {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Fixed Value.
+        ///   Looks up a localized string similar to UPM.
         /// </summary>
         internal static string lgUPMFixed {
             get {

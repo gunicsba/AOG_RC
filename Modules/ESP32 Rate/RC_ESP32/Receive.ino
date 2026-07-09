@@ -28,8 +28,9 @@ void ReceiveUDP()
 
 void ReadPGNs(byte data[], uint16_t len)
 {
-    uint16_t PGN = data[1] << 8 | data[0];
     byte PGNlength;
+    uint16_t PGN = data[1] << 8 | data[0];
+
     switch (PGN)
     {
     case 32500:
@@ -47,7 +48,7 @@ void ReadPGNs(byte data[], uint16_t len)
         //	        - bit 0		    reset acc.Quantity
         //	        - bit 1,2,3		control type 0-4
         //	        - bit 4		    MasterOn
-        //          - bit 5         -
+        //          - bit 5         PID logging on (PGN 32402)
         //          - bit 6         AutoOn
         //          - bit 7         calibration on
         //10    manual pwm Lo
@@ -85,7 +86,9 @@ void ReadPGNs(byte data[], uint16_t len)
 
                         MasterOn = ((InCommand & 16) == 16);
 
-                        AutoOn = ((InCommand & 64) == 64);
+                        PidLogEnabled = ((InCommand & 32) == 32);
+
+                        AutoOn[SensorID] = ((InCommand & 64) == 64);	// per-sensor: this packet's bit only affects this sensor
 
                         CalibrationOn[SensorID] = ((InCommand & 128) == 128);
 
@@ -174,10 +177,12 @@ void ReadPGNs(byte data[], uint16_t len)
                         Sensor[SensorID].MaxPWM = (255.0 * data[3] / 100.0);
                         Sensor[SensorID].MinPWM = (255.0 * data[4] / 100.0);
 
+                        // Normalized PID: Kp/Ki are dimensionless (fraction of ref flow -> fraction of PWM
+                        // authority). Uniform /100 decode: slider 0-100 -> 0.00-1.00. Per-actuator
+                        // scaling (valve vs motor) is applied in PID.ino, not here.
                         if (data[5] > 0)
                         {
-                            // 1.1 ^ (gain scroll bar value - 120) gives a scale range of 0.00001 to 0.1486
-                            Sensor[SensorID].Kp = pow(1.1, data[5] - 120);
+                            Sensor[SensorID].Kp = data[5] / 100.0;
                         }
                         else
                         {
@@ -186,7 +191,7 @@ void ReadPGNs(byte data[], uint16_t len)
 
                         if (data[6] > 0)
                         {
-                            Sensor[SensorID].Ki = pow(1.1, data[6] - 120);
+                            Sensor[SensorID].Ki = data[6] / 100.0;
                         }
                         else
                         {
@@ -209,8 +214,7 @@ void ReadPGNs(byte data[], uint16_t len)
                         uint16_t MaxHz = data[20] | data[21] << 8;
                         if (MaxHz > 0) Sensor[SensorID].PulseMin = 1000000 / MaxHz;
 
-                        Sensor[SensorID].PulseSampleSize = data[22];
-                        if (Sensor[SensorID].PulseSampleSize > MaxSampleSize) Sensor[SensorID].PulseSampleSize = MaxSampleSize;
+                        Sensor[SensorID].SampleWindow = constrain(data[22], 5, 200);	// flow window centiseconds (x10 ms), 50-2000 ms
 
                         SaveData();
                     }
@@ -260,7 +264,8 @@ void ReadPGNs(byte data[], uint16_t len)
 
         if (len > PGNlength - 1)
         {
-            if (GoodCRC(data, PGNlength) && ParseModID(data[2]) == MDL.ID)
+            // module-level PGN: data[2] is the raw module ID (like 32700/32401/32403), not Mod/Sen packed
+            if (GoodCRC(data, PGNlength) && data[2] == MDL.ID)
             {
                 bool NewPin = (data[3] != MDL.WheelSpeedPin);
 
@@ -270,6 +275,49 @@ void ReadPGNs(byte data[], uint16_t len)
 
                 SaveData();
                 if (NewPin) ESP.restart();
+            }
+        }
+        break;
+
+    case 32505:
+        // PGN32505, max pressure
+        //0		HeaderLo	249
+        //1		HeaderHi	126
+        //2		ModuleID	0-7
+        //3		MaxLo
+        //4		MaxHi
+        //5		CRC
+
+        PGNlength = 6;
+
+        if (len > PGNlength - 1)
+        {
+            // module-level PGN: data[2] is the raw module ID (like 32700/32401/32403), not Mod/Sen packed
+            if (GoodCRC(data, PGNlength) && data[2] == MDL.ID)
+            {
+                MDL.MaxPressureReading = data[3] | data[4] << 8;
+                SaveData();
+            }
+        }
+        break;
+
+    case 32506:
+        // PGN32506, set board ID label from RC to module (stored in EEPROM, survives reflash)
+        //0		HeaderLo	250
+        //1		HeaderHi	126
+        //2		ModuleID	0-7
+        //3-18	16 chars	board label, 0-padded
+        //19	CRC
+
+        PGNlength = 20;
+
+        if (len > PGNlength - 1 )
+        {
+            // module-level PGN: data[2] is the raw module ID (like 32700/32401/32403), not Mod/Sen packed
+            if (GoodCRC(data, PGNlength) && data[2] == MDL.ID)
+            {
+                for (byte b = 0; b < 16; b++) MDLboard.Text[b] = data[3 + b];
+                SaveBoardID();
             }
         }
         break;
@@ -290,6 +338,7 @@ void ReadPGNs(byte data[], uint16_t len)
         //32    CRC
 
         PGNlength = 33;
+
         if (len > PGNlength - 1)
         {
             if (GoodCRC(data, PGNlength))

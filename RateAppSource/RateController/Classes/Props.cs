@@ -75,11 +75,11 @@ namespace RateController.Classes
             Lang.lgTramLeft,Lang.lgGeoStop,Lang.lgSwitch, Lang.lgNone,Lang.lgInvert_Master,Lang.lgBypass,Lang.lgFlowMaster,Lang.lgInvert_FlowMaster};
 
         private static string cActivityFileName = "";
-        private static string cAppDate = "4-May-2026";
+        private static string cAppDate = "09-Jul-2026";
         private static string cAppName = "RateController";
         private static SortedDictionary<string, string> cAppProps = new SortedDictionary<string, string>();
         private static string cAppPropsFileName = "";
-        private static string cAppVersion = "4.3.3";
+        private static string cAppVersion = "4.3.4";
         private static bool cCanEnabled = false;
         private static string cCanPort = "COM7";
         private static CanDriver cCurrentCanDriver = CanDriver.SLCAN;
@@ -88,6 +88,7 @@ namespace RateController.Classes
         private static string cDataFolder;
         private static int cDefaultProduct;
         private static string cErrorsFileName = "";
+        private static bool cLogPID = false;
         private static bool cMapPreview = false;
         private static bool cMasterMaintained = false;
         private static MasterSwitchMode cMasterSwitchMode = MasterSwitchMode.Standard;
@@ -131,16 +132,16 @@ namespace RateController.Classes
 
         public static readonly byte BrakePointDefault = 35;
         public static readonly byte DeadbandDefault = 15;
-        public static readonly byte KIdefault = 65;
-        public static readonly byte KPdefault = 65;
+        public static readonly byte KIdefault = 50;
+        public static readonly byte KPdefault = 45;
         public static readonly byte MaxIntegralDefault = 250;
         public static readonly byte MaxPWMdefault = 100;
         public static readonly byte MinPWMdefault = 5;
-        public static readonly byte PIDslowAdjustDefault = 80;
-        public static readonly byte PIDtimeDefault = 100;
+        public static readonly byte PIDslowAdjustDefault = 50;
+        public static readonly byte PIDtimeDefault = 150;
         public static readonly UInt16 PulseMaxHzDefault = 3000;
         public static readonly byte PulseMinHzDefault = 10;
-        public static readonly byte PulseSampleSizeDefault = 12;
+        public static readonly byte PulseSampleSizeDefault = 40;   // flow window: 40 centiseconds = 400 ms
         public static readonly byte SlewRateDefault = 25;
         public static readonly byte TimedAdjustDefault = 80;
         public static readonly byte TimedMinStartDefault = 50;
@@ -259,6 +260,20 @@ namespace RateController.Classes
             {
                 if (cJobCollector == null) cJobCollector = new clsJobDataCollector();
                 return cJobCollector;
+            }
+        }
+
+        public static bool LogPID
+        {
+            // whether module PID diagnostics (PGN 32402) are being recorded
+            get { return cLogPID; }
+            set
+            {
+                if (cLogPID != value)
+                {
+                    cLogPID = value;
+                    SetAppProp("LogPID", cLogPID.ToString());
+                }
             }
         }
 
@@ -402,6 +417,16 @@ namespace RateController.Classes
                 Props.SetAppProp("ShowSwitches", cShowSwitches.ToString());
                 DisplaySwitches();
             }
+        }
+
+        public static int SwitchCount
+        {
+            get
+            {
+                int sc = int.TryParse(GetAppProp("SwitchCount"), out int v) ? v : 4;
+                return (sc == 4 || sc == 8 || sc == 12 || sc == 16) ? sc : 4;
+            }
+            set { SetAppProp("SwitchCount", value.ToString()); }
         }
 
         public static double SimSpeed_KMH
@@ -609,6 +634,13 @@ namespace RateController.Classes
                 lastMessage = Message;
                 lastMessageTime = DateTime.Now;
             }
+        }
+
+        public static frmHelp ShowMessageForm(string Message, string Title = "Help", int timeInMsec = 20000)
+        {
+            var Hlp = new frmHelp(Message, Title, timeInMsec);
+            Hlp.Show();
+            return Hlp;
         }
 
         public static string VersionDate()
@@ -1105,6 +1137,7 @@ namespace RateController.Classes
             string port = GetAppProp("CanPort");
             cCanPort = string.IsNullOrEmpty(port) ? "COM7" : port;
             cMasterMaintained = bool.TryParse(GetAppProp("MasterMaintained"), out bool mm) ? mm : false;
+            cLogPID = bool.TryParse(GetAppProp("LogPID"), out bool lp) ? lp : false;
         }
 
         public static bool OpenFile(string FileName, bool IsNew = false)
