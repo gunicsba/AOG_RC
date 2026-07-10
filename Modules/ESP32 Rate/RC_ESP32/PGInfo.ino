@@ -2,13 +2,43 @@
 extern float IntegralSum[];
 extern float LastPWM[];
 
+// helper: emit one sensor <td> cell
+static void SensorCell(String& st, const String& val)
+{
+	st += "<td>";
+	st += val;
+	st += "</td>";
+}
+
+// helper: emit N sensor cells by looping SensorCount
+static void SensorCells(String& st, int count, const String vals[])
+{
+	for (int i = 0; i < count; i++)
+		SensorCell(st, vals[i]);
+}
+
+// helper: emit a section header row spanning all columns
+static void SectionRow(String& st, int cols, const char* title)
+{
+	st += "\n  <tr><td colspan='";
+	st += cols;
+	st += "'><b>";
+	st += title;
+	st += "</b></td></tr>";
+}
+
 String GetPageInfo()
 {
 	String st = HtmlGetHead("Info");
 	st += "\n    <h1>Info</h1>";
 	st += "\n    <form id=FORM1 method=post action='/settings'>&nbsp;";
 
-	// Temperature
+	const int sc = MDL.SensorCount;   // shorthand
+	const int sysCols = 3;             // Parameter | value | Description
+
+	// ──────────────────────────────────────────────
+	//  System table  (module-level, no per-sensor columns)
+	// ──────────────────────────────────────────────
 	st += "\n<table border='1' style='border-collapse:collapse; margin:auto;'>";
 	st += "\n  <tr><th>Parameter</th><th>Value</th><th>Description</th></tr>";
 
@@ -16,23 +46,12 @@ String GetPageInfo()
 	st += getChipTempC();
 	st += " &deg;C</td><td>Internal chip temperature</td></tr>";
 
-	st += "\n  <tr><td>Total Pulses S0</td><td>";
-	st += Sensor[0].TotalPulses;
-	st += "</td><td>Flow sensor pulse count</td></tr>";
-
-	st += "\n  <tr><td>Total Pulses S1</td><td>";
-	st += Sensor[1].TotalPulses;
-	st += "</td><td>Flow sensor pulse count</td></tr>";
-
-	// Module info
-	st += "\n  <tr><td colspan='3'><b>Module Info</b></td></tr>";
-
 	st += "\n  <tr><td>ID</td><td>";
 	st += MDL.ID;
 	st += "</td><td></td></tr>";
 
 	st += "\n  <tr><td>SensorCount</td><td>";
-	st += MDL.SensorCount;
+	st += sc;
 	st += "</td><td></td></tr>";
 
 	st += "\n  <tr><td>InvertRelay</td><td>";
@@ -42,12 +61,6 @@ String GetPageInfo()
 	st += "\n  <tr><td>InvertFlow</td><td>";
 	st += MDL.InvertFlow;
 	st += "</td><td>Sets flow valve direction</td></tr>";
-
-	st += "\n  <tr><td>ControlType</td><td>";
-	st += Sensor[0].ControlType;
-	st += "  ";
-	st += Sensor[1].ControlType;
-	st += "</td><td>0=standard, 1=combo, 2=motor, 4=fan, 5=timed</td></tr>";
 
 	st += "\n  <tr><td>OnboardRelay</td><td>";
 	st += MDL.OnboardRelayControl;
@@ -66,82 +79,15 @@ String GetPageInfo()
 
 	st += "\n  <tr><td>Relay value</td><td>";
 	st += RelayLo;
-	st += "  ";
+	st += " / ";
 	st += RelayHi;
 	st += "</td><td>RelayLo / RelayHi</td></tr>";
 
-	st += "\n  <tr><td>Sensor Connected</td><td>";
-	st += SensorConnected[0];
-	st += "  ";
-	st += SensorConnected[1];
-	st += "</td><td>0/1</td></tr>";
-
-	st += "\n  <tr><td>Applying</td><td>";
-	st += Applying[0];
-	st += "  ";
-	st += Applying[1];
-	st += "</td><td>0/1</td></tr>";
-	
-	st += "\n  <tr><td>PID Enabled</td><td>";
-	st += PIDenabled[0];
-	st += "  ";
-	st += PIDenabled[1];
-	st += "</td><td>0/1</td></tr>";
-	
-	st += "\n  <tr><td>MasterOn</td><td colspan=\"2\">";
+	st += "\n  <tr><td>MasterOn</td><td>";
 	st += MasterOn;
 	st += "</td><td>global from PGN32500 bit 4</td></tr>";
-	
-	st += "\n  <tr><td>AutoOn</td><td>";
-	st += AutoOn[0];
-	st += "  ";
-	st += AutoOn[1];
-	st += "</td><td>per-sensor from PGN32500 bit 6</td></tr>";
-	
-	st += "\n  <tr><td>SensorConnected</td><td>";
-	st += SensorConnected[0];
-	st += "  ";
-	st += SensorConnected[1];
-	st += "</td><td>CommTime within 4s</td></tr>";
-	
-	st += "\n  <tr><td>CalibrationOn</td><td>";
-	st += CalibrationOn[0];
-	st += "  ";
-	st += CalibrationOn[1];
-	st += "</td><td>PGN32500 bit 7 per sensor</td></tr>";
-	
-	st += "\n  <tr><td>CommTime delta (ms)</td><td>";
-	st += (Sensor[0].CommTime > 0) ? (millis() - Sensor[0].CommTime) : (uint32_t)999999;
-	st += "  ";
-	st += (Sensor[1].CommTime > 0) ? (millis() - Sensor[1].CommTime) : (uint32_t)999999;
-	st += "</td><td>ms since last PGN32500</td></tr>";
 
-	// PWM values
-	st += "\n  <tr><td>PWM S0</td><td>";
-	st += Sensor[0].PWM;
-	st += "</td><td>Current PWM value</td></tr>";
-
-	st += "\n  <tr><td>PWM S1</td><td>";
-	st += Sensor[1].PWM;
-	st += "</td><td>Current PWM value</td></tr>";
-
-	st += "\n  <tr><td>UPM S0</td><td>";
-	st += Sensor[0].UPM;
-	st += "</td><td>Measured flow rate</td></tr>";
-
-	st += "\n  <tr><td>UPM S1</td><td>";
-	st += Sensor[1].UPM;
-	st += "</td><td>Measured flow rate</td></tr>";
-
-	st += "\n  <tr><td>TargetUPM S0</td><td>";
-	st += Sensor[0].TargetUPM;
-	st += "</td><td>Requested flow rate</td></tr>";
-
-	st += "\n  <tr><td>TargetUPM S1</td><td>";
-	st += Sensor[1].TargetUPM;
-	st += "</td><td>Requested flow rate</td></tr>";
-
-	// Current sense (20A sensor, +0.5A calibration offset)
+	// Current sense
 	st += "\n  <tr><td>Current (Cytron)</td><td>";
 	st += (getCurrentInAmps(Current2Pin, 20.0f) + 0.3f);
 	st += " A</td><td>Motor current draw</td></tr>";
@@ -150,7 +96,7 @@ String GetPageInfo()
 	st += (getCurrentInAmps(Current1Pin, 20.0f) + 0.3f);
 	st += " A</td><td>Section relay current</td></tr>";
 
-	// Ethernet status
+	// Ethernet / WiFi
 	st += "\n  <tr><td>Ethernet</td><td>";
 	st += ETHconnected ? "Connected" : "Disconnected";
 	st += "</td><td></td></tr>";
@@ -168,166 +114,263 @@ String GetPageInfo()
 
 	st += "\n</table>";
 
-	// PID Debug table — S0 / S1 side by side
-	st += "\n<br><h2>PID Debug</h2>";
+	// ──────────────────────────────────────────────
+	//  Sensor table  (all per-sensor data, scales with SensorCount)
+	// ──────────────────────────────────────────────
+	const int senCols = sc + 1;  // Parameter | S0 | S1 | ...
+
+	st += "\n<br><h2>Sensors</h2>";
 	st += "\n<table border='1' style='border-collapse:collapse; margin:auto;'>";
-	st += "\n  <tr><th>Parameter</th><th>S0</th><th>S1</th></tr>";
+	st += "\n  <tr><th>Parameter</th>";
+	for (int i = 0; i < sc; i++)
+	{
+		st += "<th>S";
+		st += i;
+		st += "</th>";
+	}
+	st += "</tr>";
 
-	// Control type
+	// ── Pins ──
+	SectionRow(st, senCols, "Pins");
+
+	// FlowPin
+	st += "\n  <tr><td>FlowPin</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String((Sensor[i].FlowPin < NC) ? (int)Sensor[i].FlowPin : -1));
+	st += "</tr>";
+
+	// IN1
+	st += "\n  <tr><td>IN1</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String((Sensor[i].IN1 < NC) ? (int)Sensor[i].IN1 : -1));
+	st += "</tr>";
+
+	// IN2
+	st += "\n  <tr><td>IN2</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String((Sensor[i].IN2 < NC) ? (int)Sensor[i].IN2 : -1));
+	st += "</tr>";
+
+	// BinPin
+	st += "\n  <tr><td>BinPin</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String((Sensor[i].BinPin < NC) ? (int)Sensor[i].BinPin : -1));
+	st += "</tr>";
+
+	// ── Status ──
+	SectionRow(st, senCols, "Status");
+
+	// ControlType
 	static const char* ctNames[] = {"std", "combo", "motor", "?", "fan", "timed"};
-	st += "\n  <tr><td>ControlType</td><td>";
-	st += Sensor[0].ControlType;
-	st += " (";
-	st += ctNames[Sensor[0].ControlType <= 5 ? Sensor[0].ControlType : 3];
-	st += ")</td><td>";
-	st += Sensor[1].ControlType;
-	st += " (";
-	st += ctNames[Sensor[1].ControlType <= 5 ? Sensor[1].ControlType : 3];
-	st += ")</td></tr>";
+	st += "\n  <tr><td>ControlType</td>";
+	for (int i = 0; i < sc; i++)
+	{
+		byte ct = Sensor[i].ControlType;
+		SensorCell(st, String(ct) + " (" + ctNames[ct <= 5 ? ct : 3] + ")");
+	}
+	st += "</tr>";
 
-	// Hz (runtime)
-	st += "\n  <tr><td>Hz</td><td>";
-	st += Sensor[0].Hz;
-	st += "</td><td>";
-	st += Sensor[1].Hz;
-	st += "</td></tr>";
+	// SensorConnected
+	st += "\n  <tr><td>Connected</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(SensorConnected[i]));
+	st += "</tr>";
 
-	// RateError (runtime: TargetUPM - UPM)
-	st += "\n  <tr><td>RateError</td><td>";
-	st += (Sensor[0].TargetUPM - Sensor[0].UPM);
-	st += "</td><td>";
-	st += (Sensor[1].TargetUPM - Sensor[1].UPM);
-	st += "</td></tr>";
+	// Applying
+	st += "\n  <tr><td>Applying</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Applying[i]));
+	st += "</tr>";
 
-	// IntegralSum (runtime)
-	st += "\n  <tr><td>IntegralSum</td><td>";
-	st += IntegralSum[0];
-	st += "</td><td>";
-	st += IntegralSum[1];
-	st += "</td></tr>";
+	// PID Enabled
+	st += "\n  <tr><td>PID Enabled</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(PIDenabled[i]));
+	st += "</tr>";
 
-	// LastPWM (runtime)
-	st += "\n  <tr><td>LastPWM</td><td>";
-	st += LastPWM[0];
-	st += "</td><td>";
-	st += LastPWM[1];
-	st += "</td></tr>";
+	// AutoOn
+	st += "\n  <tr><td>AutoOn</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(AutoOn[i]));
+	st += "</tr>";
+
+	// CalibrationOn
+	st += "\n  <tr><td>CalibrationOn</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(CalibrationOn[i]));
+	st += "</tr>";
+
+	// CommTime delta
+	st += "\n  <tr><td>CommTime delta (ms)</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String((Sensor[i].CommTime > 0) ? (millis() - Sensor[i].CommTime) : (uint32_t)999999));
+	st += "</tr>";
+
+	// TotalPulses
+	st += "\n  <tr><td>TotalPulses</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].TotalPulses));
+	st += "</tr>";
+
+	// BinEmpty (live)
+	st += "\n  <tr><td>BinEmpty</td>";
+	for (int i = 0; i < sc; i++)
+	{
+		if (Sensor[i].BinPin >= NC)
+			SensorCell(st, "N/A");
+		else
+			SensorCell(st, BinEmpty[i] ? "Empty" : "Full");
+	}
+	st += "</tr>";
+
+	// ── Flow ──
+	SectionRow(st, senCols, "Flow");
+
+	// UPM
+	st += "\n  <tr><td>UPM</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].UPM));
+	st += "</tr>";
+
+	// TargetUPM
+	st += "\n  <tr><td>TargetUPM</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].TargetUPM));
+	st += "</tr>";
+
+	// RateError
+	st += "\n  <tr><td>RateError</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].TargetUPM - Sensor[i].UPM));
+	st += "</tr>";
+
+	// Hz
+	st += "\n  <tr><td>Hz</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].Hz));
+	st += "</tr>";
+
+	// MedianCount
+	st += "\n  <tr><td>MedianCount</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(MedianCount[i]));
+	st += "</tr>";
+
+	// PulseMin / PulseMax
+	st += "\n  <tr><td>PulseMin</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].PulseMin));
+	st += "</tr>";
+
+	st += "\n  <tr><td>PulseMax</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].PulseMax));
+	st += "</tr>";
+
+	// ── PID ──
+	SectionRow(st, senCols, "PID");
+
+	// PWM
+	st += "\n  <tr><td>PWM</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].PWM));
+	st += "</tr>";
+
+	// LastPWM
+	st += "\n  <tr><td>LastPWM</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(LastPWM[i]));
+	st += "</tr>";
+
+	// IntegralSum
+	st += "\n  <tr><td>IntegralSum</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(IntegralSum[i]));
+	st += "</tr>";
 
 	// Kp
-	st += "\n  <tr><td>Kp</td><td>";
-	st += Sensor[0].Kp;
-	st += "</td><td>";
-	st += Sensor[1].Kp;
-	st += "</td></tr>";
+	st += "\n  <tr><td>Kp</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].Kp));
+	st += "</tr>";
 
 	// Ki
-	st += "\n  <tr><td>Ki</td><td>";
-	st += Sensor[0].Ki;
-	st += "</td><td>";
-	st += Sensor[1].Ki;
-	st += "</td></tr>";
+	st += "\n  <tr><td>Ki</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].Ki));
+	st += "</tr>";
 
 	// Deadband
-	st += "\n  <tr><td>Deadband</td><td>";
-	st += Sensor[0].Deadband;
-	st += "</td><td>";
-	st += Sensor[1].Deadband;
-	st += "</td></tr>";
+	st += "\n  <tr><td>Deadband</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].Deadband));
+	st += "</tr>";
 
 	// BrakePoint
-	st += "\n  <tr><td>BrakePoint</td><td>";
-	st += Sensor[0].BrakePoint;
-	st += "</td><td>";
-	st += Sensor[1].BrakePoint;
-	st += "</td></tr>";
+	st += "\n  <tr><td>BrakePoint</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].BrakePoint));
+	st += "</tr>";
 
 	// PIDslowAdjust
-	st += "\n  <tr><td>PIDslowAdjust</td><td>";
-	st += Sensor[0].PIDslowAdjust;
-	st += "</td><td>";
-	st += Sensor[1].PIDslowAdjust;
-	st += "</td></tr>";
+	st += "\n  <tr><td>PIDslowAdjust</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].PIDslowAdjust));
+	st += "</tr>";
 
 	// SlewRate
-	st += "\n  <tr><td>SlewRate</td><td>";
-	st += Sensor[0].SlewRate;
-	st += "</td><td>";
-	st += Sensor[1].SlewRate;
-	st += "</td></tr>";
+	st += "\n  <tr><td>SlewRate</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].SlewRate));
+	st += "</tr>";
 
 	// MaxIntegral
-	st += "\n  <tr><td>MaxIntegral</td><td>";
-	st += Sensor[0].MaxIntegral;
-	st += "</td><td>";
-	st += Sensor[1].MaxIntegral;
-	st += "</td></tr>";
+	st += "\n  <tr><td>MaxIntegral</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].MaxIntegral));
+	st += "</tr>";
 
 	// MinPWM
-	st += "\n  <tr><td>MinPWM</td><td>";
-	st += Sensor[0].MinPWM;
-	st += "</td><td>";
-	st += Sensor[1].MinPWM;
-	st += "</td></tr>";
+	st += "\n  <tr><td>MinPWM</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].MinPWM));
+	st += "</tr>";
 
 	// MaxPWM
-	st += "\n  <tr><td>MaxPWM</td><td>";
-	st += Sensor[0].MaxPWM;
-	st += "</td><td>";
-	st += Sensor[1].MaxPWM;
-	st += "</td></tr>";
+	st += "\n  <tr><td>MaxPWM</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].MaxPWM));
+	st += "</tr>";
 
 	// PIDtime
-	st += "\n  <tr><td>PIDtime</td><td>";
-	st += Sensor[0].PIDtime;
-	st += "</td><td>";
-	st += Sensor[1].PIDtime;
-	st += "</td></tr>";
+	st += "\n  <tr><td>PIDtime</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].PIDtime));
+	st += "</tr>";
 
 	// TimedMinStart
-	st += "\n  <tr><td>TimedMinStart</td><td>";
-	st += Sensor[0].TimedMinStart;
-	st += "</td><td>";
-	st += Sensor[1].TimedMinStart;
-	st += "</td></tr>";
+	st += "\n  <tr><td>TimedMinStart</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].TimedMinStart));
+	st += "</tr>";
 
 	// TimedAdjust
-	st += "\n  <tr><td>TimedAdjust</td><td>";
-	st += Sensor[0].TimedAdjust;
-	st += "</td><td>";
-	st += Sensor[1].TimedAdjust;
-	st += "</td></tr>";
+	st += "\n  <tr><td>TimedAdjust</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].TimedAdjust));
+	st += "</tr>";
 
 	// TimedPause
-	st += "\n  <tr><td>TimedPause</td><td>";
-	st += Sensor[0].TimedPause;
-	st += "</td><td>";
-	st += Sensor[1].TimedPause;
-	st += "</td></tr>";
-
-	// PulseMin
-	st += "\n  <tr><td>PulseMin</td><td>";
-	st += Sensor[0].PulseMin;
-	st += "</td><td>";
-	st += Sensor[1].PulseMin;
-	st += "</td></tr>";
-
-	// PulseMax
-	st += "\n  <tr><td>PulseMax</td><td>";
-	st += Sensor[0].PulseMax;
-	st += "</td><td>";
-	st += Sensor[1].PulseMax;
-	st += "</td></tr>";
-
-	// MedianCount (live pulse sample count used in latest median)
-	st += "\n  <tr><td>MedianCount</td><td>";
-	st += MedianCount[0];
-	st += "</td><td>";
-	st += MedianCount[1];
-	st += "</td></tr>";
+	st += "\n  <tr><td>TimedPause</td>";
+	for (int i = 0; i < sc; i++)
+		SensorCell(st, String(Sensor[i].TimedPause));
+	st += "</tr>";
 
 	st += "\n</table>";
 
-	// Feature flags section
+	// ──────────────────────────────────────────────
+	//  Feature flags section
+	// ──────────────────────────────────────────────
 	st += "\n<br><h2>Feature Flags</h2>";
 	st += "\n<table border='1' style='border-collapse:collapse; margin:auto;'>";
 
