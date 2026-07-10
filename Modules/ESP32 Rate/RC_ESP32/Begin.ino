@@ -120,41 +120,49 @@ void DoSetup()
 	// sensors
 	for (int i = 0; i < MDL.SensorCount; i++)
 	{
-		pinMode(Sensor[i].FlowPin, INPUT_PULLUP);
-		pinMode(Sensor[i].IN1, OUTPUT);
-		pinMode(Sensor[i].IN2, OUTPUT);
-
-		switch (i)
+		if (Sensor[i].FlowPin < NC)
 		{
-		case 0:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, RISING);
-			break;
-		case 1:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
-			break;
-		case 2:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR2, RISING);
-			break;
-		case 3:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR3, RISING);
-			break;
-		case 4:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR4, RISING);
-			break;
-		case 5:
-			attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR5, RISING);
-			break;
+			pinMode(Sensor[i].FlowPin, INPUT_PULLUP);
+
+			switch (i)
+			{
+			case 0:
+				attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR0, RISING);
+				break;
+			case 1:
+				attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR1, RISING);
+				break;
+			case 2:
+				attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR2, RISING);
+				break;
+			case 3:
+				attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR3, RISING);
+				break;
+			case 4:
+				attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR4, RISING);
+				break;
+			case 5:
+				attachInterrupt(digitalPinToInterrupt(Sensor[i].FlowPin), ISR5, RISING);
+				break;
+			}
 		}
 
 		// pwm frequency change from default 5000 Hz to 490 Hz, required for some valves to work
 		// ESP32 core 2.0.x: channel-based LEDC API
-		ledcSetup(i * 2, PWM_FREQ, PWM_BITS);
-		ledcAttachPin(Sensor[i].IN1, i * 2);
-		ledcWrite(i * 2, 0);
+		if (Sensor[i].IN1 < NC)
+		{
+			ledcSetup(i * 2, PWM_FREQ, PWM_BITS);
+			ledcAttachPin(Sensor[i].IN1, i * 2);
+			ledcWrite(i * 2, 0);
+		}
+		if (Sensor[i].IN2 < NC)
+		{
+			ledcSetup(i * 2 + 1, PWM_FREQ, PWM_BITS);
+			ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
+			ledcWrite(i * 2 + 1, 0);
+		}
 
-		ledcSetup(i * 2 + 1, PWM_FREQ, PWM_BITS);
-		ledcAttachPin(Sensor[i].IN2, i * 2 + 1);
-		ledcWrite(i * 2 + 1, 0);
+		if (Sensor[i].BinPin < NC) pinMode(Sensor[i].BinPin, INPUT_PULLUP);
 
 		if (Sensor[i].FlowPin == MDL.WheelSpeedPin) WheelMatch = true;
 	}
@@ -277,23 +285,29 @@ void DoSetup()
 	Serial.println("");
 	Serial.print("Sensors enabled: ");
 	Serial.println(MDL.SensorCount);
-	Serial.println("");
-	Serial.println("Sensor 1: ");
-	Serial.print("Flow Pin: ");
-	Serial.println(Sensor[0].FlowPin);
-	Serial.print("IN1 Pin: ");
-	Serial.println(Sensor[0].IN1);
-	Serial.print("IN2 Pin: ");
-	Serial.println(Sensor[0].IN2);
 
-	Serial.println("");
-	Serial.println("Sensor 2: ");
-	Serial.print("Flow Pin: ");
-	Serial.println(Sensor[1].FlowPin);
-	Serial.print("IN1 Pin: ");
-	Serial.println(Sensor[1].IN1);
-	Serial.print("IN2 Pin: ");
-	Serial.println(Sensor[1].IN2);
+	for (int i = 0; i < MDL.SensorCount; i++)
+	{
+		Serial.println("");
+		Serial.print("Sensor ");
+		Serial.print(i + 1);
+		Serial.println(": ");
+		Serial.print("Flow Pin: ");
+		Serial.println(Sensor[i].FlowPin);
+		Serial.print("IN1 Pin: ");
+		Serial.println(Sensor[i].IN1);
+		Serial.print("IN2 Pin: ");
+		Serial.println(Sensor[i].IN2);
+		Serial.print("Bin Pin: ");
+		if (Sensor[i].BinPin == NC)
+		{
+			Serial.println(F("Disabled"));
+		}
+		else
+		{
+			Serial.println(Sensor[i].BinPin);
+		}
+	}
 
 	Serial.println("");
 
@@ -358,12 +372,14 @@ void DoSetup()
 		Serial.println(F("Valves are 2 wire."));
 	}
 
-	// PID damper + per-sensor auto mode
+	// PID damper + per-sensor auto mode + bin state
 	for (int i = 0; i < MaxProductCount; i++)
 	{
 		OscDamp[i] = 1.0f;
 		LastAboveTarget[i] = false;
 		AutoOn[i] = true;
+		BinEmpty[i] = false;
+		BinChangeTime[i] = millis();
 	}
 
 	Serial.println("");
@@ -561,11 +577,11 @@ void InitializeRelays(uint8_t Control, int8_t End)
 // eeprom map:
 // ID			0-1
 // module type	2
-// feature flags	10-12 (disableMotor, disableFlow, b9threlay)
+// board label	3-22
 // module data	23-147
+// feature flags	148-150 (disableMotor, disableFlow, b9threlay)
 // network		168-232
-// sensor 1		253-356
-// sensor 2		377-480
+// sensors 1-6	253 + i*124, ~106 bytes each (6th ends at ~979; EEPROM_SIZE is 1024)
 
 void LoadData()
 {
@@ -581,9 +597,9 @@ void LoadData()
 		EEPROM.get(23, MDL);
 
 		// feature flags
-		disableMotor = EEPROM.read(10);
-		disableFlow = EEPROM.read(11);
-		b9threlay = EEPROM.read(12);
+		disableMotor = EEPROM.read(148);
+		disableFlow = EEPROM.read(149);
+		b9threlay = EEPROM.read(150);
 
 		for (int i = 0; i < MaxProductCount; i++)
 		{
@@ -609,9 +625,9 @@ void SaveData()
 	EEPROM.put(23, MDL);
 
 	// feature flags
-	EEPROM.write(10, disableMotor);
-	EEPROM.write(11, disableFlow);
-	EEPROM.write(12, b9threlay);
+	EEPROM.write(148, disableMotor);
+	EEPROM.write(149, disableFlow);
+	EEPROM.write(150, b9threlay);
 
 	for (int i = 0; i < MaxProductCount; i++)
 	{
@@ -633,9 +649,20 @@ void LoadDefaults()
 	Sensor[1].IN1 = 7;
 	Sensor[1].IN2 = 15;
 
-	// default control settings
-	for (int i = 0; i < 2; i++)
+	// sensors beyond the board's two driver channels have no default pins;
+	// explicit NC - zero-initialized globals would otherwise leave pin 0 (a real pin)
+	for (int i = 2; i < MaxProductCount; i++)
 	{
+		Sensor[i].FlowPin = NC;
+		Sensor[i].IN1 = NC;
+		Sensor[i].IN2 = NC;
+	}
+
+	// default control settings
+	for (int i = 0; i < MaxProductCount; i++)
+	{
+		Sensor[i].BinPin = NC;
+		Sensor[i].BinInvert = false;
 		Sensor[i].MaxPWM = 255;
 		Sensor[i].MinPWM = 5;
 		Sensor[i].Kp = 45 / 100.0;	// Kp = 45 (KPdefault, app Props.cs) - matches uniform /100 decode (Receive.ino)
@@ -729,42 +756,39 @@ bool ValidData()
 
 		if (Result)
 		{
+			// NC is a valid setting (sensor input/output not used) - a 6-sensor module
+			// may legitimately have sensors without pins assigned yet
 			for (int i = 0; i < MDL.SensorCount; i++)
 			{
-
 				// flow pin
-				Result = false;
-				for (int j = 0; j < sizeof(ValidPins0); j++)
+				Result = (Sensor[i].FlowPin == NC);
+				for (int j = 0; !Result && j < sizeof(ValidPins0); j++)
 				{
-					if (Sensor[i].FlowPin == ValidPins0[j])
-					{
-						Result = true;
-						break;
-					}
+					Result = (Sensor[i].FlowPin == ValidPins0[j]);
 				}
 				if (!Result) break;
 
 				// IN1
-				Result = false;
-				for (int j = 0; j < sizeof(ValidPins0); j++)
+				Result = (Sensor[i].IN1 == NC);
+				for (int j = 0; !Result && j < sizeof(ValidPins0); j++)
 				{
-					if (Sensor[i].IN1 == ValidPins0[j])
-					{
-						Result = true;
-						break;
-					}
+					Result = (Sensor[i].IN1 == ValidPins0[j]);
 				}
 				if (!Result) break;
 
 				// IN2
-				Result = false;
-				for (int j = 0; j < sizeof(ValidPins0); j++)
+				Result = (Sensor[i].IN2 == NC);
+				for (int j = 0; !Result && j < sizeof(ValidPins0); j++)
 				{
-					if (Sensor[i].IN2 == ValidPins0[j])
-					{
-						Result = true;
-						break;
-					}
+					Result = (Sensor[i].IN2 == ValidPins0[j]);
+				}
+				if (!Result) break;
+
+				// bin sensor pin
+				Result = (Sensor[i].BinPin == NC);
+				for (int j = 0; !Result && j < sizeof(ValidPins0); j++)
+				{
+					Result = (Sensor[i].BinPin == ValidPins0[j]);
 				}
 				if (!Result) break;
 			}
@@ -863,7 +887,13 @@ float getChipTempC()
 float getCurrentInAmps(int pin, float maxAmps)
 {
 	// ESP32-S3 ADC: 12-bit, 0-3.3V range
-	int raw = analogRead(pin);
+	// Take multiple samples and use median to reject ADC noise / PWM spikes
+	const int N = 16;
+	uint32_t samples[N];
+	for (int i = 0; i < N; i++)
+		samples[i] = analogRead(pin);
+
+	uint32_t raw = MedianFromArray(samples, N);
 	float voltage = (raw / 4095.0f) * 3.3f;
 	// Sensor outputs 2.5V at 0A, 0V at maxAmps
 	float sensitivity = maxAmps / 2.5f;
