@@ -3,6 +3,7 @@ using RateController.Classes;
 using RateController.Language;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace RateController.Menu
@@ -16,6 +17,10 @@ namespace RateController.Menu
 
         public frmMenuPins(frmMenu menu)
         {
+            // guarded from construction (frmMenuRelays pattern) - the Designer wires
+            // DGV.CellValueChanged before its column setup finishes, which fires the
+            // edit handler inside InitializeComponent
+            Initializing = true;
             InitializeComponent();
             MainMenu = menu;
             this.Tag = false;
@@ -253,6 +258,10 @@ namespace RateController.Menu
 
         private void frmMenuPins_FormClosed(object sender, FormClosedEventArgs e)
         {
+            // unsubscribe so a disposed instance isn't called when the Boards page
+            // fires ModuleDefaultsSet (its DGV has no columns once disposed)
+            MainMenu.MenuMoved -= MainMenu_MenuMoved;
+            MainMenu.ModuleDefaultsSet -= MainMenu_ModuleDefaultsSet;
             Props.SaveFormLocation(this);
         }
 
@@ -264,6 +273,7 @@ namespace RateController.Menu
             btnCancel.Left = btnOK.Left - 78;
             btnCancel.Top = btnOK.Top;
             MainMenu.StyleControls(this);
+            lbModule.Font = new Font(lbModule.Font, FontStyle.Underline);
 
             DGV.BackgroundColor = DGV.DefaultCellStyle.BackColor;
             DGV.ColumnHeadersDefaultCellStyle.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;

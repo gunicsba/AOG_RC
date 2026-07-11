@@ -108,6 +108,9 @@ namespace RateController.Menu
 
         private void frmMenuRelayPins_FormClosed(object sender, FormClosedEventArgs e)
         {
+            MainMenu.MenuMoved -= MainMenu_MenuMoved;
+            MainMenu.ModuleDefaultsSet -= MainMenu_ModuleDefaultsSet;
+            MainMenu.SelectionChanged -= MainMenu_SelectionChanged;
             Props.SaveFormLocation(this);
         }
 
@@ -118,6 +121,7 @@ namespace RateController.Menu
             btnCancel.Left = btnOK.Left - SubMenuLayout.ButtonSpacing;
             btnCancel.Top = btnOK.Top;
             MainMenu.StyleControls(this);
+            lbModule.Font = new Font(lbModule.Font, FontStyle.Underline);
 
             lbLowRelays.Font = new Font(lbLowRelays.Font, FontStyle.Underline);
             lbHighRelays.Font = new Font(lbLowRelays.Font, FontStyle.Underline);

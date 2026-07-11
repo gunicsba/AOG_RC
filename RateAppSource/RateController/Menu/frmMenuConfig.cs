@@ -42,6 +42,10 @@ namespace RateController.Menu
 
                 SetButtons(false);
                 UpdateForm();
+
+                // refresh the other open module pages too - the Pins page row
+                // count follows the sensor count saved here
+                MainMenu.DefaultsSet();
                 MainMenu.HighlightUpdateButton();
             }
             catch (Exception ex)
@@ -62,6 +66,8 @@ namespace RateController.Menu
 
         private void frmMenuConfig_FormClosed(object sender, FormClosedEventArgs e)
         {
+            MainMenu.MenuMoved -= MainMenu_MenuMoved;
+            MainMenu.ModuleDefaultsSet -= MainMenu_ModuleDefaultsSet;
             Props.SaveFormLocation(this);
         }
 
@@ -72,6 +78,7 @@ namespace RateController.Menu
             btnCancel.Left = btnOK.Left - SubMenuLayout.ButtonSpacing;
             btnCancel.Top = btnOK.Top;
             MainMenu.StyleControls(this);
+            lbModule.Font = new Font(lbModule.Font, FontStyle.Underline);
 
             SetLanguage();
             MainMenu.MenuMoved += MainMenu_MenuMoved;
