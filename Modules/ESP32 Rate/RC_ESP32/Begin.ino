@@ -579,7 +579,6 @@ void InitializeRelays(uint8_t Control, int8_t End)
 // module type	2
 // board label	3-22
 // module data	23-147
-// feature flags	148-150 (disableMotor, disableFlow, b9threlay)
 // network		168-232
 // sensors 1-6	253 + i*124, ~106 bytes each (6th ends at ~979; EEPROM_SIZE is 1024)
 
@@ -595,11 +594,6 @@ void LoadData()
 		// load stored data
 		Serial.println("Loading stored settings.");
 		EEPROM.get(23, MDL);
-
-		// feature flags
-		disableMotor = EEPROM.read(148);
-		disableFlow = EEPROM.read(149);
-		b9threlay = EEPROM.read(150);
 
 		for (int i = 0; i < MaxProductCount; i++)
 		{
@@ -623,11 +617,6 @@ void SaveData()
 	EEPROM.put(0, InoID);
 	EEPROM.put(2, InoType);
 	EEPROM.put(23, MDL);
-
-	// feature flags
-	EEPROM.write(148, disableMotor);
-	EEPROM.write(149, disableFlow);
-	EEPROM.write(150, b9threlay);
 
 	for (int i = 0; i < MaxProductCount; i++)
 	{
@@ -696,6 +685,7 @@ void LoadDefaults()
 	MDL.RemoteRelayControl = 0;
 	MDL.WorkPin = NC;
 	MDL.WorkPinIsMomentary = false;
+	MDL.InvertWork = false;
 	MDL.Is3Wire = true;
 	MDL.ADS1115Enabled = true;
 	MDL.PressurePin = NC;

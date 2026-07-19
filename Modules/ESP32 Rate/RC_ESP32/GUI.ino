@@ -29,19 +29,6 @@ void HandleInfo()
 
 void HandleSettings()
 {
-	bool changed = false;
-
-	bool newState = server.arg("disableFlow") == "on";
-	if (disableFlow != newState) { disableFlow = newState; changed = true; }
-
-	newState = server.arg("disableMotor") == "on";
-	if (disableMotor != newState) { disableMotor = newState; changed = true; }
-
-	newState = server.arg("b9threlay") == "on";
-	if (b9threlay != newState) { b9threlay = newState; changed = true; }
-
-	if (changed) SaveData();
-
 	HandleInfo();
 }
 

@@ -368,42 +368,18 @@ String GetPageInfo()
 
 	st += "\n</table>";
 
-	// ──────────────────────────────────────────────
-	//  Feature flags section
-	// ──────────────────────────────────────────────
-	st += "\n<br><h2>Feature Flags</h2>";
-	st += "\n<table border='1' style='border-collapse:collapse; margin:auto;'>";
-
-	st += "\n<tr><td>Disable Motor (8th relay)</td>";
-	st += "\n<td><input type='checkbox' name='disableMotor' ";
-	st += disableMotor ? "checked" : "";
-	st += "></td></tr>";
-
-	st += "\n<tr><td>Disable Flow (8th relay)</td>";
-	st += "\n<td><input type='checkbox' name='disableFlow' ";
-	st += disableFlow ? "checked" : "";
-	st += "></td></tr>";
-
-	st += "\n<tr><td>9th relay controls S1 motor</td>";
-	st += "\n<td><input type='checkbox' name='b9threlay' ";
-	st += b9threlay ? "checked" : "";
-	st += "></td></tr>";
-
-	st += "\n</table>";
-
 	st += "\n<br><input class='button-72' type=submit value='Save Settings'>";
 	st += "\n      <p> <a class='button-72' href='/'>Back</a> </p>";
 	st += "\n    </form>";
 
-	// Auto-refresh: update data tables every second via fetch (skip Feature Flags table with checkboxes)
+	// Auto-refresh: update data tables every second via fetch
 	st += "\n<script>";
 	st += "\nvar tables = document.querySelectorAll('#FORM1 table');";
 	st += "\nsetInterval(function() {";
 	st += "\n  fetch('/info').then(function(r){return r.text()}).then(function(html){";
 	st += "\n    var doc = new DOMParser().parseFromString(html,'text/html');";
 	st += "\n    var t = doc.querySelectorAll('#FORM1 table');";
-	st += "\n    var last = tables.length - 1;";
-	st += "\n    for (var i = 0; i < last && i < t.length; i++)";
+	st += "\n    for (var i = 0; i < tables.length && i < t.length; i++)";
 	st += "\n      tables[i].innerHTML = t[i].innerHTML;";
 	st += "\n  });";
 	st += "\n}, 1000);";

@@ -4,9 +4,6 @@ void AdjustFlow()
 	CheckPressure();
 	for (int i = 0; i < MDL.SensorCount; i++)
 	{
-        // b9threlay: skip sensor 1 (motor channel used as 9th relay)
-        if (b9threlay && i == 1) continue;
-
         // Over-pressure gate overrides normal control: drive the flow-reducing direction.
 		// Runs in auto and manual, and even if PID is gated off. SetPWM applies MDL.InvertFlow
 		// uniformly, so the negative sign maps to the same physical direction the PID uses to

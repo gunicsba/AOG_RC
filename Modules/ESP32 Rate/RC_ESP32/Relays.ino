@@ -66,18 +66,6 @@ void CheckRelays()
 	byte Start = 0;
 	if (MDL.OnboardRelayControl > 0) Start = 8; // onboard does first 8
 	ControlSwitch(Start, 15, MDL.RemoteRelayControl);
-
-	// Cytron disable (GPIO13) based on 8th relay
-	if (disableMotor && Sensor[1].ControlType == Motor_ct)
-	{
-		digitalWrite(13, bitRead(NewLo, 7));
-	}
-
-	// 9th relay: use motor channel 1 as relay
-	if (b9threlay)
-	{
-		SetPWM(1, bitRead(NewHi, 0) ? 255.0f : -255.0f);
-	}
 }
 
 void ControlSwitch(byte Start, byte End, byte Control)

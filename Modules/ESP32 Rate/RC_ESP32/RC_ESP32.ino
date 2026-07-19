@@ -99,6 +99,7 @@ struct ModuleConfig	// about 130 bytes
 	char APpassword[ModStringLengths] = "";
 	uint8_t WorkPin = NC;
 	bool WorkPinIsMomentary = false;
+	bool InvertWork = false;			// true for NO work switch sensor
 	bool Is3Wire = true;			// False - DRV8870 provides powered on/off with Output1/Output2, True - DRV8870 provides on/off with Output1 only, Output2 is off
 	uint8_t PressurePin = NC;		// NC - no pressure pin
 	bool ADS1115Enabled = true;
@@ -250,11 +251,6 @@ void  ISR0();		// function prototype
 void  ISR1();
 
 uint8_t DisconnectCount = 0;
-
-// feature flags (EEPROM persisted)
-bool disableMotor = false;	// GPIO13 high disables motor driver
-bool disableFlow = false;	// suppress flow when section 8 active
-bool b9threlay = false;		// use motor channel 1 as 9th relay
 
 // current sense pins (ESP32-S3)
 const uint8_t Current1Pin = 6;
@@ -424,6 +420,7 @@ bool WorkPinOn()
 	if (MDL.WorkPin < NC)
 	{
 		bool WrkCurrent = digitalRead(MDL.WorkPin);
+		if (MDL.InvertWork) WrkCurrent = !WrkCurrent;
 		if (MDL.WorkPinIsMomentary)
 		{
 			if (WrkCurrent != WrkLast)
