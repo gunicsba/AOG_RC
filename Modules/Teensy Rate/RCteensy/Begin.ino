@@ -86,11 +86,15 @@ void DoSetup()
 	// analog pins
 	analogReadResolution(12);
 
-	// ethernet 
+	// ethernet
 	Serial.println("Starting Ethernet ...");
 	MDLnetwork.IP3 = MDL.ID + 50;
 	IPAddress LocalIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, MDLnetwork.IP3);
-	static uint8_t LocalMac[] = { 0x0A,0x0B,0x42,0x0C,0x0D,MDLnetwork.IP3 };
+
+	// the chip's burned-in unique MAC, not an ID-derived one - two boards that
+	// happen to share a module ID must still be distinct on the wire
+	static uint8_t LocalMac[6];
+	TeensyMAC(LocalMac);
 
 	Ethernet.begin(LocalMac, 0);
 	Ethernet.setLocalIP(LocalIP);
@@ -495,10 +499,10 @@ void LoadDefaults()
 		Sensor[i].MaxPWM = 255;
 		Sensor[i].MinPWM = 5;
 		Sensor[i].Kp = 45 / 100.0;	// Kp = 45 (KPdefault, app Props.cs) - matches uniform /100 decode (Receive.ino)
-		Sensor[i].Ki = 50 / 100.0;	// Ki = 50 (KIdefault) - matches uniform /100 decode (Receive.ino)
+		Sensor[i].Ki = 70 / 100.0;	// Ki = 70 (KIdefault) - matches uniform /100 decode (Receive.ino)
 		Sensor[i].Deadband = 0.015;			// DeadbandDefault 15 / 1000
 		Sensor[i].BrakePoint = 35;			// BrakePointDefault
-		Sensor[i].PIDslowAdjust = 50;		// PIDslowAdjustDefault
+		Sensor[i].PIDslowAdjust = 60;		// PIDslowAdjustDefault
 		Sensor[i].SlewRate = 25;
 		Sensor[i].MaxIntegral = 25;
 		Sensor[i].TimedMinStart = 0.5;
@@ -525,12 +529,19 @@ void LoadDefaults()
 	MDL.RemoteRelayControl=0;
 	MDL.WorkPin = 30;
 	MDL.WorkPinIsMomentary = false;
+	MDL.InvertWork = false;
 	MDL.Is3Wire = true;
 	MDL.ADS1115Enabled = false;
 	MDL.PressurePin = 40;
 	MDL.WheelCal = 0;
 	MDL.WheelSpeedPin = NC;
 	MDL.CommMode = 0;
+}
+
+// NC is a valid setting (input/output not used); Teensy 4.1 GPIOs are 0-41
+bool PinAllowed(byte pin)
+{
+	return (pin <= 41 || pin == NC);
 }
 
 bool ValidData()
@@ -628,5 +639,55 @@ void SaveBoardID()
 {
 	MDLboard.Identifier = BoardIDMagic;
 	EEPROM.put(EE_BoardID, MDLboard);
+}
+
+void TeensyMAC(uint8_t* mac)
+{
+	// the unique factory MAC burned into the i.MX RT1062 fuses
+	uint32_t m1 = HW_OCOTP_MAC1;
+	uint32_t m2 = HW_OCOTP_MAC0;
+	mac[0] = m1 >> 8;
+	mac[1] = m1 >> 0;
+	mac[2] = m2 >> 24;
+	mac[3] = m2 >> 16;
+	mac[4] = m2 >> 8;
+	mac[5] = m2 >> 0;
+}
+
+void EffectiveBoardLabel(uint8_t* out)
+{
+	// The stored label, or "MAC xxxxxxxxxxxx" from the chip's unique MAC when
+	// none is stored (runtime fallback, never written to EEPROM). Gives a fresh
+	// board a unique identity so RC can tell two boards with the same module ID
+	// apart. out must hold 16 bytes, 0-padded like the stored label.
+	bool empty = true;
+	for (byte i = 0; i < 16; i++)
+	{
+		if (MDLboard.Text[i] > 32 && MDLboard.Text[i] < 127)
+		{
+			empty = false;
+			break;
+		}
+	}
+
+	if (empty)
+	{
+		const char hex[] = "0123456789ABCDEF";
+		uint8_t mac[6];
+		TeensyMAC(mac);
+		out[0] = 'M';
+		out[1] = 'A';
+		out[2] = 'C';
+		out[3] = ' ';
+		for (byte i = 0; i < 6; i++)
+		{
+			out[4 + i * 2] = hex[mac[i] >> 4];
+			out[5 + i * 2] = hex[mac[i] & 0x0F];
+		}
+	}
+	else
+	{
+		memcpy(out, MDLboard.Text, 16);
+	}
 }
 

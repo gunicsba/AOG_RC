@@ -375,25 +375,36 @@ void CANBus_HandleSensorPins(const CAN_message_t& msg) {
 
 	if (modId == MDL.ID && senId < MaxProductCount)
 	{
-		bool BinInv = ((msg.buf[5] & 1) == 1);
-		bool Changed = (Sensor[senId].FlowPin != msg.buf[1])
-			|| (Sensor[senId].DirPin != msg.buf[2])
-			|| (Sensor[senId].PWMPin != msg.buf[3])
-			|| (Sensor[senId].BinPin != msg.buf[4])
-			|| (Sensor[senId].BinInvert != BinInv);
-
-		if (Changed)
+		if (PinAllowed(msg.buf[1]) && PinAllowed(msg.buf[2])
+			&& PinAllowed(msg.buf[3]) && PinAllowed(msg.buf[4]))
 		{
-			Sensor[senId].FlowPin = msg.buf[1];
-			Sensor[senId].DirPin = msg.buf[2];
-			Sensor[senId].PWMPin = msg.buf[3];
-			Sensor[senId].BinPin = msg.buf[4];
-			Sensor[senId].BinInvert = BinInv;
+			bool BinInv = ((msg.buf[5] & 1) == 1);
+			bool Changed = (Sensor[senId].FlowPin != msg.buf[1])
+				|| (Sensor[senId].DirPin != msg.buf[2])
+				|| (Sensor[senId].PWMPin != msg.buf[3])
+				|| (Sensor[senId].BinPin != msg.buf[4])
+				|| (Sensor[senId].BinInvert != BinInv);
 
-			SaveData();
-			RestartPending = true;
+			if (Changed)
+			{
+				Sensor[senId].FlowPin = msg.buf[1];
+				Sensor[senId].DirPin = msg.buf[2];
+				Sensor[senId].PWMPin = msg.buf[3];
+				Sensor[senId].BinPin = msg.buf[4];
+				Sensor[senId].BinInvert = BinInv;
+
+				SaveData();
+				RestartPending = true;
+			}
+			RestartLastConfig = millis();
 		}
-		RestartLastConfig = millis();
+		else
+		{
+			// pins not usable on this board - discard the frame,
+			// reported via module status (0xFF02 byte 0 bit 7)
+			ConfigRejected = true;
+			ConfigRejectedTime = millis();
+		}
 	}
 }
 
@@ -542,7 +553,9 @@ void CANBus_HandleBoardLabel3(const CAN_message_t& msg) {
 //   0xFF0D → cfgBuf[8..15] = pgnData[10..17] (Sensor1 pins, RelayPins[0-4])
 //   0xFF0E → cfgBuf[16..23]= pgnData[18..25] (RelayPins[5-12])
 //   0xFF0F → cfgBuf[24..29]= pgnData[26..31] (RelayPins[13-15], WorkPin, PressurePin, CommMode)
-//            buf[6] = ModID (identity check), buf[7] = 0
+//            buf[6] = ModID (unused copy), buf[7] = 0
+// Command-byte (cfgBuf[2]) bit 6: set = adopt cfgBuf[0] as new ID, clear =
+// cfgBuf[0] is a filter (apply only when it matches MDL.ID).
 //-----------------------------------------------------------------------------
 
 void CANBus_HandleModuleConfig1(const CAN_message_t& msg) {
@@ -565,9 +578,43 @@ void CANBus_HandleModuleConfig4(const CAN_message_t& msg) {
 	memcpy(cfgBuf + 24, msg.buf, 6);  // only 6 config bytes; buf[6]=ModID, buf[7]=0
 	cfgFrames |= 0x08;
 
-	// All 4 frames must have arrived (no ModID identity check — mirrors UDP handler behaviour)
+	// All 4 frames must have arrived
 	if (cfgFrames != 0x0F) { cfgFrames = 0; return; }
 	cfgFrames = 0;
+
+	// Command-byte bit 6 set = ID assignment, adopt cfgBuf[0] unconditionally
+	// (commissioning, one board connected); clear = cfgBuf[0] must match our ID
+	// (normal update, multi-board safe). Mirrors the UDP handler in Receive.ino.
+	bool AssignID = ((cfgBuf[2] & 64) == 64);
+	if (!AssignID && cfgBuf[0] != MDL.ID) return;
+
+	// Validate pins before applying (mirrors the UDP 32700 handler) - a config
+	// that boot-time ValidData() would reject must not be saved at all
+	bool PinsOK = PinAllowed(cfgBuf[5]) && PinAllowed(cfgBuf[6]) && PinAllowed(cfgBuf[7])
+		&& PinAllowed(cfgBuf[8]) && PinAllowed(cfgBuf[9]) && PinAllowed(cfgBuf[10])
+		&& PinAllowed(cfgBuf[27]) && PinAllowed(cfgBuf[28]);
+
+	if (PinsOK && cfgBuf[3] == 1)
+	{
+		// onboard relay control by GPIOs
+		for (int i = 0; i < 16; i++)
+		{
+			if (!PinAllowed(cfgBuf[11 + i]))
+			{
+				PinsOK = false;
+				break;
+			}
+		}
+	}
+
+	if (!PinsOK)
+	{
+		// pins not usable on this board - discard the config,
+		// reported via module status (0xFF02 byte 0 bit 7)
+		ConfigRejected = true;
+		ConfigRejectedTime = millis();
+		return;
+	}
 
 	// Apply config (mirrors UDP PGN 32700 handler in Receive.ino case 32700)
 	MDL.ID = cfgBuf[0];
@@ -579,6 +626,7 @@ void CANBus_HandleModuleConfig4(const CAN_message_t& msg) {
 	MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
 	MDL.Is3Wire = ((tmp & 16) == 16);
 	MDL.ADS1115Enabled = ((tmp & 32) == 32);
+	MDL.InvertWork = ((tmp & 128) == 128);
 
 	MDL.OnboardRelayControl = cfgBuf[3];
 	MDL.RemoteRelayControl = cfgBuf[4];
@@ -672,9 +720,22 @@ void CANBus_SendModuleStatus() {
 
 	// Byte 0: ModuleId | Status bits
 	data[0] = (MDL.ID & 0x0F);
-	if (MDL.WorkPin < NC && digitalRead(MDL.WorkPin) == LOW) data[0] |= 0x10;  // Work switch
+	if (WorkPinOn()) data[0] |= 0x10;  // Work switch
 	if (Ethernet.linkStatus() == LinkON) data[0] |= 0x20;  // Ethernet connected
 	if (GoodPins) data[0] |= 0x40;  // Good pin config
+
+	// Config rejected (2 s window, then self-clears) - app maps to 32401 byte 13 bit 7
+	if (ConfigRejected)
+	{
+		if (millis() - ConfigRejectedTime < ConfigRejectedReport)
+		{
+			data[0] |= 0x80;
+		}
+		else
+		{
+			ConfigRejected = false;
+		}
+	}
 
 	// Byte 1: WiFi strength (N/A for Teensy - use 0)
 	data[1] = 0;
@@ -726,19 +787,22 @@ void CANBus_SendModuleIdent() {
 //-----------------------------------------------------------------------------
 void CANBus_SendBoardLabel() {
 	uint8_t data[8];
+	uint8_t label[16];
 	uint8_t mod = MDL.ID & 0x0F;
 
+	EffectiveBoardLabel(label);                  // stored label, or MAC fallback when none stored
+
 	data[0] = mod;
-	memcpy(data + 1, MDLboard.Text, 7);          // chars 0-6
+	memcpy(data + 1, label, 7);                  // chars 0-6
 	CANBus_SendProprietaryB(0x14, data, 8);
 
 	data[0] = mod;
-	memcpy(data + 1, MDLboard.Text + 7, 7);      // chars 7-13
+	memcpy(data + 1, label + 7, 7);              // chars 7-13
 	CANBus_SendProprietaryB(0x15, data, 8);
 
 	data[0] = mod;
-	data[1] = MDLboard.Text[14];                 // char 14
-	data[2] = MDLboard.Text[15];                 // char 15
+	data[1] = label[14];                         // char 14
+	data[2] = label[15];                         // char 15
 	data[3] = data[4] = data[5] = data[6] = data[7] = 0;
 	CANBus_SendProprietaryB(0x16, data, 8);
 }

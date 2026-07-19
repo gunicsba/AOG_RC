@@ -35,12 +35,7 @@
             this.rbTeensy = new System.Windows.Forms.RadioButton();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.lbExampleHint = new System.Windows.Forms.Label();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.lbCurrentHint = new System.Windows.Forms.Label();
-            this.label1 = new System.Windows.Forms.Label();
-            this.tbDescription = new System.Windows.Forms.TextBox();
             this.groupBox1.SuspendLayout();
-            this.groupBox2.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnCancel
@@ -131,7 +126,7 @@
             this.groupBox1.Controls.Add(this.rbTeensy);
             this.groupBox1.Controls.Add(this.rbESP32);
             this.groupBox1.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox1.Location = new System.Drawing.Point(93, 65);
+            this.groupBox1.Location = new System.Drawing.Point(106, 146);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(344, 281);
             this.groupBox1.TabIndex = 171;
@@ -151,54 +146,11 @@
     "ay Pins and Valves to match your own board.";
             this.lbExampleHint.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // groupBox2
-            // 
-            this.groupBox2.Controls.Add(this.lbCurrentHint);
-            this.groupBox2.Controls.Add(this.label1);
-            this.groupBox2.Controls.Add(this.tbDescription);
-            this.groupBox2.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox2.Location = new System.Drawing.Point(93, 406);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(344, 149);
-            this.groupBox2.TabIndex = 172;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Current Board";
-            this.groupBox2.Paint += new System.Windows.Forms.PaintEventHandler(this.groupBox1_Paint);
-            // 
-            // lbCurrentHint
-            // 
-            this.lbCurrentHint.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lbCurrentHint.ForeColor = System.Drawing.SystemColors.Highlight;
-            this.lbCurrentHint.Location = new System.Drawing.Point(8, 25);
-            this.lbCurrentHint.Name = "lbCurrentHint";
-            this.lbCurrentHint.Size = new System.Drawing.Size(332, 60);
-            this.lbCurrentHint.TabIndex = 48;
-            this.lbCurrentHint.Text = "Descripton saved on the module to identify it - kept through firmware updates.";
-            this.lbCurrentHint.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(7, 100);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(109, 24);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "Description:";
-            // 
-            // tbDescription
-            // 
-            this.tbDescription.Location = new System.Drawing.Point(122, 100);
-            this.tbDescription.Name = "tbDescription";
-            this.tbDescription.Size = new System.Drawing.Size(206, 29);
-            this.tbDescription.TabIndex = 0;
-            this.tbDescription.Text = " ";
-            // 
             // frmMenuNetwork
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(540, 678);
-            this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnOK);
@@ -209,8 +161,6 @@
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.frmMenuNetwork_FormClosed);
             this.Load += new System.EventHandler(this.frmMenuNetwork_Load);
             this.groupBox1.ResumeLayout(false);
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -223,10 +173,6 @@
         private System.Windows.Forms.RadioButton rbESP32;
         private System.Windows.Forms.RadioButton rbTeensy;
         private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.TextBox tbDescription;
-        private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label lbExampleHint;
-        private System.Windows.Forms.Label lbCurrentHint;
     }
 }

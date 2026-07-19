@@ -75,11 +75,11 @@ namespace RateController.Classes
             Lang.lgTramLeft,Lang.lgGeoStop,Lang.lgSwitch, Lang.lgNone,Lang.lgInvert_Master,Lang.lgBypass,Lang.lgFlowMaster,Lang.lgInvert_FlowMaster};
 
         private static string cActivityFileName = "";
-        private static string cAppDate = "10-Jul-2026";
+        private static string cAppDate = "18-Jul-2026";
         private static string cAppName = "RateController";
         private static SortedDictionary<string, string> cAppProps = new SortedDictionary<string, string>();
         private static string cAppPropsFileName = "";
-        private static string cAppVersion = "4.3.4";
+        private static string cAppVersion = "4.3.5";
         private static bool cCanEnabled = false;
         private static string cCanPort = "COM7";
         private static CanDriver cCurrentCanDriver = CanDriver.SLCAN;
@@ -132,14 +132,14 @@ namespace RateController.Classes
 
         public static readonly byte BrakePointDefault = 35;
         public static readonly byte DeadbandDefault = 15;
-        public static readonly byte KIdefault = 50;
-        public static readonly byte KPdefault = 45;
+        public static readonly byte KIdefault = 60;
+        public static readonly byte KPdefault = 40;
         public static readonly byte MaxIntegralDefault = 250;
         public static readonly byte MaxPWMdefault = 100;
         public static readonly byte MinPWMdefault = 5;
-        public static readonly byte PIDslowAdjustDefault = 50;
+        public static readonly byte PIDslowAdjustDefault = 60;
         public static readonly byte PIDtimeDefault = 150;
-        public static readonly UInt16 PulseMaxHzDefault = 3000;
+        public static readonly UInt16 PulseMaxHzDefault = 1500;
         public static readonly byte PulseMinHzDefault = 10;
         public static readonly byte PulseSampleSizeDefault = 40;   // flow window: 40 centiseconds = 400 ms
         public static readonly byte SlewRateDefault = 25;
@@ -905,6 +905,36 @@ namespace RateController.Classes
             return cProps.TryGetValue(key, out var value) ? value : string.Empty;
         }
 
+        public static string GetModuleDescription(int ModuleID)
+        {
+            string Result = "";
+            if (ModuleID >= 0 && ModuleID < MaxModules)
+            {
+                Result = GetProp("ModuleDescription_" + ModuleID.ToString());
+                if (Result.Length == 0)
+                {
+                    // migrate the pre-per-module single value to the module being
+                    // configured, the one the old value was in use for
+                    string Legacy = GetProp("ModuleDescription");
+                    if (Legacy.Length > 0)
+                    {
+                        SetProp("ModuleDescription_" + ModuleID.ToString(), Legacy);
+                        SetProp("ModuleDescription", "");
+                        Result = Legacy;
+                    }
+                }
+            }
+            return Result;
+        }
+
+        public static void SetModuleDescription(int ModuleID, string Description)
+        {
+            if (ModuleID >= 0 && ModuleID < MaxModules && Description != null)
+            {
+                SetProp("ModuleDescription_" + ModuleID.ToString(), Description);
+            }
+        }
+
         public static bool IsFormNameValid(string formName)
         {
             bool Result = false;
@@ -1191,7 +1221,8 @@ namespace RateController.Classes
                 double MaxVol = GetPressureCal(ModuleID * 5 + 2);   // x2
                 double MaxPres = GetPressureCal(ModuleID * 5 + 3);  // y2
                 double ZeroValue = GetPressureCal(ModuleID * 5 + 4);
-                if ((MaxPres - MinPres) > 0 && Reading >= ZeroValue)
+                // Reading of 0 means no sensor signal, show 0 instead of the intercept
+                if ((MaxPres - MinPres) > 0 && Reading > 0 && Reading >= ZeroValue)
                 {
                     double M = (MaxPres - MinPres) / (MaxVol - MinVol);
                     double B = MaxPres - M * MaxVol;

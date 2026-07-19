@@ -28,12 +28,14 @@ namespace RateController.PGNs
         //      bit 4   ethernet connected
         //      bit 5   good pin configuration
         //      bit 6   0 - 2 wire relays, 1 - 3 wire relays
+        //      bit 7   config rejected (2 s after a discarded 32507/32700)
         //14    CRC
 
         private const byte cByteCount = 15;
         private const byte HeaderHi = 126;
         private const byte HeaderLo = 145;
         private double[] cElapsedTime;
+        private bool[] cConfigRejected;
         private bool[] cEthernetConnected;
         private bool[] cGoodPins;
         private UInt16[] cInoID;
@@ -47,6 +49,7 @@ namespace RateController.PGNs
         private ModuleStatus[] LastStatus;
         private Stopwatch[] PGNstopWatch;
         private DateTime[] ReceiveTime;
+        private DateTime[] cDuplicateTime;
 
         public PGN32401()
         {
@@ -57,11 +60,13 @@ namespace RateController.PGNs
             cWifiSignal = new byte[Props.MaxModules];
             cEthernetConnected = new bool[Props.MaxModules];
             cGoodPins = new bool[Props.MaxModules];
+            cConfigRejected = new bool[Props.MaxModules];
 
             cInoType = new ushort[Props.MaxModules];
             cWheelSpeed = new double[Props.MaxModules];
             cWheelCounts = new ushort[Props.MaxModules];
             cElapsedTime = new double[Props.MaxModules];
+            cDuplicateTime = new DateTime[Props.MaxModules];
 
             PGNstopWatch = new Stopwatch[Props.MaxModules];
             for (int i = 0; i < Props.MaxModules; i++)
@@ -85,11 +90,25 @@ namespace RateController.PGNs
             return (ValidID(Module) && (DateTime.Now - ReceiveTime[Module]).TotalSeconds < 4);
         }
 
+        // Latched for a while after the last conflicting report so the warning is
+        // stable; clears itself once one of the boards is disconnected.
+        public bool DuplicateID(int Module)
+        {
+            return (ValidID(Module) && (DateTime.Now - cDuplicateTime[Module]).TotalSeconds < 15);
+        }
+
         public double ElapsedTime(int ModuleID)
         {
             double Result = 0;
             if (ValidID(ModuleID) && ModuleSending(ModuleID)) Result = cElapsedTime[ModuleID];
             return Result;
+        }
+
+        // True while the module reports it discarded a 32507/32700 config whose pins
+        // are invalid for its board type (the module sends the bit for 2 s)
+        public bool ConfigRejected(int Module)
+        {
+            return (ValidID(Module) && cConfigRejected[Module]);
         }
 
         public bool Is3Wire(int Module)
@@ -143,8 +162,20 @@ namespace RateController.PGNs
 
                         cWheelCounts[ModuleID] = (ushort)(Data[7] | Data[8] << 8 | Data[9] << 16);
 
+                        // Two boards sharing an ID reveal themselves when reports alternate
+                        // between different board types or firmware versions within the
+                        // 200 ms status cycle (catches pairs that send no board label, e.g.
+                        // a Nano). A legitimate change needs a reflash, which takes the
+                        // board offline far longer than the freshness gate.
+                        ushort inoID = (ushort)(Data[11] | Data[12] << 8);
+                        if ((DateTime.Now - ReceiveTime[ModuleID]).TotalSeconds < 2
+                            && (cInoType[ModuleID] != Data[10] || cInoID[ModuleID] != inoID))
+                        {
+                            cDuplicateTime[ModuleID] = DateTime.Now;
+                        }
+
                         cInoType[ModuleID] = Data[10];
-                        cInoID[ModuleID] = (ushort)(Data[11] | Data[12] << 8);
+                        cInoID[ModuleID] = inoID;
                         cWorkSwitch[ModuleID] = ((Data[13] & 0b00000001) == 0b00000001);
 
                         // wifi strength
@@ -156,6 +187,7 @@ namespace RateController.PGNs
                         cEthernetConnected[ModuleID] = ((Data[13] & 0b00010000) == 0b00010000);
                         cGoodPins[ModuleID] = ((Data[13] & 0b00100000) == 0b00100000);
                         cIs3Wire[ModuleID] = ((Data[13] & 0b01000000) == 0b01000000);
+                        cConfigRejected[ModuleID] = ((Data[13] & 0b10000000) == 0b10000000);
 
                         ReceiveTime[ModuleID] = DateTime.Now;
                         Result = true;
@@ -232,6 +264,30 @@ namespace RateController.PGNs
                         PinStatusChanged?.Invoke(this, args);
                     }
 
+                    // config rejected: the module discarded a 32507/32700 whose pins are
+                    // invalid for its board type. Rising edge only - the module reports
+                    // the bit for 2 s, one popup per attempted config session.
+                    if (cConfigRejected[i] && !LastStatus[i].ConfigRejected)
+                    {
+                        Mes = "Module " + i.ToString() + " rejected the pin configuration\n - pins are not valid for that board type.";
+                        Props.WriteActivityLog(Mes, false, true);
+
+                        // frmMsgBox stays up until acknowledged (frmHelp auto-closes).
+                        // Owner must be the main form: parameterless ShowDialog adopts the
+                        // active window, and if that is a transient form (menu page, frmHelp
+                        // notification) the dialog is closed along with it.
+                        string popup = Mes;
+                        Core.MainForm?.BeginInvoke((Action)(() =>
+                        {
+                            using (var Hlp = new frmMsgBox(popup, "Module Config Rejected", true, false))
+                            {
+                                Hlp.TopMost = true;
+                                Hlp.ShowDialog(Core.MainForm);
+                            }
+                        }));
+                    }
+                    LastStatus[i].ConfigRejected = cConfigRejected[i];
+
                     LastStatus[i].Initialized = true;
                 }
             }
@@ -286,6 +342,7 @@ namespace RateController.PGNs
 
         private class ModuleStatus
         {
+            public bool ConfigRejected { get; set; }
             public bool EthernetConnected { get; set; }
             public bool GoodPins { get; set; }
             public bool Initialized { get; set; }

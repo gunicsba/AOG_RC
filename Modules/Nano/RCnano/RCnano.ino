@@ -6,7 +6,7 @@
 
 // rate control with arduino nano
 # define InoDescription "RCnano"
-const uint16_t InoID = 9076;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint16_t InoID = 17076;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 2;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 
 #define MaxProductCount 2
@@ -50,6 +50,7 @@ struct ModuleConfig
 	uint8_t RelayControl = 4;		// 0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
 	uint8_t WorkPin = 15;
 	bool WorkPinIsMomentary = false;
+	bool InvertWork = false;		// true for NO work switch sensor
 	bool Is3Wire = true;			// False - powered on/off, True - powered on only
 	uint8_t PressurePin = 14;
 	bool ADS1115Enabled = false;
@@ -151,11 +152,11 @@ int16_t PressureReading = 0;
 bool PressureGateActive = false;	// currently driving actuators to relieve
 bool PressureGateLatched = false;	// persistent fault - holds relief until operator reset (master off)
 uint32_t PressureGateStart = 0;		// millis() when current relief began (min-hold timer)
-uint8_t PressureTripCount = 0;		// trips counted in the current window
-uint32_t PressureTripWindow = 0;	// millis() at the start of the trip-count window
+uint8_t PressureTripCount = 0;		// consecutive trips (re-trips within PressureTripResetMs of the last)
+uint32_t PressureTripLast = 0;		// millis() of the most recent trip
 const uint16_t PressureMinHold = 3000;			// ms: minimum relief hold after a trip (rate-limits cycling)
-const uint16_t PressureTripWindowMs = 10000;	// ms: window for counting repeated trips
-const uint8_t PressureMaxTrips = 3;				// trips within the window -> escalate to hard latch
+const uint16_t PressureTripResetMs = 20000;		// ms: a quiet spell this long since the last trip forgives the count
+const uint8_t PressureMaxTrips = 3;				// consecutive trips -> escalate to hard latch
 
 bool GoodPins;	// pin configuration correct
 
@@ -188,6 +189,12 @@ const uint16_t BinDebounce = 2500;				// ms: raw state must persist this long be
 bool RestartPending = false;
 uint32_t RestartLastConfig = 0;					// millis() of the last 32507 packet
 const uint16_t RestartDelay = 1500;
+
+// Config rejection: a received 32507/32700 with pins invalid for this board is
+// discarded; reported in PGN 32401 byte 13 bit 7 for 2 s so the app can alert
+bool ConfigRejected = false;
+uint32_t ConfigRejectedTime = 0;			// millis() of the rejected packet
+const uint16_t ConfigRejectedReport = 2000;	// ms: how long the status bit stays set
 
 // declared here (not PID.ino) so Motor.ino's pressure gate can see it - .ino files
 // concatenate alphabetically and Motor comes before PID
@@ -282,6 +289,7 @@ bool WorkPinOn()
 	if (MDL.WorkPin < NC)
 	{
 		bool WrkCurrent = digitalRead(MDL.WorkPin);
+		if (MDL.InvertWork) WrkCurrent = !WrkCurrent;
 		if (MDL.WorkPinIsMomentary)
 		{
 			if (WrkCurrent != WrkLast)

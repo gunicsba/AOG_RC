@@ -1,5 +1,27 @@
 // valid pins for ESP32-S3 (excludes strapping pins 0/3/45/46, flash 26-32, SPI 35-38)
 uint8_t ValidPins0[] = { 1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,33,34,39,40,41,42,43,44,47,48 };
+uint8_t OutputPins0[] = { 0,2,4,13,14,15,16,17,21,22,25,26,27,32,33 };	// GPIO 34-39 are input-only, cannot drive IN1/IN2
+
+// NC is always allowed (input/output not used)
+bool PinAllowed(byte pin)
+{
+	bool Result = (pin == NC);
+	for (int i = 0; !Result && i < (int)sizeof(ValidPins0); i++)
+	{
+		Result = (pin == ValidPins0[i]);
+	}
+	return Result;
+}
+
+bool OutputPinAllowed(byte pin)
+{
+	bool Result = (pin == NC);
+	for (int i = 0; !Result && i < (int)sizeof(OutputPins0); i++)
+	{
+		Result = (pin == OutputPins0[i]);
+	}
+	return Result;
+}
 
 void DoSetup()
 {
@@ -88,6 +110,15 @@ void DoSetup()
 	Serial.println("Starting Ethernet ...");
 	MDLnetwork.IP3 = MDL.ID + 50;
 	IPAddress LocalIP(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, MDLnetwork.IP3);
+
+	// the chip's unique efuse MAC (+3, the ESP-IDF ethernet offset, so it can't
+	// collide with the WiFi STA MAC), not an ID-derived one - two boards that
+	// happen to share a module ID must still be distinct on the wire
+	static uint8_t LocalMac[6];
+	ChipMAC(LocalMac);
+	LocalMac[5] += 3;
+
+	Ethernet.init(W5500_SS);   // SS pin
 	IPAddress Gateway(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 1);
 	IPAddress Mask(255, 255, 255, 0);
 
@@ -655,10 +686,10 @@ void LoadDefaults()
 		Sensor[i].MaxPWM = 255;
 		Sensor[i].MinPWM = 5;
 		Sensor[i].Kp = 45 / 100.0;	// Kp = 45 (KPdefault, app Props.cs) - matches uniform /100 decode (Receive.ino)
-		Sensor[i].Ki = 50 / 100.0;	// Ki = 50 (KIdefault) - matches uniform /100 decode (Receive.ino)
+		Sensor[i].Ki = 70 / 100.0;	// Ki = 70 (KIdefault) - matches uniform /100 decode (Receive.ino)
 		Sensor[i].Deadband = 0.015;
 		Sensor[i].BrakePoint = 35;
-		Sensor[i].PIDslowAdjust = 30;
+		Sensor[i].PIDslowAdjust = 60;	// PIDslowAdjustDefault, matches app (was 30, pre-existing divergence)
 		Sensor[i].SlewRate = 25;
 		Sensor[i].MaxIntegral = 25;
 		Sensor[i].TimedMinStart = 0.5;
@@ -915,6 +946,53 @@ void SaveBoardID()
 	MDLboard.Identifier = BoardIDMagic;
 	EEPROM.put(EE_BoardID, MDLboard);
 	EEPROM.commit();
+}
+
+void ChipMAC(uint8_t* mac)
+{
+	// the unique factory base MAC from the ESP32's efuse
+	uint64_t chip = ESP.getEfuseMac();
+	for (byte i = 0; i < 6; i++)
+	{
+		mac[i] = (chip >> (8 * i)) & 0xFF;
+	}
+}
+
+void EffectiveBoardLabel(uint8_t* out)
+{
+	// The stored label, or "MAC xxxxxxxxxxxx" from the chip's unique MAC when
+	// none is stored (runtime fallback, never written to EEPROM). Gives a fresh
+	// board a unique identity so RC can tell two boards with the same module ID
+	// apart. out must hold 16 bytes, 0-padded like the stored label.
+	bool empty = true;
+	for (byte i = 0; i < 16; i++)
+	{
+		if (MDLboard.Text[i] > 32 && MDLboard.Text[i] < 127)
+		{
+			empty = false;
+			break;
+		}
+	}
+
+	if (empty)
+	{
+		const char hex[] = "0123456789ABCDEF";
+		uint8_t mac[6];
+		ChipMAC(mac);
+		out[0] = 'M';
+		out[1] = 'A';
+		out[2] = 'C';
+		out[3] = ' ';
+		for (byte i = 0; i < 6; i++)
+		{
+			out[4 + i * 2] = hex[mac[i] >> 4];
+			out[5 + i * 2] = hex[mac[i] & 0x0F];
+		}
+	}
+	else
+	{
+		memcpy(out, MDLboard.Text, 16);
+	}
 }
 
 

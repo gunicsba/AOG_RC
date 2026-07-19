@@ -15,7 +15,7 @@ extern "C" {
 }
 
 # define InoDescription "RCteensy"
-const uint16_t InoID = 9076;	// change to send defaults to eeprom, ddmmy, no leading 0
+const uint16_t InoID = 17076;	// change to send defaults to eeprom, ddmmy, no leading 0
 const uint8_t InoType = 1;		// 0 - Teensy AutoSteer, 1 - Teensy Rate, 2 - Nano Rate, 3 - Nano SwitchBox, 4 - ESP Rate
 
 #define NC 0xFF		// Pins not connected
@@ -74,6 +74,7 @@ struct ModuleConfig
 	uint8_t RemoteRelayControl = 0;			// 0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
 	uint8_t WorkPin = 30;
 	bool WorkPinIsMomentary = false;
+	bool InvertWork = false;		// true for NO work switch sensor
 	bool Is3Wire = true;			// False - DRV8870 provides powered on/off with Output1/Output2, True - DRV8870 provides on/off with Output2 only, Output1 is off
 	uint8_t PressurePin = 40;
 	bool ADS1115Enabled = false;
@@ -187,11 +188,11 @@ bool ADSfound = false;
 bool PressureGateActive = false;	// currently driving actuators to relieve
 bool PressureGateLatched = false;	// persistent fault - holds relief until operator reset (master off)
 uint32_t PressureGateStart = 0;		// millis() when current relief began (min-hold timer)
-uint8_t PressureTripCount = 0;		// trips counted in the current window
-uint32_t PressureTripWindow = 0;	// millis() at the start of the trip-count window
+uint8_t PressureTripCount = 0;		// consecutive trips (re-trips within PressureTripResetMs of the last)
+uint32_t PressureTripLast = 0;		// millis() of the most recent trip
 const uint16_t PressureMinHold = 3000;			// ms: minimum relief hold after a trip (rate-limits cycling)
-const uint16_t PressureTripWindowMs = 10000;	// ms: window for counting repeated trips
-const uint8_t PressureMaxTrips = 3;				// trips within the window -> escalate to hard latch
+const uint16_t PressureTripResetMs = 20000;		// ms: a quiet spell this long since the last trip forgives the count
+const uint8_t PressureMaxTrips = 3;				// consecutive trips -> escalate to hard latch
 
 bool GoodPins = false;	// configuration pins correct
 
@@ -224,6 +225,12 @@ const uint16_t BinDebounce = 2500;				// ms: raw state must persist this long be
 bool RestartPending = false;
 uint32_t RestartLastConfig = 0;					// millis() of the last 32507 packet
 const uint16_t RestartDelay = 1500;
+
+// Config rejection: a received 32507/32700 with pins invalid for this board is
+// discarded; reported in PGN 32401 byte 13 bit 7 for 2 s so the app can alert
+bool ConfigRejected = false;
+uint32_t ConfigRejectedTime = 0;			// millis() of the rejected packet
+const uint16_t ConfigRejectedReport = 2000;	// ms: how long the status bit stays set
 
 // PID diagnostics logging (PGN 32402). Kept out of SensorConfig so EEPROM layout is unchanged.
 // All fields are snapshotted together when the PID computes so the logged packet is
@@ -357,6 +364,7 @@ bool WorkPinOn()
 	if (MDL.WorkPin < NC)
 	{
 		bool WrkCurrent = digitalRead(MDL.WorkPin);
+		if (MDL.InvertWork) WrkCurrent = !WrkCurrent;
 		if (MDL.WorkPinIsMomentary)
 		{
 			if (WrkCurrent != WrkLast)
@@ -469,7 +477,8 @@ void Blink()
 //	{
 //		DebugTime = millis();
 //
-//		debug1=Sensor[0].SampleWindow;
+//		debug1=WorkPinOn();
+//		debug2=digitalRead(MDL.WorkPin);
 //
 //		Serial.println("");
 //		Serial.print(debug1);
@@ -477,17 +486,17 @@ void Blink()
 //		Serial.print(", ");
 //		Serial.print(debug2);
 //
-//		Serial.print(", ");
-//		Serial.print(debug3);
+//		//Serial.print(", ");
+//		//Serial.print(debug3);
 //
-//		Serial.print(", ");
-//		Serial.print(debug4);
+//		//Serial.print(", ");
+//		//Serial.print(debug4);
 //
-//		Serial.print(", ");
-//		Serial.print(debug5);
+//		//Serial.print(", ");
+//		//Serial.print(debug5);
 //
-//		Serial.print(", ");
-//		Serial.print(debug6);
+//		//Serial.print(", ");
+//		//Serial.print(debug6);
 //	}
 //}
 

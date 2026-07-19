@@ -11,21 +11,12 @@ namespace RateController.Menu
         private bool cEdited;
         private bool Initializing = false;
         private frmMenu MainMenu;
-        private Timer cBoardIDtimer;
 
         public frmMenuNetwork(frmMenu menu)
         {
             InitializeComponent();
             MainMenu = menu;
             this.Tag = false;
-            tbDescription.TextChanged += tbDescription_TextChanged;
-        }
-
-        private void tbDescription_TextChanged(object sender, EventArgs e)
-        {
-            // Editing the board description enables Save (guarded by Initializing so the
-            // read-back populate on Load doesn't enable it).
-            SetButtons(true);
         }
 
         private void btnCancel_Click(object sender, EventArgs e)
@@ -37,29 +28,19 @@ namespace RateController.Menu
         {
             try
             {
-                int NewBoard;
+                // only load a preset when one was actually selected - the description
+                // alone also enables Save, and that must not reset the module config
                 if (rbNano.Checked)
                 {
-                    NewBoard = 0;
+                    SetDefaults(0);
                 }
                 else if (rbESP32.Checked)
                 {
-                    NewBoard = 2;
+                    SetDefaults(2);
                 }
-                else
+                else if (rbTeensy.Checked)
                 {
-                    NewBoard = 1;
-                }
-
-                SetDefaults(NewBoard);
-
-                // Save the board description locally; butUpdateModules sends it to the
-                // module (PGN 32506, stored in its EEPROM, survives reflash). Only saved
-                // when non-empty so a blank box can't wipe an existing label.
-                string desc = tbDescription.Text.Trim();
-                if (desc.Length > 0)
-                {
-                    Props.SetProp("ModuleDescription", desc);
+                    SetDefaults(1);
                 }
 
                 SetButtons(false);
@@ -74,12 +55,6 @@ namespace RateController.Menu
         private void frmMenuNetwork_FormClosed(object sender, FormClosedEventArgs e)
         {
             MainMenu.MenuMoved -= MainMenu_MenuMoved;
-            if (cBoardIDtimer != null)
-            {
-                cBoardIDtimer.Stop();
-                cBoardIDtimer.Dispose();
-                cBoardIDtimer = null;
-            }
             Props.SaveFormLocation(this);
         }
 
@@ -91,60 +66,20 @@ namespace RateController.Menu
             btnCancel.Left = btnOK.Left - 78;
             btnCancel.Top = btnOK.Top;
 
-            // StyleControls restyles every label's font and colours; capture the two hint
-            // labels' designer formatting and restore it afterwards so the hints keep their look.
+            // StyleControls restyles every label's font and colours; capture the hint
+            // label's designer formatting and restore it afterwards so the hint keeps its look.
             Font exFont = lbExampleHint.Font;
             Color exFore = lbExampleHint.ForeColor;
-            Font curFont = lbCurrentHint.Font;
-            Color curFore = lbCurrentHint.ForeColor;
 
             MainMenu.StyleControls(this);
 
             lbExampleHint.Font = exFont;
             lbExampleHint.ForeColor = exFore;
-            lbCurrentHint.Font = curFont;
-            lbCurrentHint.ForeColor = curFore;
 
             SetLanguage();
             MainMenu.MenuMoved += MainMenu_MenuMoved;
             this.BackColor = Properties.Settings.Default.MainBackColour;
             PositionForm();
-
-            // Show the description stored on the module, and keep it live-updated while the
-            // form is open (the module reports its label every ~2 s on PGN 32403).
-            RefreshDescription();
-
-            cBoardIDtimer = new Timer();
-            cBoardIDtimer.Interval = 1000;
-            cBoardIDtimer.Tick += BoardIDtimer_Tick;
-            cBoardIDtimer.Start();
-        }
-
-        private void BoardIDtimer_Tick(object sender, EventArgs e)
-        {
-            RefreshDescription();
-        }
-
-        private void RefreshDescription()
-        {
-            // Show the locally saved description (sent with Update Modules); when none is
-            // saved, fall back to the module's live reported label while connected.
-            // Skipped while the user has unsaved edits so it doesn't clobber typing;
-            // guarded so it doesn't enable Save; only written when it actually changed.
-            if (!cEdited)
-            {
-                string label = Props.GetProp("ModuleDescription");
-                if (label.Length == 0)
-                {
-                    label = Core.ModulesStatus.Connected(0) ? Core.ModulesBoardID.BoardLabel(0) : "";
-                }
-                if (label != tbDescription.Text)
-                {
-                    Initializing = true;
-                    tbDescription.Text = label;
-                    Initializing = false;
-                }
-            }
         }
 
         private void MainMenu_MenuMoved(object sender, EventArgs e)
@@ -162,31 +97,12 @@ namespace RateController.Menu
         {
             // Fires on uncheck too (SetButtons(false) clears the radios after
             // Save/Cancel) - only a genuine selection marks the form edited.
+            // The description is left alone - it identifies the physical board,
+            // so the user fills it in themselves.
             if (sender is RadioButton rb && rb.Checked)
             {
                 SetButtons(true);
-
-                // Default the description to the selected preset's name when the box is
-                // blank or still holds another preset's default (switching presets before
-                // saving follows along). Won't overwrite a description the user typed.
-                if (!Initializing)
-                {
-                    string current = tbDescription.Text.Trim();
-                    if (current.Length == 0 || current == PresetName(rbNano)
-                        || current == PresetName(rbTeensy) || current == PresetName(rbESP32))
-                    {
-                        tbDescription.Text = PresetName(rb);
-                    }
-                }
             }
-        }
-
-        private static string PresetName(RadioButton rb)
-        {
-            // preset name is the button text without the "Load " prefix
-            string name = rb.Text;
-            if (name.StartsWith("Load ")) name = name.Substring(5);
-            return name.Trim();
         }
 
         private void SetButtons(bool Edited)
@@ -222,11 +138,12 @@ namespace RateController.Menu
                 Pins[i] = 255;
             }
 
+            // presets load a starting pin layout only - the target module ID
+            // (config byte 2) is left alone
             switch (Brd)
             {
                 case 1:
                     // RC11-2, Teensy
-                    Set.ModuleID = 0;
                     Set.SensorCount = 1;
                     Set.OnboardRelayType = 1;
                     Set.RemoteRelayType = 0;
@@ -257,7 +174,6 @@ namespace RateController.Menu
 
                 case 2:
                     // RC15, ESP32
-                    Set.ModuleID = 0;
                     Set.SensorCount = 1;
                     Set.OnboardRelayType = 5;
                     Set.RemoteRelayType = 0;
@@ -279,7 +195,6 @@ namespace RateController.Menu
 
                 default:
                     // RC12-3, Nano
-                    Set.ModuleID = 0;
                     Set.SensorCount = 1;
                     Set.OnboardRelayType = 4;
                     Set.RemoteRelayType = 0;

@@ -123,9 +123,6 @@
   <data name="lgAcresHr" xml:space="preserve">
     <value>Акр/ч</value>
   </data>
-  <data name="lgAlreadyRunning" xml:space="preserve">
-    <value>Уже работает</value>
-  </data>
   <data name="lgAltRate" xml:space="preserve">
     <value>Альт Расход</value>
   </data>
@@ -153,9 +150,6 @@
   <data name="lgCurrentRate" xml:space="preserve">
     <value>Текущий расход …</value>
   </data>
-  <data name="lgDescription" xml:space="preserve">
-    <value>Название</value>
-  </data>
   <data name="lgHectares" xml:space="preserve">
     <value>Гектар</value>
   </data>
@@ -167,9 +161,6 @@
   </data>
   <data name="lgHours" xml:space="preserve">
     <value>Часов</value>
-  </data>
-  <data name="lgInstantRate" xml:space="preserve">
-    <value>Мгновенный расход …</value>
   </data>
   <data name="lgInvertSection" xml:space="preserve">
     <value>Инверт Секция</value>
@@ -183,8 +174,8 @@
   <data name="lgMaster" xml:space="preserve">
     <value>Главный</value>
   </data>
-  <data name="lgMinPWM" xml:space="preserve">
-    <value>ШИМ Минимум</value>
+  <data name="lgMinFlowEngages" xml:space="preserve">
+    <value>Минимальный поток включается ниже {0}</value>
   </data>
   <data name="lgMinUPM" xml:space="preserve">
     <value>Мин ед/мин</value>
@@ -195,9 +186,6 @@
   <data name="lgMinutes" xml:space="preserve">
     <value>Минуты</value>
   </data>
-  <data name="lgModule" xml:space="preserve">
-    <value>Модуль</value>
-  </data>
   <data name="lgModuleID" xml:space="preserve">
     <value>Идентификатор модуля</value>
   </data>
@@ -207,20 +195,11 @@
   <data name="lgMPH" xml:space="preserve">
     <value>Миль в час</value>
   </data>
-  <data name="lgNew" xml:space="preserve">
-    <value>Новый</value>
-  </data>
   <data name="lgNumSections" xml:space="preserve">
     <value>Количество секций</value>
   </data>
   <data name="lgOffRate" xml:space="preserve">
     <value>Отклонение Расхода</value>
-  </data>
-  <data name="lgOffset" xml:space="preserve">
-    <value>Поправка</value>
-  </data>
-  <data name="lgOpen" xml:space="preserve">
-    <value>Открыть</value>
   </data>
   <data name="lgOptions" xml:space="preserve">
     <value>Опции</value>
@@ -237,9 +216,6 @@
   <data name="lgProductName" xml:space="preserve">
     <value>Имя продукта</value>
   </data>
-  <data name="lgProducts" xml:space="preserve">
-    <value>Продукты</value>
-  </data>
   <data name="lgQuantity" xml:space="preserve">
     <value>Количество</value>
   </data>
@@ -255,23 +231,11 @@
   <data name="lgRelays" xml:space="preserve">
     <value>Реле</value>
   </data>
-  <data name="lgRPM" xml:space="preserve">
-    <value>Об/мин</value>
-  </data>
-  <data name="lgSaveAs" xml:space="preserve">
-    <value>Сохранить как</value>
-  </data>
   <data name="lgSection" xml:space="preserve">
     <value>Секции</value>
   </data>
-  <data name="lgSectionNum" xml:space="preserve">
-    <value>Номер раздела</value>
-  </data>
   <data name="lgSections" xml:space="preserve">
     <value>Секции для этого продукта</value>
-  </data>
-  <data name="lgSensor" xml:space="preserve">
-    <value>Датчик</value>
   </data>
   <data name="lgSensorCounts" xml:space="preserve">
     <value>Датчик отсчетов/единица измерения</value>
@@ -282,9 +246,6 @@
   <data name="lgSensorLocation" xml:space="preserve">
     <value>Расположение датчика расхода</value>
   </data>
-  <data name="lgShowPressure" xml:space="preserve">
-    <value>Давление Вкл</value>
-  </data>
   <data name="lgSlave" xml:space="preserve">
     <value>Подчиненный</value>
   </data>
@@ -293,9 +254,6 @@
   </data>
   <data name="lgStandard" xml:space="preserve">
     <value>Стандарт</value>
-  </data>
-  <data name="lgStartQuantity" xml:space="preserve">
-    <value>Начальная емкость бака</value>
   </data>
   <data name="lgSwitch" xml:space="preserve">
     <value>Тумблер</value>
@@ -311,12 +269,6 @@
   </data>
   <data name="lgTargetRateAlt" xml:space="preserve">
     <value>Альт Расход Уст ...</value>
-  </data>
-  <data name="lgTimeForMulti" xml:space="preserve">
-    <value>Сред время имп (&lt;50 мс)</value>
-  </data>
-  <data name="lgTimeForSingle" xml:space="preserve">
-    <value>Время имп (&gt;50 мс)</value>
   </data>
   <data name="lgType" xml:space="preserve">
     <value>Тип</value>
@@ -339,34 +291,328 @@
   <data name="lgWorkingWidthM" xml:space="preserve">
     <value>Рабочая ширина (M)</value>
   </data>
-  <data name="lgConnect" xml:space="preserve">
-    <value>Соединить</value>
+  <data name="lg2Wire" xml:space="preserve">
+    <value>2-проводные клапаны</value>
   </data>
-  <data name="lgDiagnostics" xml:space="preserve">
-    <value>Диагностика</value>
+  <data name="lg3Wire" xml:space="preserve">
+    <value>3-проводные клапаны</value>
   </data>
-  <data name="lgDisconnect" xml:space="preserve">
-    <value>Отключить</value>
+  <data name="lgActivity" xml:space="preserve">
+    <value>Активность</value>
   </data>
-  <data name="lgEqual" xml:space="preserve">
-    <value>=1</value>
+  <data name="lgActual" xml:space="preserve">
+    <value>Фактический</value>
   </data>
-  <data name="lgHighMax" xml:space="preserve">
-    <value>ШИМ Высокий Макс.</value>
+  <data name="lgAutoRate" xml:space="preserve">
+    <value>Авто расход</value>
   </data>
-  <data name="lgOverallRate" xml:space="preserve">
-    <value>Общий расход …</value>
+  <data name="lgAutoSection" xml:space="preserve">
+    <value>Авто секция</value>
   </data>
-  <data name="lgComm" xml:space="preserve">
+  <data name="lgAutoSwitch" xml:space="preserve">
+    <value>Авто переключатель</value>
+  </data>
+  <data name="lgBackColor" xml:space="preserve">
+    <value>Фон</value>
+  </data>
+  <data name="lgBoards" xml:space="preserve">
+    <value>Платы</value>
+  </data>
+  <data name="lgCalFactor" xml:space="preserve">
+    <value>Калибровка датчика</value>
+  </data>
+  <data name="lgCalSpeed" xml:space="preserve">
+    <value>Скорость калибровки</value>
+  </data>
+  <data name="lgColor" xml:space="preserve">
+    <value>Цвет</value>
+  </data>
+  <data name="lgComboTimed" xml:space="preserve">
+    <value>Комбо по времени</value>
+  </data>
+  <data name="lgConfig" xml:space="preserve">
+    <value>Конфигурация</value>
+  </data>
+  <data name="lgData" xml:space="preserve">
+    <value>Данные</value>
+  </data>
+  <data name="lgDefaultProduct" xml:space="preserve">
+    <value>Продукт по умолчанию</value>
+  </data>
+  <data name="lgDensity" xml:space="preserve">
+    <value>Плотность</value>
+  </data>
+  <data name="lgEnd" xml:space="preserve">
+    <value>Конец</value>
+  </data>
+  <data name="lgError" xml:space="preserve">
+    <value>Ошибка %</value>
+  </data>
+  <data name="lgErrors" xml:space="preserve">
+    <value>Ошибки</value>
+  </data>
+  <data name="lgExpectedAmount" xml:space="preserve">
+    <value>Ожидаемое количество</value>
+  </data>
+  <data name="lgFan" xml:space="preserve">
+    <value>Вентилятор</value>
+  </data>
+  <data name="lgFile" xml:space="preserve">
+    <value>Файл</value>
+  </data>
+  <data name="lgGeoStop" xml:space="preserve">
+    <value>Гео-стоп</value>
+  </data>
+  <data name="lgHelp" xml:space="preserve">
+    <value>Помощь</value>
+  </data>
+  <data name="lgHydDown" xml:space="preserve">
+    <value>Гидравлика вниз</value>
+  </data>
+  <data name="lgHydUp" xml:space="preserve">
+    <value>Гидравлика вверх</value>
+  </data>
+  <data name="lgInvertFlow" xml:space="preserve">
+    <value>Инверт управления потоком</value>
+  </data>
+  <data name="lgInvertRelays" xml:space="preserve">
+    <value>Инверт реле</value>
+  </data>
+  <data name="lgInvert_Master" xml:space="preserve">
+    <value>Инверт главный</value>
+  </data>
+  <data name="lgBypass" xml:space="preserve">
+    <value>Байпас</value>
+  </data>
+  <data name="lgFlowMaster" xml:space="preserve">
+    <value>FlowMaster</value>
+  </data>
+  <data name="lgInvert_FlowMaster" xml:space="preserve">
+    <value>Invert_FlowMaster</value>
+  </data>
+  <data name="lgFlowMasterValveMode" xml:space="preserve">
+    <value>Клапан FlowMaster</value>
+  </data>
+  <data name="lgFlowMaster2Wire" xml:space="preserve">
+    <value>2-проводной клапан (одно реле открывает и закрывает)</value>
+  </data>
+  <data name="lgFlowMaster2WireInvert" xml:space="preserve">
+    <value>2-проводной клапан (2 реле: FlowMaster открывает, Invert_FlowMaster закрывает)</value>
+  </data>
+  <data name="lgFlowMaster3Wire" xml:space="preserve">
+    <value>3-проводной клапан (сигнал реле, клапан с собственным питанием)</value>
+  </data>
+  <data name="lgJobs" xml:space="preserve">
+    <value>Задания</value>
+  </data>
+  <data name="lgMachine" xml:space="preserve">
+    <value>Машина</value>
+  </data>
+  <data name="lgMasterAll" xml:space="preserve">
+    <value>Стандарт</value>
+  </data>
+  <data name="lgMasterOverride" xml:space="preserve">
+    <value>Приоритет главного</value>
+  </data>
+  <data name="lgMeasuredAmount" xml:space="preserve">
+    <value>Измеренное количество</value>
+  </data>
+  <data name="lgMeterSet" xml:space="preserve">
+    <value>Дозатор настроен</value>
+  </data>
+  <data name="lgMetric" xml:space="preserve">
+    <value>Метрические единицы</value>
+  </data>
+  <data name="lgMode" xml:space="preserve">
+    <value>Режим</value>
+  </data>
+  <data name="lgModules" xml:space="preserve">
+    <value>Модули</value>
+  </data>
+  <data name="lgMomentary" xml:space="preserve">
+    <value>Без фиксации</value>
+  </data>
+  <data name="lgMonitoring" xml:space="preserve">
+    <value>Мониторинг</value>
+  </data>
+  <data name="lgMotorWeight" xml:space="preserve">
+    <value>Мотор/Вес</value>
+  </data>
+  <data name="lgNetwork" xml:space="preserve">
+    <value>Сеть</value>
+  </data>
+  <data name="lgNone" xml:space="preserve">
+    <value>Нет</value>
+  </data>
+  <data name="lgOnTime" xml:space="preserve">
+    <value>Время включения</value>
+  </data>
+  <data name="lgPerZone" xml:space="preserve">
+    <value>Секций на зону</value>
+  </data>
+  <data name="lgPIDTune" xml:space="preserve">
+    <value>График настройки</value>
+  </data>
+  <data name="lgPins" xml:space="preserve">
+    <value>Пины</value>
+  </data>
+  <data name="lgPressureCurrent" xml:space="preserve">
+    <value>Текущее:</value>
+  </data>
+  <data name="lgPressureMax" xml:space="preserve">
+    <value>Высокое:</value>
+  </data>
+  <data name="lgPressureMin" xml:space="preserve">
+    <value>Низкое:</value>
+  </data>
+  <data name="lgPressurePin" xml:space="preserve">
+    <value>Пин давления</value>
+  </data>
+  <data name="lgPressurePressure" xml:space="preserve">
+    <value>Давление</value>
+  </data>
+  <data name="lgPressureVoltage" xml:space="preserve">
+    <value>Показание</value>
+  </data>
+  <data name="lgPressureZero" xml:space="preserve">
+    <value>Минимум:</value>
+  </data>
+  <data name="lgPrimedStart" xml:space="preserve">
+    <value>Пуск с заправкой</value>
+  </data>
+  <data name="lgProductsMenu" xml:space="preserve">
+    <value>Продукты</value>
+  </data>
+  <data name="lgProfiles" xml:space="preserve">
+    <value>Профили</value>
+  </data>
+  <data name="lgPulses" xml:space="preserve">
+    <value>Импульсы</value>
+  </data>
+  <data name="lgPWMmax" xml:space="preserve">
+    <value>Макс</value>
+  </data>
+  <data name="lgPWMmin" xml:space="preserve">
+    <value>Мин</value>
+  </data>
+  <data name="lgRateMap" xml:space="preserve">
+    <value>Карта</value>
+  </data>
+  <data name="lgRelayControl" xml:space="preserve">
+    <value>Встроенное управление реле</value>
+  </data>
+  <data name="lgRelayControlNumber" xml:space="preserve">
+    <value>Номер</value>
+  </data>
+  <data name="lgRelayPins" xml:space="preserve">
+    <value>Пины реле</value>
+  </data>
+  <data name="lgResetApplied" xml:space="preserve">
+    <value>Сброс количества</value>
+  </data>
+  <data name="lgResume" xml:space="preserve">
+    <value>Продолжить</value>
+  </data>
+  <data name="lgScaleWeight" xml:space="preserve">
+    <value>Вес на весах</value>
+  </data>
+  <data name="lgScaling" xml:space="preserve">
+    <value>Усиление</value>
+  </data>
+  <data name="lgSeconds" xml:space="preserve">
+    <value>Секунды</value>
+  </data>
+  <data name="lgSend" xml:space="preserve">
+    <value>Отправить</value>
+  </data>
+  <data name="lgSensorCount" xml:space="preserve">
+    <value>Количество датчиков</value>
+  </data>
+  <data name="lgSetPoint" xml:space="preserve">
+    <value>Задать</value>
+  </data>
+  <data name="lgSettings" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
+  <data name="lgShapefileAttributes" xml:space="preserve">
+    <value>Атрибут shapefile</value>
+  </data>
+  <data name="lgSimulateSpeed" xml:space="preserve">
+    <value>Симуляция скорости</value>
+  </data>
+  <data name="lgStart" xml:space="preserve">
+    <value>Старт</value>
+  </data>
+  <data name="lgSwitchDelay" xml:space="preserve">
+    <value>Задержка главного выключателя</value>
+  </data>
+  <data name="lgSwitches" xml:space="preserve">
+    <value>Переключатели</value>
+  </data>
+  <data name="lgTextColor" xml:space="preserve">
+    <value>Цвет текста</value>
+  </data>
+  <data name="lgTramLeft" xml:space="preserve">
+    <value>Колея слева</value>
+  </data>
+  <data name="lgTramRight" xml:space="preserve">
+    <value>Колея справа</value>
+  </data>
+  <data name="lgUPMFixed" xml:space="preserve">
+    <value>Ед/мин</value>
+  </data>
+  <data name="lgUPMPWM" xml:space="preserve">
+    <value>UPM/PWM</value>
+  </data>
+  <data name="lgUPMSpeed" xml:space="preserve">
+    <value>По скорости</value>
+  </data>
+  <data name="lgValves" xml:space="preserve">
+    <value>Клапаны</value>
+  </data>
+  <data name="lgWifi" xml:space="preserve">
+    <value>Wifi</value>
+  </data>
+  <data name="lgWorkPin" xml:space="preserve">
+    <value>Пин работы</value>
+  </data>
+  <data name="lgWorkSwitch" xml:space="preserve">
+    <value>Датчик работы</value>
+  </data>
+  <data name="lgZone" xml:space="preserve">
+    <value>Зона</value>
+  </data>
+  <data name="lgZoneAttributes" xml:space="preserve">
+    <value>Атрибут зоны</value>
+  </data>
+  <data name="lgAreaApplied" xml:space="preserve">
+    <value>Обработанная площадь</value>
+  </data>
+  <data name="lgAreaRemain" xml:space="preserve">
+    <value>Оставшаяся площадь</value>
+  </data>
+  <data name="lgRemoteRelayControl" xml:space="preserve">
+    <value>Удалённое управление реле</value>
+  </data>
+  <data name="lgPWM" xml:space="preserve">
+    <value>ШИМ</value>
+  </data>
+  <data name="lgCommMenu" xml:space="preserve">
     <value>Связь</value>
   </data>
-  <data name="lgRateMethod" xml:space="preserve">
-    <value>Способ измерения</value>
+  <data name="lgFolders" xml:space="preserve">
+    <value>Папки</value>
   </data>
-  <data name="lgUnitsVolt" xml:space="preserve">
-    <value>Ед/вольт</value>
+  <data name="lgEnabled" xml:space="preserve">
+    <value>Включено</value>
   </data>
-  <data name="lgMinFlowEngages" xml:space="preserve">
-    <value>Минимальный поток включается ниже {0}</value>
+  <data name="lgSpeedMPH" xml:space="preserve">
+    <value>Миль/ч</value>
+  </data>
+  <data name="lgSpeedKMH" xml:space="preserve">
+    <value>км/ч</value>
+  </data>
+  <data name="lgModuleToEdit" xml:space="preserve">
+    <value>Модуль для редактирования</value>
   </data>
 </root>

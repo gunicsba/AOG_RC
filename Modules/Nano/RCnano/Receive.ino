@@ -270,25 +270,36 @@ void ReceiveUDPwired(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_po
 				byte SenID = ParseSenID(data[2]);
 				if (SenID < MaxProductCount)
 				{
-					bool BinInv = ((data[7] & 1) == 1);
-					bool Changed = (Sensor[SenID].FlowPin != data[3])
-						|| (Sensor[SenID].DirPin != data[4])
-						|| (Sensor[SenID].PWMPin != data[5])
-						|| (Sensor[SenID].BinPin != data[6])
-						|| (Sensor[SenID].BinInvert != BinInv);
-
-					if (Changed)
+					if (PinAllowed(data[3]) && PinAllowed(data[4])
+						&& PinAllowed(data[5]) && PinAllowed(data[6]))
 					{
-						Sensor[SenID].FlowPin = data[3];
-						Sensor[SenID].DirPin = data[4];
-						Sensor[SenID].PWMPin = data[5];
-						Sensor[SenID].BinPin = data[6];
-						Sensor[SenID].BinInvert = BinInv;
+						bool BinInv = ((data[7] & 1) == 1);
+						bool Changed = (Sensor[SenID].FlowPin != data[3])
+							|| (Sensor[SenID].DirPin != data[4])
+							|| (Sensor[SenID].PWMPin != data[5])
+							|| (Sensor[SenID].BinPin != data[6])
+							|| (Sensor[SenID].BinInvert != BinInv);
 
-						SaveData();
-						RestartPending = true;	// deferred - more sensor packets may follow
+						if (Changed)
+						{
+							Sensor[SenID].FlowPin = data[3];
+							Sensor[SenID].DirPin = data[4];
+							Sensor[SenID].PWMPin = data[5];
+							Sensor[SenID].BinPin = data[6];
+							Sensor[SenID].BinInvert = BinInv;
+
+							SaveData();
+							RestartPending = true;	// deferred - more sensor packets may follow
+						}
+						RestartLastConfig = millis();
 					}
-					RestartLastConfig = millis();
+					else
+					{
+						// pins not usable on this board - discard the packet,
+						// report via PGN 32401 byte 13 bit 7 for the app to alert
+						ConfigRejected = true;
+						ConfigRejectedTime = millis();
+					}
 				}
 			}
 		}
@@ -306,6 +317,9 @@ void ReceiveUDPwired(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_po
 		//      bit 2 - client mode
 		//      bit 3 - work pin is momentary
 		//      bit 4 - Is3Wire valve
+		//      bit 6 - assign module ID: adopt data[2] as the new ID (only one
+		//              board connected); clear = data[2] is a filter, config is
+		//              for that module only
 		//5	    relay control type   0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017
 		//                           , 5 - PCA9685, 6 - PCF8574
 		//6	    wifi module serial port
@@ -325,38 +339,70 @@ void ReceiveUDPwired(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_po
 
 		if (len > PGNlength - 1)
 		{
-			if (GoodCRC(data, PGNlength))
+			// bit 6 set = ID assignment, adopt data[2] unconditionally (commissioning,
+			// one board connected); clear = data[2] must match our ID (normal update,
+			// multi-board safe). MDL.ID = data[2] below is a no-op in filtered mode.
+			bool AssignID = ((data[4] & 64) == 64);
+			if (GoodCRC(data, PGNlength) && (AssignID || data[2] == MDL.ID))
 			{
-				MDL.ID = data[2];
-				MDL.SensorCount = data[3];
+				bool PinsOK = PinAllowed(data[7]) && PinAllowed(data[8]) && PinAllowed(data[9])
+					&& PinAllowed(data[10]) && PinAllowed(data[11]) && PinAllowed(data[12])
+					&& PinAllowed(data[29]) && PinAllowed(data[30]);
 
-				byte tmp = data[4];
-				MDL.InvertRelay = ((tmp & 1) == 1);
-				MDL.InvertFlow = ((tmp & 2) == 2);
-				MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
-				MDL.Is3Wire = ((tmp & 16) == 16);
-				MDL.ADS1115Enabled = ((tmp & 32) == 32);
-
-				MDL.RelayControl = data[5];
-				Sensor[0].FlowPin = data[7];
-				Sensor[0].DirPin = data[8];
-				Sensor[0].PWMPin = data[9];
-				Sensor[1].FlowPin = data[10];
-				Sensor[1].DirPin = data[11];
-				Sensor[1].PWMPin = data[12];
-
-				for (int i = 0; i < 16; i++)
+				if (PinsOK && data[5] == 1)
 				{
-					MDL.RelayControlPins[i] = data[13 + i];
+					// relay control by GPIOs
+					for (int i = 0; i < 16; i++)
+					{
+						if (!PinAllowed(data[13 + i]))
+						{
+							PinsOK = false;
+							break;
+						}
+					}
 				}
 
-				MDL.WorkPin = data[29];
-				MDL.PressurePin = data[30];
+				if (PinsOK)
+				{
+					MDL.ID = data[2];
+					MDL.SensorCount = data[3];
 
-				SaveData();
+					byte tmp = data[4];
+					MDL.InvertRelay = ((tmp & 1) == 1);
+					MDL.InvertFlow = ((tmp & 2) == 2);
+					MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
+					MDL.Is3Wire = ((tmp & 16) == 16);
+					MDL.ADS1115Enabled = ((tmp & 32) == 32);
+					MDL.InvertWork = ((tmp & 128) == 128);
 
-				// restart
-				resetFunc();
+					MDL.RelayControl = data[5];
+					Sensor[0].FlowPin = data[7];
+					Sensor[0].DirPin = data[8];
+					Sensor[0].PWMPin = data[9];
+					Sensor[1].FlowPin = data[10];
+					Sensor[1].DirPin = data[11];
+					Sensor[1].PWMPin = data[12];
+
+					for (int i = 0; i < 16; i++)
+					{
+						MDL.RelayControlPins[i] = data[13 + i];
+					}
+
+					MDL.WorkPin = data[29];
+					MDL.PressurePin = data[30];
+
+					SaveData();
+
+					// restart
+					resetFunc();
+				}
+				else
+				{
+					// pins not usable on this board - discard the config,
+					// report via PGN 32401 byte 13 bit 7 for the app to alert
+					ConfigRejected = true;
+					ConfigRejectedTime = millis();
+				}
 			}
 		}
 		break;

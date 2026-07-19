@@ -100,6 +100,7 @@ void SendComm()
         //      bit 4   ethernet connected
         //      bit 5   good pin configuration
         //      bit 6   0 - 2 wire relays, 1 - 3 wire relays
+        //      bit 7   bad config
         //14    CRC
 
         // Skip when ISOBUS active - Gateway forwards 0xFF02 as PGN 32401
@@ -109,7 +110,9 @@ void SendComm()
             Data[1] = 126;
             Data[2] = MDL.ID;
 
-            if (MDL.PressurePin == NC) PressureReading = 0;
+            // zero only when there is genuinely no pressure source - the ADS1115
+            // supplies PressureReading even with no GPIO pressure pin configured
+            if (!ADSfound && MDL.PressurePin == NC) PressureReading = 0;
             Data[3] = (byte)PressureReading;
             Data[4] = (byte)(PressureReading >> 8);
 
@@ -134,6 +137,20 @@ void SendComm()
             if (Ethernet.linkStatus() == LinkON) Data[13] |= 0b00010000;
             if (GoodPins) Data[13] |= 0b00100000;
             if (MDL.Is3Wire) Data[13] |= 0b01000000;
+
+            // config rejected: reported for ConfigRejectedReport ms after the
+            // discarded packet, then self-clears
+            if (ConfigRejected)
+            {
+                if (millis() - ConfigRejectedTime < ConfigRejectedReport)
+                {
+                    Data[13] |= 0b10000000;
+                }
+                else
+                {
+                    ConfigRejected = false;
+                }
+            }
 
             Data[14] = CRC(Data, 14, 0);
 
@@ -160,7 +177,7 @@ void SendComm()
             B[0] = 147;
             B[1] = 126;
             B[2] = MDL.ID;	// raw module ID, matching the module-level status report (PGN 32401)
-            for (byte k = 0; k < 16; k++) B[3 + k] = MDLboard.Text[k];
+            EffectiveBoardLabel(B + 3);	// stored label, or MAC fallback when none stored
             B[19] = CRC(B, 19, 0);
             if (Ethernet.linkStatus() == LinkON)
             {

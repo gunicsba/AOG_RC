@@ -345,25 +345,36 @@ void ReadPGNs(byte data[], uint16_t len)
                 byte SenID = ParseSenID(data[2]);
                 if (SenID < MaxProductCount)
                 {
-                    bool BinInv = ((data[7] & 1) == 1);
-                    bool Changed = (Sensor[SenID].FlowPin != data[3])
-                        || (Sensor[SenID].IN1 != data[4])
-                        || (Sensor[SenID].IN2 != data[5])
-                        || (Sensor[SenID].BinPin != data[6])
-                        || (Sensor[SenID].BinInvert != BinInv);
-
-                    if (Changed)
+                    if (PinAllowed(data[3]) && OutputPinAllowed(data[4])
+                        && OutputPinAllowed(data[5]) && PinAllowed(data[6]))
                     {
-                        Sensor[SenID].FlowPin = data[3];
-                        Sensor[SenID].IN1 = data[4];
-                        Sensor[SenID].IN2 = data[5];
-                        Sensor[SenID].BinPin = data[6];
-                        Sensor[SenID].BinInvert = BinInv;
+                        bool BinInv = ((data[7] & 1) == 1);
+                        bool Changed = (Sensor[SenID].FlowPin != data[3])
+                            || (Sensor[SenID].IN1 != data[4])
+                            || (Sensor[SenID].IN2 != data[5])
+                            || (Sensor[SenID].BinPin != data[6])
+                            || (Sensor[SenID].BinInvert != BinInv);
 
-                        SaveData();
-                        RestartPending = true;	// deferred - more sensor packets may follow
+                        if (Changed)
+                        {
+                            Sensor[SenID].FlowPin = data[3];
+                            Sensor[SenID].IN1 = data[4];
+                            Sensor[SenID].IN2 = data[5];
+                            Sensor[SenID].BinPin = data[6];
+                            Sensor[SenID].BinInvert = BinInv;
+
+                            SaveData();
+                            RestartPending = true;	// deferred - more sensor packets may follow
+                        }
+                        RestartLastConfig = millis();
                     }
-                    RestartLastConfig = millis();
+                    else
+                    {
+                        // pins not usable on this board - discard the packet,
+                        // report via PGN 32401 byte 13 bit 7 for the app to alert
+                        ConfigRejected = true;
+                        ConfigRejectedTime = millis();
+                    }
                 }
             }
         }
@@ -374,41 +385,99 @@ void ReadPGNs(byte data[], uint16_t len)
         //0     HeaderLo    188
         //1     HeaderHi    127
         //2     Module ID   0-15
-        //3     sensor count
-        //4     commands (only bits 0,1,3,4 parsed; bit 5 ADS forced true)
-        //5     onboard relay type (forced to 5 = PCA9685)
-        //6     remote relay type  (forced to 5 = PCA9685)
-        //7-12  sensor pins (IGNORED)
-        //13-28 relay GPIO pins (IGNORED)
-        //29    work pin (IGNORED, forced to 40)
-        //30    pressure pin (IGNORED)
+        //3	    sensor count
+        //4     commands
+        //      bit 0 - Invert relay control
+        //      bit 1 - Invert flow control
+        //      bit 2 - 
+        //      bit 3 - work pin is momentary
+        //      bit 4 - Is3Wire valve
+        //      bit 5 - ADS1115 enabled
+        //      bit 6 - assign module ID: adopt data[2] as the new ID (only one
+        //              board connected); clear = data[2] is a filter, config is
+        //              for that module only
+        //5	    onboard relay control type		0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
+        //6	    remote relay control type		0 - no relays, 1 - GPIOs, 2 - PCA9555 8 relays, 3 - PCA9555 16 relays, 4 - MCP23017, 5 - PCA9685, 6 - PCF8574
+        //7	    Sensor 0, Flow pin
+        //8     Sensor 0, Dir pin
+        //9     Sensor 0, PWM pin
+        //10    Sensor 1, Flow pin
+        //11    Sensor 1, Dir pin
+        //12    Sensor 1, PWM pin
+        //13    Relay pins 0-15, bytes 13-28
+        //29    work pin
+        //30    pressure pin
+        //31    -
         //32    CRC
 
         PGNlength = 33;
 
         if (len > PGNlength - 1)
         {
-            if (GoodCRC(data, PGNlength))
+            // bit 6 set = ID assignment, adopt data[2] unconditionally (commissioning,
+            // one board connected); clear = data[2] must match our ID (normal update,
+            // multi-board safe). MDL.ID = data[2] below is a no-op in filtered mode.
+            bool AssignID = ((data[4] & 64) == 64);
+            if (GoodCRC(data, PGNlength) && (AssignID || data[2] == MDL.ID))
             {
-                MDL.ID = data[2];
-                MDL.SensorCount = data[3];
+                bool PinsOK = PinAllowed(data[7]) && OutputPinAllowed(data[8]) && OutputPinAllowed(data[9])
+                    && PinAllowed(data[10]) && OutputPinAllowed(data[11]) && OutputPinAllowed(data[12])
+                    && PinAllowed(data[29]) && PinAllowed(data[30]);
 
-                byte tmp = data[4];
-                MDL.InvertRelay = ((tmp & 1) == 1);
-                MDL.InvertFlow = ((tmp & 2) == 2);
-                MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
-                MDL.Is3Wire = ((tmp & 16) == 16);
+                if (PinsOK && data[5] == 1)
+                {
+                    // onboard relay control by GPIOs - relay pins must be output-capable
+                    for (int i = 0; i < 16; i++)
+                    {
+                        if (!OutputPinAllowed(data[13 + i]))
+                        {
+                            PinsOK = false;
+                            break;
+                        }
+                    }
+                }
 
-                // Force hardcoded values
-                MDL.ADS1115Enabled = true;
-                MDL.OnboardRelayControl = 5;  // PCA9685
-                MDL.RemoteRelayControl = 5;   // PCA9685
-                MDL.WorkPin = 40;
-                MDL.PressurePin = NC;
-                // IGNORE: sensor pins, relay GPIO pins
+                if (PinsOK)
+                {
+                    MDL.ID = data[2];
+                    MDL.SensorCount = data[3];
 
-                SaveData(); 
-                ESP.restart();
+                    byte tmp = data[4];
+                    MDL.InvertRelay = ((tmp & 1) == 1);
+                    MDL.InvertFlow = ((tmp & 2) == 2);
+                    MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
+                    MDL.Is3Wire = ((tmp & 16) == 16);
+                    MDL.ADS1115Enabled = ((tmp & 32) == 32);
+                    MDL.InvertWork = ((tmp & 128) == 128);
+
+                    MDL.OnboardRelayControl = data[5];
+                    MDL.RemoteRelayControl = data[6];
+
+                    Sensor[0].FlowPin = data[7];
+                    Sensor[0].IN1 = data[8];
+                    Sensor[0].IN2 = data[9];
+                    Sensor[1].FlowPin = data[10];
+                    Sensor[1].IN1 = data[11];
+                    Sensor[1].IN2 = data[12];
+
+                    for (int i = 0; i < 16; i++)
+                    {
+                        MDL.RelayControlPins[i] = data[13 + i];
+                    }
+
+                    MDL.WorkPin = data[29];
+                    MDL.PressurePin = data[30];
+
+                    SaveData();
+                    ESP.restart();
+                }
+                else
+                {
+                    // pins not usable on this board - discard the config,
+                    // report via PGN 32401 byte 13 bit 7 for the app to alert
+                    ConfigRejected = true;
+                    ConfigRejectedTime = millis();
+                }
             }
         }
         break;
