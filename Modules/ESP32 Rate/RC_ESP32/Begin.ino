@@ -1,6 +1,6 @@
 // valid pins for ESP32-S3 (excludes strapping pins 0/3/45/46, flash 26-32, SPI 35-38)
 uint8_t ValidPins0[] = { 1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,33,34,39,40,41,42,43,44,47,48 };
-uint8_t OutputPins0[] = { 0,2,4,13,14,15,16,17,21,22,25,26,27,32,33 };	// GPIO 34-39 are input-only, cannot drive IN1/IN2
+uint8_t OutputPins0[] = { 1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,33,40,41,42,43,44,47,48 };	// ValidPins0 minus input-only GPIO 34-39
 
 // NC is always allowed (input/output not used)
 bool PinAllowed(byte pin)
@@ -118,7 +118,7 @@ void DoSetup()
 	ChipMAC(LocalMac);
 	LocalMac[5] += 3;
 
-	Ethernet.init(W5500_SS);   // SS pin
+//	Ethernet.init(W5500_SS);   // SS pin
 	IPAddress Gateway(MDLnetwork.IP0, MDLnetwork.IP1, MDLnetwork.IP2, 1);
 	IPAddress Mask(255, 255, 255, 0);
 
