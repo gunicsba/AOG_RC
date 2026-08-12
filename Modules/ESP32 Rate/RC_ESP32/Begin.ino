@@ -76,6 +76,9 @@ void DoSetup()
 
 	// I2C (ESP32-S3: SDA=8, SCL=18)
 	Wire.begin(8, 18, 400000);
+	// 25ms timeout. setWireTimeout(us, reset) is AVR only - the ESP32 Wire takes
+	// milliseconds and its driver recovers the bus itself, so there is no reset flag
+	Wire.setTimeOut(25);
 
 	// ADS1115
 	if (MDL.ADS1115Enabled)

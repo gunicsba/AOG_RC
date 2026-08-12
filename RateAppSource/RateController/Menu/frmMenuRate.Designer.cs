@@ -319,11 +319,11 @@
             this.pnlFan.Controls.Add(this.tbTargetRPM);
             this.pnlFan.Location = new System.Drawing.Point(730, 61);
             this.pnlFan.Name = "pnlFan";
-            this.pnlFan.Size = new System.Drawing.Size(396, 180);
+            this.pnlFan.Size = new System.Drawing.Size(396, 260);
             this.pnlFan.TabIndex = 163;
-            // 
+            //
             // lbFanErrorValue
-            // 
+            //
             this.lbFanErrorValue.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.lbFanErrorValue.Font = new System.Drawing.Font("Tahoma", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lbFanErrorValue.Location = new System.Drawing.Point(245, 133);

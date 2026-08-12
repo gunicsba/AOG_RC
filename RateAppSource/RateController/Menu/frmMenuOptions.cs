@@ -88,7 +88,6 @@ namespace RateController.Menu
                 }
 
                 Props.UseMetric = ckMetric.Checked;
-                Props.UseRateDisplay = ckRateDisplay.Checked;
 
                 if (WheelSpeedChanged)
                 {
@@ -205,6 +204,24 @@ namespace RateController.Menu
 
                 cEdited = Edited;
                 this.Tag = cEdited;
+            }
+        }
+
+        private void Setting_Changed(object sender, EventArgs e)
+        {
+            // SetButtons already ignores changes made while the form is loading
+            SetButtons(true);
+        }
+
+        private void WheelSetting_Changed(object sender, EventArgs e)
+        {
+            // module, pin and cal all travel to the module in PGN 32504, so an edit has to
+            // mark WheelSpeedChanged too - btnOK only sends when that is set, and until now
+            // only the Wheel radio set it, so editing a pin alone saved without sending
+            if (!Initializing)
+            {
+                WheelSpeedChanged = true;
+                SetButtons(true);
             }
         }
 
@@ -368,7 +385,6 @@ namespace RateController.Menu
             }
 
             ckMetric.Checked = Props.UseMetric;
-            ckRateDisplay.Checked = Props.UseRateDisplay;
 
             SetBoxes();
 
@@ -378,10 +394,33 @@ namespace RateController.Menu
         private bool ValidPin(int pin)
         {
             bool Result = true;
-            if (Core.ModuleConfig.Sensor0Flow == pin || Core.ModuleConfig.Sensor1Flow == pin)
+
+            // The wheel sensor is wired to the module named in tbWheelModule, but the app
+            // only holds pin data for the module currently loaded on the config pages -
+            // when those are different modules there is nothing here to compare against.
+            int.TryParse(tbWheelModule.Text, out int WheelModule);
+            byte[] config = Core.ModuleConfig.GetData();
+
+            if (WheelModule == config[2])
             {
-                Result = false;
-                Props.ShowMessage("Invalid pin, duplicate of flow pin.");
+                // The module attaches its own interrupt to the wheel pin and skips wheel
+                // speed entirely when it duplicates an active sensor's flow pin, so check
+                // every configured sensor from the pins config (PGN 32507) - not just the
+                // two mirrored into the module config - and stop at the sensor count so an
+                // unused sensor's pin cannot veto a legal wheel pin.
+                int Count = config[3];
+                int Max = Core.MaxSensorsForModule(config[2]);
+                if (Count > Max) Count = Max;
+
+                for (int i = 0; i < Count; i++)
+                {
+                    if (Core.SensorPins.FlowPin(i) == pin)
+                    {
+                        Result = false;
+                        Props.ShowMessage("Invalid pin, duplicate of flow pin.");
+                        break;
+                    }
+                }
             }
             return Result;
         }

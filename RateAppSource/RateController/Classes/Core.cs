@@ -98,6 +98,10 @@ namespace RateController.Classes
             if (FileOpened)
             {
                 SafeEvent.Raise(ProfileChanged);
+
+                // The new profile brings its own product Enabled flags, which decide
+                // whether a product display window should be up.
+                Props.DisplayProducts();
             }
             else
             {
@@ -117,6 +121,12 @@ namespace RateController.Classes
 
                 Props.CheckFolders();
                 Props.OpenFile(Props.CurrentFile);
+
+                // Restore the main window position here, as soon as the app properties are loaded
+                // (OpenFile loads them) and before anything below can open a floating display form.
+                // Those forms latch onto the main form by testing whether they overlap it, so they
+                // must see its saved position, not the default one it was created at.
+                Props.LoadFormLocation(MainForm);
 
                 AutoSteerPGN = new PGN254();
                 SectionsPGN = new PGN235();
@@ -187,7 +197,7 @@ namespace RateController.Classes
                 }
 
                 Props.DisplayPressure();
-                Props.DisplayRate();
+                Props.DisplayProducts();
                 //Props.DisplayMapPreview();
 
                 MainTimer = new System.Timers.Timer(1000);
@@ -328,6 +338,17 @@ namespace RateController.Classes
         public static int UseCanComm(bool enable)
         {
             int Result = -1;
+
+            // The module's CommMode is just Props.CanEnabled - the CAN driver and COM port
+            // are app side only and mean nothing to it. So the config is sent ONLY when the
+            // transport actually flips. PGN 32700 carries the whole module config (pins,
+            // relay types, work/pressure pins) and restarts the module on arrival, so
+            // sending it for a driver or port change would push pin config the user never
+            // touched from a page that says nothing about pins.
+            // Each send below still runs BEFORE the transport it announces is switched, so
+            // it reaches the module over the transport that is still up.
+            bool WasCan = Props.CanEnabled;
+
             if (enable)
             {
                 // use CanBus
@@ -337,7 +358,7 @@ namespace RateController.Classes
                 bool started = Core.CanBridgeComm?.Start(Props.CurrentCanDriver, Props.CanPort) ?? false;
                 if (started)
                 {
-                    ModuleConfig.Send(1);
+                    if (!WasCan) ModuleConfig.Send(1);
                     Props.CanEnabled = true;
                     Props.ShowMessage("CAN Bridge started.", "Help", 10000);
                     Result = 1;
@@ -351,7 +372,7 @@ namespace RateController.Classes
             if (Result != 1)
             {
                 // use Ethernet
-                ModuleConfig.Send(0);
+                if (WasCan) ModuleConfig.Send(0);
                 if (Props.CanEnabled)
                 {
                     CanBridgeComm?.Stop();

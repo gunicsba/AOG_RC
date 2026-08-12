@@ -208,56 +208,67 @@ void ControlSwitch(byte Start, byte End, byte Control)
 					BitState = bitRead(RelayByte, i);
 					bool Use2Wire = (!MDL.Is3Wire || FlowMasterValveIndex == RelayIndex);
 
+					// One DRV8870 per relay, its two inputs on PCA9685 channels i*2 and i*2+1.
+					// Invert Relays swaps the pair so the bridge drives the other way and the
+					// motor runs in reverse - flipping the level instead would power the valve
+					// while the section is off, which is not what inverting means on a bridge.
+					uint8_t DrivePin = Use2Wire ? (i * 2) : (i * 2 + 1);
+					uint8_t OtherPin = Use2Wire ? (i * 2 + 1) : (i * 2);
+					if (MDL.InvertRelay)
+					{
+						uint8_t Swap = DrivePin;
+						DrivePin = OtherPin;
+						OtherPin = Swap;
+					}
+
 					if (Use2Wire)
 					{
 						// 2 pins used for each valve, powered on and off
-						IOpin = i * 2;
 						if (BitState)
 						{
 							// on
-							Drv.setPWM(IOpin, 0, 4095);
-							Drv.setPWM(IOpin + 1, 0, 0);
-							if (UseSpareDRV && i == 7)
-							{
-								analogWrite(25, 255);
-								analogWrite(26, 0);
-							}
-						}
-						else
-						{
-							// off — pulse close pin (matching old code for 3-wire valves)
-							Drv.setPWM(IOpin, 0, 0);
-							Drv.setPWM(IOpin + 1, 0, 4095);
-							if (UseSpareDRV && i == 7)
-							{
-								analogWrite(25, 0);
-								analogWrite(26, 255);
-							}
-						}
-					}
-					else
-					{
-						// 1 pin for each valve, powered on only, 8 sections, 1 drv for each section, use IN1
-						IOpin = (1 + i) * 2 - 1;
-						if (BitState)
-						{
-							// on
-							Drv.setPWM(IOpin, 0, 4095);
-							if (UseSpareDRV && i == 7)
-							{
-								analogWrite(25, 255);
-								analogWrite(26, 0);
-							}
+							Drv.setPWM(DrivePin, 0, 4095);
+							Drv.setPWM(OtherPin, 0, 0);
 						}
 						else
 						{
 							// off
-							Drv.setPWM(IOpin, 0, 0);
-							if (UseSpareDRV && i == 7)
-							{
-								analogWrite(25, 0);
-								analogWrite(26, 255);
-							}
+							Drv.setPWM(DrivePin, 0, 0);
+							Drv.setPWM(OtherPin, 0, 4095);
+						}
+					}
+					else
+					{
+						// 1 pin for each valve, powered on only, 8 sections, 1 drv for each section
+						if (BitState)
+						{
+							// on
+							Drv.setPWM(DrivePin, 0, 4095);
+						}
+						else
+						{
+							// off
+							Drv.setPWM(DrivePin, 0, 0);
+						}
+
+						// hold the unused input of the pair off so changing Invert Relays cannot
+						// leave the channel it used to drive latched on
+						Drv.setPWM(OtherPin, 0, 0);
+					}
+
+					if (UseSpareDRV && i == 7)
+					{
+						// spare DRV8870 on GPIO 25/26 stands in for relay 8, swapped the same way
+						uint8_t Level = BitState ? 255 : 0;
+						if (MDL.InvertRelay)
+						{
+							analogWrite(25, 255 - Level);
+							analogWrite(26, Level);
+						}
+						else
+						{
+							analogWrite(25, Level);
+							analogWrite(26, 255 - Level);
 						}
 					}
 				}
@@ -277,11 +288,3 @@ void ControlSwitch(byte Start, byte End, byte Control)
 		break;
 	}
 }
-
-
-
-
-
-
-
-

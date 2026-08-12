@@ -1,21 +1,38 @@
-﻿using RateController.Classes;
+using RateController.Classes;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace RateController
 {
-    public partial class frmPressureDisplay : Form
+    // Small always-on-top window showing one product's number - applied rate for a
+    // product, RPM for a fan. Bound to one product for its lifetime, so several can be
+    // open at once, each keyed by product ID for the FormManager registry and for its
+    // own saved screen position. Opened and closed by Props.DisplayProducts().
+    //
+    // Latching (drop it on another window and it moves with that window) is handled by
+    // clsLatch, shared with the pressure display and the switch panel.
+    public partial class frmProductDisplay : Form
     {
+        private readonly int DisplayProductID;
+        private readonly string InstanceKey;
+        private readonly bool IsFan;
         private clsLatch Latch;
         private bool IsShutDown = false;
         private Point MouseDownLocation;
-        private string NumberFormat;
 
-        public frmPressureDisplay()
+        public frmProductDisplay(int ProductID)
         {
             InitializeComponent();
+            DisplayProductID = ProductID;
+            InstanceKey = ProductID.ToString();
+            IsFan = (ProductID > Props.MaxProducts - 3);
         }
+
+        // Distinguishes this product's window from the others, for both the FormManager
+        // registry and the saved screen position.
+        public string Instance
+        { get { return InstanceKey; } }
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -43,7 +60,7 @@ namespace RateController
             Latch.Setup();
         }
 
-        private void frmPressureDisplay_FormClosing(object sender, FormClosingEventArgs e)
+        private void frmProductDisplay_FormClosing(object sender, FormClosingEventArgs e)
         {
             // A latched window is an owned window, so the window it is latched to closing
             // drags this one into the close as well. TargetIsClosing unlatches and returns
@@ -53,31 +70,40 @@ namespace RateController
             if (!Rescued && !IsShutDown) ShutDown();
         }
 
-        private void frmPressureDisplay_Load(object sender, EventArgs e)
+        private void frmProductDisplay_Load(object sender, EventArgs e)
         {
             Latch = new clsLatch(this);
 
-            Props.UnitsChanged += Props_UnitsChanged;
             Core.ColorChanged += Core_ColorChanged;
             Core.MainForm.Minimize += MainForm_Minimize;
             Core.AppExit += Core_AppExit;
             Core.RestoreMain += Core_RestoreMain;
 
-            Props.LoadFormLocation(this);
+            Props.LoadFormLocation(this, InstanceKey);
+
+            // With no saved position every display window centres on the same spot and
+            // sits exactly on top of the others, so all but one look like they never
+            // opened. Step each one below the last only on that first run; afterwards
+            // the user's own placement is what gets loaded.
+            if (Props.GetAppProp(this.Name + InstanceKey + ".Top") == string.Empty)
+            {
+                this.Top += DisplayProductID * (this.Height + 6);
+                Props.IsOnScreen(this);
+            }
+
             Latch.Setup();
             timer1.Enabled = true;
             SetColor();
-            SetForUnits();
             UpdateForm();
         }
 
-        private void frmPressureDisplay_LocationChanged(object sender, EventArgs e)
+        private void frmProductDisplay_LocationChanged(object sender, EventArgs e)
         {
             // Latch is null until Load runs; the designer sets a location before that.
             if (Latch != null) Latch.Moved();
         }
 
-        private void frmPressureDisplay_MouseUp(object sender, MouseEventArgs e)
+        private void frmProductDisplay_MouseUp(object sender, MouseEventArgs e)
         {
             Latch.Dropped();
         }
@@ -102,39 +128,19 @@ namespace RateController
             }
         }
 
-        private void Props_UnitsChanged(object sender, EventArgs e)
-        {
-            SetForUnits();
-            // Width change can affect desired visual relationship; recompute the offset.
-            Latch.Refresh();
-        }
-
         private void SetColor()
         {
-            lbPressureValue.ForeColor = Properties.Settings.Default.DisplayForeColour;
+            lbProductName.ForeColor = Properties.Settings.Default.DisplayForeColour;
+            lbValue.ForeColor = Properties.Settings.Default.DisplayForeColour;
             this.BackColor = Properties.Settings.Default.DisplayBackColour;
-        }
-
-        private void SetForUnits()
-        {
-            this.Width = 230;
-            if (Props.UseMetric)
-            {
-                NumberFormat = "N2";
-            }
-            else
-            {
-                NumberFormat = "N0";
-            }
-            lbPressureValue.Width = this.Width - 79;
+            this.Invalidate();   // repaint the border
         }
 
         private void ShutDown()
         {
-            Props.SaveFormLocation(this);
+            Props.SaveFormLocation(this, InstanceKey);
             timer1.Enabled = false;
             Core.ColorChanged -= Core_ColorChanged;
-            Props.UnitsChanged -= Props_UnitsChanged;
             Core.MainForm.Minimize -= MainForm_Minimize;
             Core.AppExit -= Core_AppExit;
             Core.RestoreMain -= Core_RestoreMain;
@@ -152,15 +158,22 @@ namespace RateController
         {
             try
             {
-                double Pressure = 0;
-                int ModuleID = Core.Products.Items[Props.CurrentProduct].ModuleID;
-                double RawData = Core.ModulesStatus.PressureReading(ModuleID);
-                Pressure = Props.PressureReading(ModuleID, RawData);
-                lbPressureValue.Text = Pressure.ToString(NumberFormat);
+                clsProduct Prd = Core.Products.Items[DisplayProductID];
+                lbProductName.Text = Prd.ProductName;
+
+                // a fan is set and read in RPM, everything else in rate units
+                if (IsFan)
+                {
+                    lbValue.Text = Prd.UPMapplied().ToString("N0");
+                }
+                else
+                {
+                    lbValue.Text = Prd.CurrentRate().ToString("N1");
+                }
             }
             catch (Exception ex)
             {
-                Props.WriteErrorLog("frmPressureDisplay/UpdateForm: " + ex.Message);
+                Props.WriteErrorLog("frmProductDisplay/UpdateForm: " + ex.Message);
             }
         }
     }

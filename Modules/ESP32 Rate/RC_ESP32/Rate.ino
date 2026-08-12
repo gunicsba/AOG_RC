@@ -22,7 +22,7 @@ volatile uint8_t SamplesIndex[MaxProductCount];
 
 IRAM_ATTR void PulseISR(uint8_t ID, uint32_t ReadTime)
 {
-	if (RelayLo > 0 || RelayHi > 0)
+	if (AnySectionOn())
 	{
 		PulseTime[ID] = ReadTime - ReadLast[ID];
 		ReadLast[ID] = ReadTime;
@@ -91,7 +91,7 @@ void GetUPM()
 		else
 		{
 			// No flow check
-			if (millis() - LastPulse[i] > FlowTimeout || (RelayLo == 0 && RelayHi == 0))
+			if (millis() - LastPulse[i] > FlowTimeout || !AnySectionOn())
 			{
 				Sensor[i].UPM = 0;
 				Sensor[i].Hz = 0;

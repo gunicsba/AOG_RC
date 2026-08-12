@@ -13,7 +13,7 @@ using System.Windows.Forms;
 namespace RateController.Classes
 {
     public enum ApplicationMode
-    { ControlledUPM, ConstantUPM, DocumentApplied, DocumentTarget }
+    { ControlledUPM, ConstantUPM, DocumentApplied, DocumentTarget, DocumentAppliedManual }
 
     public enum CanDriver
     { SLCAN, InnoMaker, PCAN }
@@ -75,11 +75,11 @@ namespace RateController.Classes
             Lang.lgTramLeft,Lang.lgGeoStop,Lang.lgSwitch, Lang.lgNone,Lang.lgInvert_Master,Lang.lgBypass,Lang.lgFlowMaster,Lang.lgInvert_FlowMaster};
 
         private static string cActivityFileName = "";
-        private static string cAppDate = "18-Jul-2026";
+        private static string cAppDate = "02-Aug-2026";
         private static string cAppName = "RateController";
         private static SortedDictionary<string, string> cAppProps = new SortedDictionary<string, string>();
         private static string cAppPropsFileName = "";
-        private static string cAppVersion = "4.3.5";
+        private static string cAppVersion = "4.3.6";
         private static bool cCanEnabled = false;
         private static string cCanPort = "COM7";
         private static CanDriver cCurrentCanDriver = CanDriver.SLCAN;
@@ -101,13 +101,13 @@ namespace RateController.Classes
         private static bool cResumeAfterPrime;
         private static int cSensorSettingsMaxID = -1;
         private static bool cShowCanDiagnostics = false;
+        private static bool[] cShowDisplay = new bool[MaxProducts];
         private static bool cShowPressure;
         private static bool[] cShowScale = new bool[4];
         private static bool cShowSwitches;
         private static double cSimSpeed = 0;
         private static SpeedType cSpeedMode = SpeedType.GPS;
         private static bool cUseMetric;
-        private static bool cUseRateDisplay = false;
         private static bool cUseVariableRate = false;
         private static bool cUseZones = false;
         private static string[] LanguageIDs = new string[] { "en", "de", "hu", "nl", "pl", "ru", "fr", "lt" };
@@ -429,6 +429,13 @@ namespace RateController.Classes
             set { SetAppProp("SwitchCount", value.ToString()); }
         }
 
+        public static bool RateSwitchesOnly
+        {
+            // show only the rate up/down buttons on the on-screen switch box
+            get { return bool.TryParse(GetAppProp("RateSwitchesOnly"), out bool v) ? v : false; }
+            set { SetAppProp("RateSwitchesOnly", value.ToString()); }
+        }
+
         public static double SimSpeed_KMH
         {
             get { return cSimSpeed; }
@@ -519,17 +526,6 @@ namespace RateController.Classes
                     SetAppProp("UseMetric", cUseMetric.ToString());
                     UnitsChanged?.Invoke(null, EventArgs.Empty);
                 }
-            }
-        }
-
-        public static bool UseRateDisplay
-        {
-            get { return cUseRateDisplay; }
-            set
-            {
-                cUseRateDisplay = value;
-                SetAppProp("UseRateDisplay", cUseRateDisplay.ToString());
-                DisplayRate();
             }
         }
 
@@ -712,6 +708,83 @@ namespace RateController.Classes
             return Result;
         }
 
+        public static bool ClearReadOnly(string FilePath)
+        {
+            // a copied profile is the user's own file and must not inherit the read only flag
+            bool Result = false;
+            try
+            {
+                if (File.Exists(FilePath))
+                {
+                    var Kept = new List<string>();
+                    bool Found = false;
+                    foreach (string Line in File.ReadAllLines(FilePath))
+                    {
+                        if (Line.StartsWith("ReadOnly=", StringComparison.OrdinalIgnoreCase)) Found = true;
+                        else Kept.Add(Line);
+                    }
+
+                    if (Found)
+                    {
+                        File.WriteAllLines(FilePath, Kept);
+                        Result = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteErrorLog("Props/ClearReadOnly: " + ex.Message);
+            }
+            return Result;
+        }
+
+        public static bool IsReadOnlyFile(string FilePath)
+        {
+            // reads the flag without opening the profile
+            bool Result = false;
+            try
+            {
+                if (File.Exists(FilePath))
+                {
+                    foreach (string Line in File.ReadAllLines(FilePath))
+                    {
+                        if (Line.StartsWith("ReadOnly=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Result = bool.TryParse(Line.Substring(9), out bool rd) && rd;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteErrorLog("Props/IsReadOnlyFile: " + ex.Message);
+            }
+            return Result;
+        }
+
+        public static List<string> EditableProfiles()
+        {
+            // profile files that are not flagged read only
+            var Result = new List<string>();
+            try
+            {
+                if (Directory.Exists(ProfilesFolder))
+                {
+                    foreach (string Sub in Directory.GetDirectories(ProfilesFolder))
+                    {
+                        string FileName = Sub + "\\" + Path.GetFileName(Sub) + ".rcs";
+                        if (File.Exists(FileName) && !IsReadOnlyFile(FileName)) Result.Add(FileName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteErrorLog("Props/EditableProfiles: " + ex.Message);
+            }
+            return Result;
+        }
+
         public static bool CheckFolders()
         {
             bool Result = false;
@@ -740,15 +813,26 @@ namespace RateController.Classes
                 if (!File.Exists(DefaultProfile + "\\Default.rcs")) File.WriteAllBytes(DefaultProfile + "\\Default.rcs", Properties.Resources.Default);
                 if (!File.Exists(DefaultProfile + "\\DefaultPressureData.csv")) File.WriteAllText(DefaultProfile + "\\DefaultPressureData.csv", string.Empty);
 
-                string ExampleProfile = name + "\\" + "Example";
-                if (!Directory.Exists(ExampleProfile)) Directory.CreateDirectory(ExampleProfile);
-                if (!File.Exists(ExampleProfile + "\\Example.rcs")) File.WriteAllBytes(ExampleProfile + "\\Example.rcs", Properties.Resources.Example);
-                if (!File.Exists(ExampleProfile + "\\ExamplePressureData.csv")) File.WriteAllText(ExampleProfile + "\\ExamplePressureData.csv", string.Empty);
-
                 // check user files, current profile
-                if (!File.Exists(Props.CurrentFile))
+                // Default is the read only reference profile, never leave the user sitting in it.
+                // Example is an editable working copy of it, restored whenever it is needed
+                if (!File.Exists(Props.CurrentFile) || IsReadOnlyFile(Props.CurrentFile))
                 {
-                    Props.CurrentFile = ExampleProfile + "\\Example.rcs";
+                    // use a profile the user already has, only build Example when there are none
+                    var Editable = EditableProfiles();
+                    string WorkingFile = Editable.Count > 0 ? Editable[0] : "";
+
+                    if (WorkingFile == "")
+                    {
+                        string ExampleProfile = name + "\\Example";
+                        if (!Directory.Exists(ExampleProfile)) Directory.CreateDirectory(ExampleProfile);
+                        if (!File.Exists(ExampleProfile + "\\Example.rcs")) File.Copy(DefaultProfile + "\\Default.rcs", ExampleProfile + "\\Example.rcs");
+                        if (!File.Exists(ExampleProfile + "\\ExamplePressureData.csv")) File.WriteAllText(ExampleProfile + "\\ExamplePressureData.csv", string.Empty);
+                        ClearReadOnly(ExampleProfile + "\\Example.rcs");
+                        WorkingFile = ExampleProfile + "\\Example.rcs";
+                    }
+
+                    Props.CurrentFile = WorkingFile;
                     Properties.Settings.Default.Save();
                 }
 
@@ -794,6 +878,31 @@ namespace RateController.Classes
             }
         }
 
+        // One display window per product, each keyed by its product ID so they get
+        // separate registry entries and separate saved screen positions. The window
+        // shows a rate or, for the two fan slots, RPM - it works that out from the ID.
+        // A disabled product gets no window whatever its checkbox says, so this is
+        // called from every point that can change either input: startup, the Settings
+        // page enable toggle, and a profile change (which reloads every product's
+        // Enabled flag).
+        public static void DisplayProducts()
+        {
+            if (Core.Products != null)
+            {
+                for (int i = 0; i < MaxProducts; i++)
+                {
+                    if (cShowDisplay[i] && Core.Products.Items[i].Enabled)
+                    {
+                        FormManager.ShowForm(new frmProductDisplay(i), i.ToString());
+                    }
+                    else
+                    {
+                        FormManager.CloseForm<frmProductDisplay>(i.ToString());
+                    }
+                }
+            }
+        }
+
         public static void DisplayPressure()
         {
             if (cShowPressure)
@@ -806,15 +915,20 @@ namespace RateController.Classes
             }
         }
 
-        public static void DisplayRate()
+        public static bool GetShowDisplay(int ProductID)
         {
-            if (cUseRateDisplay)
+            bool Result = false;
+            if (ProductID >= 0 && ProductID < MaxProducts) Result = cShowDisplay[ProductID];
+            return Result;
+        }
+
+        public static void SetShowDisplay(int ProductID, bool Show)
+        {
+            if (ProductID >= 0 && ProductID < MaxProducts)
             {
-                FormManager.ShowForm(new frmRate());
-            }
-            else
-            {
-                FormManager.CloseForm<frmRate>();
+                cShowDisplay[ProductID] = Show;
+                SetAppProp("ShowDisplay" + ProductID.ToString(), Show.ToString());
+                DisplayProducts();
             }
         }
 
@@ -1159,8 +1273,12 @@ namespace RateController.Classes
             cCanEnabled = bool.TryParse(GetAppProp("CanEnabled"), out bool ibe) ? ibe : false;
             cUseMetric = bool.TryParse(GetAppProp("UseMetric"), out bool mt) ? mt : false;
             cShowPressure = bool.TryParse(GetAppProp("ShowPressure"), out bool sp) ? sp : false;
+
+            for (int i = 0; i < MaxProducts; i++)
+            {
+                cShowDisplay[i] = bool.TryParse(GetAppProp("ShowDisplay" + i.ToString()), out bool sf) ? sf : false;
+            }
             cShowSwitches = bool.TryParse(GetAppProp("ShowSwitches"), out bool ss) ? ss : false;
-            cUseRateDisplay = bool.TryParse(GetAppProp("UseRateDisplay"), out bool rtd) ? rtd : false;
             cMapPreview = bool.TryParse(GetAppProp("MapPreview"), out bool mp) ? mp : false;
             cCurrentCanDriver = Enum.TryParse(GetAppProp("CanDriver"), out CanDriver dr) ? dr : CanDriver.SLCAN;
             cShowCanDiagnostics = bool.TryParse(GetAppProp("CanDiagnostics"), out bool di) ? di : false;
