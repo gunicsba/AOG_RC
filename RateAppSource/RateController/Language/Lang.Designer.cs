@@ -1537,6 +1537,24 @@ namespace RateController.Language {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Allow Application at Standstill.
+        /// </summary>
+        internal static string lgAllowStandstill {
+            get {
+                return ResourceManager.GetString("lgAllowStandstill", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Window opacity.
+        /// </summary>
+        internal static string lgWindowOpacity {
+            get {
+                return ResourceManager.GetString("lgWindowOpacity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Work Switch.
         /// </summary>
         internal static string lgWorkSwitch {
