@@ -420,64 +420,34 @@ void ReadPGNs(byte data[], uint16_t len)
             bool AssignID = ((data[4] & 64) == 64);
             if (GoodCRC(data, PGNlength) && (AssignID || data[2] == MDL.ID))
             {
-                bool PinsOK = PinAllowed(data[7]) && OutputPinAllowed(data[8]) && OutputPinAllowed(data[9])
-                    && PinAllowed(data[10]) && OutputPinAllowed(data[11]) && OutputPinAllowed(data[12])
-                    && PinAllowed(data[29]) && PinAllowed(data[30]);
+                // Selective parsing for the hardcoded board: relay control, ADS1115
+                // and pressure pin are forced in setup(), and sensor pins arrive per
+                // sensor in PGN 32507, so those bytes are ignored here. A pin this
+                // board cannot use must not throw away the ID and the option flags.
+                MDL.ID = data[2];
+                MDL.SensorCount = data[3];
 
-                if (PinsOK && data[5] == 1)
+                byte tmp = data[4];
+                MDL.InvertRelay = ((tmp & 1) == 1);
+                MDL.InvertFlow = ((tmp & 2) == 2);
+                MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
+                MDL.Is3Wire = ((tmp & 16) == 16);
+                MDL.InvertWork = ((tmp & 128) == 128);
+
+                // work pin from the app; NC = no work switch. An invalid pin is
+                // ignored and reported, the rest of the config still applies.
+                if (PinAllowed(data[29]))
                 {
-                    // onboard relay control by GPIOs - relay pins must be output-capable
-                    for (int i = 0; i < 16; i++)
-                    {
-                        if (!OutputPinAllowed(data[13 + i]))
-                        {
-                            PinsOK = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (PinsOK)
-                {
-                    MDL.ID = data[2];
-                    MDL.SensorCount = data[3];
-
-                    byte tmp = data[4];
-                    MDL.InvertRelay = ((tmp & 1) == 1);
-                    MDL.InvertFlow = ((tmp & 2) == 2);
-                    MDL.WorkPinIsMomentary = ((tmp & 8) == 8);
-                    MDL.Is3Wire = ((tmp & 16) == 16);
-                    MDL.ADS1115Enabled = ((tmp & 32) == 32);
-                    MDL.InvertWork = ((tmp & 128) == 128);
-
-                    MDL.OnboardRelayControl = data[5];
-                    MDL.RemoteRelayControl = data[6];
-
-                    Sensor[0].FlowPin = data[7];
-                    Sensor[0].IN1 = data[8];
-                    Sensor[0].IN2 = data[9];
-                    Sensor[1].FlowPin = data[10];
-                    Sensor[1].IN1 = data[11];
-                    Sensor[1].IN2 = data[12];
-
-                    for (int i = 0; i < 16; i++)
-                    {
-                        MDL.RelayControlPins[i] = data[13 + i];
-                    }
-
                     MDL.WorkPin = data[29];
-                    MDL.PressurePin = data[30];
-
-                    SaveData();
-                    ESP.restart();
                 }
                 else
                 {
-                    // pins not usable on this board - discard the config,
-                    // report via PGN 32401 byte 13 bit 7 for the app to alert
                     ConfigRejected = true;
                     ConfigRejectedTime = millis();
                 }
+
+                SaveData();
+                ESP.restart();
             }
         }
         break;

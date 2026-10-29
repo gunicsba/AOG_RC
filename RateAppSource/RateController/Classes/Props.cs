@@ -75,13 +75,14 @@ namespace RateController.Classes
             Lang.lgTramLeft,Lang.lgGeoStop,Lang.lgSwitch, Lang.lgNone,Lang.lgInvert_Master,Lang.lgBypass,Lang.lgFlowMaster,Lang.lgInvert_FlowMaster};
 
         private static string cActivityFileName = "";
-        private static string cAppDate = "02-Aug-2026";
+        private static string cAppDate = "15-Aug-2026";
         private static string cAppName = "RateController";
         private static SortedDictionary<string, string> cAppProps = new SortedDictionary<string, string>();
         private static string cAppPropsFileName = "";
         private static string cAppVersion = "4.3.6";
         private static bool cCanEnabled = false;
         private static string cCanPort = "COM7";
+        private static bool cCompactDisplay = false;
         private static CanDriver cCurrentCanDriver = CanDriver.SLCAN;
         private static string cCurrentMenuName = "";
         private static int cCurrentProduct;
@@ -178,6 +179,18 @@ namespace RateController.Classes
                     cCanPort = value;
                     SetAppProp("CanPort", cCanPort);
                 }
+            }
+        }
+
+        // true - the arrow on the main display collapses it to the rates, false - it
+        // minimizes to the small restore window
+        public static bool CompactDisplay
+        {
+            get { return cCompactDisplay; }
+            set
+            {
+                cCompactDisplay = value;
+                SetAppProp("CompactDisplay", cCompactDisplay.ToString());
             }
         }
 
@@ -1287,6 +1300,7 @@ namespace RateController.Classes
             cSimSpeed = double.TryParse(GetAppProp("SimSpeed"), out double spd) ? spd : 8;
             cSpeedMode = Enum.TryParse(GetAppProp("SpeedMode"), out SpeedType spt) ? spt : SpeedType.GPS;
             cCanEnabled = bool.TryParse(GetAppProp("CanEnabled"), out bool ibe) ? ibe : false;
+            cCompactDisplay = bool.TryParse(GetAppProp("CompactDisplay"), out bool cd) ? cd : false;
             cUseMetric = bool.TryParse(GetAppProp("UseMetric"), out bool mt) ? mt : false;
             cShowPressure = bool.TryParse(GetAppProp("ShowPressure"), out bool sp) ? sp : false;
 
